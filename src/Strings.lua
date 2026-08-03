@@ -10,6 +10,7 @@ LuckysEnsemble.Strings = {
     settings = {
         groups = {
             general = "General",
+            appearances = "Appearances",
         },
         devMode = {
             label = "Dev Mode",
