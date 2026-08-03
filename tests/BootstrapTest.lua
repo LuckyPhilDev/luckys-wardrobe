@@ -58,6 +58,10 @@ LuckysEnsemble.SetTracking = {
     end,
 }
 
+LuckysEnsemble.SetsBrowser = {
+    Init = function() end,
+}
+
 dofile("src/Strings.lua")
 dofile("src/Defaults.lua")
 dofile("src/Core.lua")

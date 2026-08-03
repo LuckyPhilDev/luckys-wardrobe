@@ -11,6 +11,7 @@ local function initialize()
     end)
 
     LuckysEnsemble.Settings:Init(LuckysEnsembleDB)
+    LuckysEnsemble.SetsBrowser:Init()
     LuckysEnsemble.SetTracking:Init(LuckysEnsembleDB)
     LuckyMinimap:Create({
         name = "LuckysEnsembleMinimapButton",

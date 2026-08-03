@@ -4,12 +4,12 @@
 ## Version: 0.0.1
 ## Author: Lucky Phil
 ## SavedVariables: LuckysEnsembleDB
-## OptionalDeps: Luckys_Utils
+## Dependencies: Luckys_Utils
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 
-Luckys_Utils\embeds.xml
 Strings.lua
 Defaults.lua
+SetsBrowser.lua
 SetTracking.lua
 Settings.lua
 Core.lua
