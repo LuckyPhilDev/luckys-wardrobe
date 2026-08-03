@@ -30,13 +30,28 @@ local expansionNames = {
     EXPANSION_NAME11,
 }
 
-for index = 1, #expansionNames do
-    state.expansions[index] = true
+local function setAllExpansions(shown)
+    for index = 1, #expansionNames do state.expansions[index] = shown end
 end
 
-for _, category in ipairs(SetSources.Categories) do
-    state.sources[category.id] = true
+local function setAllSources(shown)
+    for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = shown end
 end
+
+-- True while the Ensemble filters are hiding something, which is what makes the
+-- list differ from the one Blizzard's own filters produced.
+local function isNarrowed()
+    for index = 1, #expansionNames do
+        if not state.expansions[index] then return true end
+    end
+    for _, category in ipairs(SetSources.Categories) do
+        if not state.sources[category.id] then return true end
+    end
+    return false
+end
+
+setAllExpansions(true)
+setAllSources(true)
 
 local function defaultOrder(left, right)
     local leftFavorite = left.favorite and true or false
@@ -142,6 +157,32 @@ function SetsBrowser:ReselectIfHidden(setsFrame)
     end
 end
 
+-- Blizzard counts every set its own filters allow, so the progress bar goes on
+-- counting sets the Ensemble filters have taken off the list. Recount what is
+-- actually on screen and write that over the native numbers.
+function SetsBrowser:UpdateProgressBar(setsFrame)
+    if not self.lastSets then return end
+
+    local collected = 0
+    for _, set in ipairs(self.lastSets) do
+        if C_TransmogSets.IsBaseSetCollected(set.setID) then collected = collected + 1 end
+    end
+
+    -- With nothing of ours hidden the list is Blizzard's own, so the recount
+    -- should land on Blizzard's numbers. A mismatch means the two disagree on
+    -- what makes a base set collected, which is worth seeing while testing.
+    if not isNarrowed() then
+        local nativeCollected, nativeTotal = C_TransmogSets.GetFilteredBaseSetsCounts()
+        if nativeCollected ~= collected or nativeTotal ~= #self.lastSets then
+            LuckysEnsemble.DevLog(DEBUG_TAG .. " unfiltered count mismatch; ensemble="
+                .. collected .. "/" .. #self.lastSets
+                .. " blizzard=" .. nativeCollected .. "/" .. nativeTotal)
+        end
+    end
+
+    setsFrame:GetParent():UpdateProgressBar(collected, #self.lastSets)
+end
+
 local function refresh(setsFrame)
     LuckysEnsemble.DevLog(DEBUG_TAG .. " refresh; OnSearchUpdate="
         .. type(setsFrame.OnSearchUpdate) .. " init=" .. tostring(setsFrame.init))
@@ -168,18 +209,12 @@ function SetsBrowser:SetupFilterMenu(frame)
     end
 
     button:SetIsDefaultCallback(function()
-        for index = 1, #expansionNames do
-            if not state.expansions[index] then return false end
-        end
-        for _, category in ipairs(SetSources.Categories) do
-            if not state.sources[category.id] then return false end
-        end
-        return C_TransmogSets.IsUsingDefaultBaseSetsFilters()
+        return not isNarrowed() and C_TransmogSets.IsUsingDefaultBaseSetsFilters()
     end)
 
     button:SetDefaultCallback(function()
-        for index = 1, #expansionNames do state.expansions[index] = true end
-        for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = true end
+        setAllExpansions(true)
+        setAllSources(true)
         C_TransmogSets.SetDefaultBaseSetsFilters()
         refresh(setsFrame)
     end)
@@ -227,12 +262,12 @@ function SetsBrowser:SetupFilterMenu(frame)
 
         local expansions = root:CreateButton("Expansion")
         expansions:CreateButton(CHECK_ALL, function()
-            for index = 1, #expansionNames do state.expansions[index] = true end
+            setAllExpansions(true)
             refresh(setsFrame)
             return MenuResponse.Refresh
         end)
         expansions:CreateButton(UNCHECK_ALL, function()
-            for index = 1, #expansionNames do state.expansions[index] = false end
+            setAllExpansions(false)
             refresh(setsFrame)
             return MenuResponse.Refresh
         end)
@@ -247,12 +282,12 @@ function SetsBrowser:SetupFilterMenu(frame)
 
         local sources = root:CreateButton(SOURCES)
         sources:CreateButton(CHECK_ALL, function()
-            for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = true end
+            setAllSources(true)
             refresh(setsFrame)
             return MenuResponse.Refresh
         end)
         sources:CreateButton(UNCHECK_ALL, function()
-            for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = false end
+            setAllSources(false)
             refresh(setsFrame)
             return MenuResponse.Refresh
         end)
@@ -296,8 +331,8 @@ function SetsBrowser:Init()
             LuckysEnsemble.DevLog(DEBUG_TAG .. " GetBaseSets wrapped")
         end
 
-        local listContainer = WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame
-            and WardrobeCollectionFrame.SetsCollectionFrame.ListContainer
+        local setsFrame = WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame
+        local listContainer = setsFrame and setsFrame.ListContainer
         if listContainer and type(listContainer.UpdateDataProvider) == "function"
             and not SetsBrowser.listHooked then
             SetsBrowser.listHooked = true
@@ -305,6 +340,15 @@ function SetsBrowser:Init()
                 SetsBrowser:ApplyListOrder(container)
             end)
             LuckysEnsemble.DevLog(DEBUG_TAG .. " rendered list hooked")
+        end
+
+        if setsFrame and type(setsFrame.UpdateProgressBar) == "function"
+            and not SetsBrowser.progressHooked then
+            SetsBrowser.progressHooked = true
+            hooksecurefunc(setsFrame, "UpdateProgressBar", function(frame)
+                SetsBrowser:UpdateProgressBar(frame)
+            end)
+            LuckysEnsemble.DevLog(DEBUG_TAG .. " progress bar hooked")
         end
 
         if WardrobeCollectionFrame and type(WardrobeCollectionFrame.InitBaseSetsFilterButton) == "function"

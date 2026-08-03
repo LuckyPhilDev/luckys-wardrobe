@@ -13,9 +13,20 @@ local testSets = {
     { setID = 2, expansionID = 1, favorite = false },
     { setID = 1, expansionID = 1, favorite = false },
 }
+local collectedSets = {}
 C_TransmogSets = {
     GetBaseSets = function() return testSets end,
     GetBaseSetID = function(setID) return setID end,
+    IsBaseSetCollected = function(setID) return collectedSets[setID] == true end,
+    -- Blizzard's own counter, which sees only its own filters and so always
+    -- covers the whole list the Ensemble filters are narrowing.
+    GetFilteredBaseSetsCounts = function()
+        local collected = 0
+        for _, set in ipairs(testSets) do
+            if collectedSets[set.setID] then collected = collected + 1 end
+        end
+        return collected, #testSets
+    end,
     GetSetPrimaryAppearances = function(setID)
         return ({
             [1] = { { collected = true }, { collected = true }, { collected = false } },
@@ -60,13 +71,19 @@ local listContainer = {
     end,
     UpdateListSelection = function() end,
 }
+local progressBar = {}
 local setsFrame = {
     init = true,
     ListContainer = listContainer,
-    OnSearchUpdate = function()
+    OnSearchUpdate = function(self)
         refreshes = refreshes + 1
         listContainer:UpdateDataProvider()
+        self:UpdateProgressBar()
     end,
+    UpdateProgressBar = function(self)
+        self:GetParent():UpdateProgressBar(C_TransmogSets.GetFilteredBaseSetsCounts())
+    end,
+    GetParent = function() return WardrobeCollectionFrame end,
     GetSelectedSetID = function(self) return self.selectedSetID end,
     SelectSet = function(self, setID) self.selectedSetID = setID end,
     GetDefaultSetIDForBaseSet = function(_, baseSetID) return baseSetID end,
@@ -77,6 +94,9 @@ WardrobeCollectionFrame = {
     FilterButton = filterButton,
     SetsCollectionFrame = setsFrame,
     GetName = function() return "WardrobeCollectionFrame" end,
+    UpdateProgressBar = function(_, value, max)
+        progressBar.value, progressBar.max = value, max
+    end,
     InitBaseSetsFilterButton = function(self)
         self.FilterButton.menu = "stock"
     end,
@@ -136,17 +156,26 @@ testSets = {
     { setID = 5, expansionID = 1, favorite = false, description = "Mythic", classMask = 4 },
     { setID = 4, expansionID = 1, favorite = false, classMask = 4 },
 }
+collectedSets = { [4] = true }
 setsFrame.selectedSetID = 4
+setsFrame:OnSearchUpdate()
+assert(progressBar.value == 1 and progressBar.max == 2,
+    "counted the whole list while nothing was unticked")
+
+local refreshesBefore = refreshes
 sourceToggles["Miscellaneous"]()
-assert(refreshes == 2, "refreshed the Sets list after unticking a source")
+assert(refreshes == refreshesBefore + 1, "refreshed the Sets list after unticking a source")
 assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].setID == 5,
     "hid the sets whose source was unticked")
 assert(setsFrame.selectedSetID == 5, "moved the selection off the hidden set")
+assert(progressBar.value == 0 and progressBar.max == 1,
+    "counted only the sets left after filtering")
 
 setsFrame.displayedSetID = 5
 sourceToggles["Raid"]()
 assert(#scrollBox.dataProvider == 0, "emptied the list with every reachable source unticked")
 assert(setsFrame.selectedSetID == nil and setsFrame.displayedSetID == nil,
     "cleared the selection and details panel with nothing left to show")
+assert(progressBar.value == 0 and progressBar.max == 0, "counted nothing with the list empty")
 
 print("Lucky's Ensemble sets browser test passed")
