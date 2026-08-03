@@ -1,4 +1,4 @@
--- luacheck: globals CreateFrame LuckyLog LuckyUtils LuckysEnsemble LuckysEnsembleDB SlashCmdList SLASH_LUCKYSENSEMBLE1
+-- luacheck: globals CreateFrame LuckyLog LuckyMinimap LuckyUtils LuckysEnsemble LuckysEnsembleDB SlashCmdList SLASH_LUCKYSENSEMBLE1
 
 LuckysEnsemble = {}
 LuckysEnsembleDB = nil
@@ -8,6 +8,7 @@ local eventHandler
 local logCreated = false
 local opened = false
 local initializedDB
+local minimapOptions
 
 function CreateFrame()
     return {
@@ -34,6 +35,13 @@ LuckyLog = {
     end,
 }
 
+LuckyMinimap = {
+    Create = function(_, options)
+        minimapOptions = options
+        return {}
+    end,
+}
+
 LuckysEnsemble.Settings = {
     Init = function(_, db)
         initializedDB = db
@@ -55,7 +63,14 @@ assert(initializedDB == LuckysEnsembleDB, "initialized settings with saved varia
 assert(LuckysEnsembleDB.devMode == false, "applied database defaults")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSENSEMBLE1 == "/ensemble", "registered slash command")
+assert(minimapOptions, "created minimap button")
 
+minimapOptions.onClick(nil, "LeftButton")
+assert(not opened, "left-click did not open settings")
+minimapOptions.onClick(nil, "RightButton")
+assert(opened, "right-click opened settings")
+
+opened = false
 SlashCmdList.LUCKYSENSEMBLE()
 assert(opened, "slash command opened settings")
 

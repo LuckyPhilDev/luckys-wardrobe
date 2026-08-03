@@ -11,6 +11,24 @@ local function initialize()
     end)
 
     LuckysEnsemble.Settings:Init(LuckysEnsembleDB)
+    LuckyMinimap:Create({
+        name = "LuckysEnsembleMinimapButton",
+        icon = "Interface\\GossipFrame\\transmogrifyGossipIcon.blp",
+        dbKey = "minimap",
+        db = LuckysEnsembleDB,
+        defaultAngle = 160,
+        onClick = function(_, mouseButton)
+            if mouseButton == "RightButton" then
+                LuckysEnsemble.Settings:Open()
+            end
+        end,
+        tooltip = function(tooltip)
+            tooltip:AddLine(LuckysEnsemble.Strings.addon.title)
+            tooltip:AddLine(" ")
+            tooltip:AddLine("Right-click: Open settings", 0.91, 0.86, 0.78)
+            tooltip:AddLine("Drag: Move button", 0.54, 0.49, 0.42)
+        end,
+    })
     LuckysEnsemble.DevLog(LuckysEnsemble.Strings.addon.initialized)
 
     SLASH_LUCKYSENSEMBLE1 = "/ensemble"
