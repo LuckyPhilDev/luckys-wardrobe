@@ -10,5 +10,6 @@
 Luckys_Utils\embeds.xml
 Strings.lua
 Defaults.lua
+SetTracking.lua
 Settings.lua
 Core.lua

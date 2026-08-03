@@ -11,6 +11,7 @@ local function initialize()
     end)
 
     LuckysEnsemble.Settings:Init(LuckysEnsembleDB)
+    LuckysEnsemble.SetTracking:Init(LuckysEnsembleDB)
     LuckyMinimap:Create({
         name = "LuckysEnsembleMinimapButton",
         icon = "Interface\\GossipFrame\\transmogrifyGossipIcon.blp",

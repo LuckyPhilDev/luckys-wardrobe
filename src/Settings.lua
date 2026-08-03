@@ -15,6 +15,14 @@ function LuckysEnsemble.Settings:Init(db)
 
     local general = panel:Group(S.settings.groups.general)
     general:Toggle({
+        label = S.settings.trackSets.label,
+        desc = S.settings.trackSets.desc,
+        checked = db.trackSetsOnShiftClick,
+        onToggle = function(checked)
+            db.trackSetsOnShiftClick = checked
+        end,
+    })
+    general:Toggle({
         label = S.settings.devMode.label,
         desc = S.settings.devMode.desc,
         checked = db.devMode,

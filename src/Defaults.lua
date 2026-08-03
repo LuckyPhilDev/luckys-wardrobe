@@ -3,4 +3,5 @@ LuckysEnsemble = LuckysEnsemble or {}
 
 LuckysEnsemble.DB_DEFAULTS = {
     devMode = false,
+    trackSetsOnShiftClick = true,
 }

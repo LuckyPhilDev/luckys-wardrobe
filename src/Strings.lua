@@ -16,10 +16,19 @@ LuckysEnsemble.Strings = {
             desc = "Shows detailed diagnostics in chat while features are developed.",
             enabled = "Dev mode enabled.",
         },
+        trackSets = {
+            label = "Track Sets on Shift-Click",
+            desc = "Shift-click a set in Blizzard's Sets collection to track every appearance you are still missing from it.",
+        },
         version = {
             section = "Version Info",
             addon = "Lucky's Ensemble",
             utils = "Lucky's Utils",
         },
+    },
+    tracking = {
+        tracked = "Tracking %d missing appearance(s) from %s.",
+        failed = "%d could not be tracked.",
+        nothing = "Nothing new to track from %s.",
     },
 }

@@ -9,6 +9,7 @@ local logCreated = false
 local opened = false
 local initializedDB
 local minimapOptions
+local trackingDB
 
 function CreateFrame()
     return {
@@ -51,6 +52,12 @@ LuckysEnsemble.Settings = {
     end,
 }
 
+LuckysEnsemble.SetTracking = {
+    Init = function(_, db)
+        trackingDB = db
+    end,
+}
+
 dofile("src/Strings.lua")
 dofile("src/Defaults.lua")
 dofile("src/Core.lua")
@@ -60,7 +67,9 @@ assert(LuckysEnsembleDB == nil, "ignored another addon's load event")
 
 eventHandler(nil, "ADDON_LOADED", "Luckys_Ensemble")
 assert(initializedDB == LuckysEnsembleDB, "initialized settings with saved variables")
+assert(trackingDB == LuckysEnsembleDB, "initialized set tracking with saved variables")
 assert(LuckysEnsembleDB.devMode == false, "applied database defaults")
+assert(LuckysEnsembleDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSENSEMBLE1 == "/ensemble", "registered slash command")
 assert(minimapOptions, "created minimap button")
