@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysEnsemble ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysEnsemble SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 121
 
 local devLogs = {}
@@ -6,14 +6,26 @@ LuckysEnsemble = {
     DevLog = function(message) devLogs[#devLogs + 1] = message end,
 }
 DEFAULT = "Default"
+SOURCES = "Sources"
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
+local testSets = {
+    { setID = 2, expansionID = 1, favorite = false },
+    { setID = 1, expansionID = 1, favorite = false },
+}
+local collectedSets = {}
 C_TransmogSets = {
-    GetBaseSets = function()
-        return {
-            { setID = 2, expansionID = 1, favorite = false },
-            { setID = 1, expansionID = 1, favorite = false },
-        }
+    GetBaseSets = function() return testSets end,
+    GetBaseSetID = function(setID) return setID end,
+    IsBaseSetCollected = function(setID) return collectedSets[setID] == true end,
+    -- Blizzard's own counter, which sees only its own filters and so always
+    -- covers the whole list the Ensemble filters are narrowing.
+    GetFilteredBaseSetsCounts = function()
+        local collected = 0
+        for _, set in ipairs(testSets) do
+            if collectedSets[set.setID] then collected = collected + 1 end
+        end
+        return collected, #testSets
     end,
     GetSetPrimaryAppearances = function(setID)
         return ({
@@ -25,6 +37,7 @@ C_TransmogSets = {
     GetVariantSets = function() return {} end,
 }
 
+dofile("src/SetSources.lua")
 dofile("src/SetsBrowser.lua")
 
 local browser = LuckysEnsemble.SetsBrowser
@@ -58,18 +71,32 @@ local listContainer = {
     end,
     UpdateListSelection = function() end,
 }
+local progressBar = {}
 local setsFrame = {
     init = true,
     ListContainer = listContainer,
-    OnSearchUpdate = function()
+    OnSearchUpdate = function(self)
         refreshes = refreshes + 1
         listContainer:UpdateDataProvider()
+        self:UpdateProgressBar()
     end,
+    UpdateProgressBar = function(self)
+        self:GetParent():UpdateProgressBar(C_TransmogSets.GetFilteredBaseSetsCounts())
+    end,
+    GetParent = function() return WardrobeCollectionFrame end,
+    GetSelectedSetID = function(self) return self.selectedSetID end,
+    SelectSet = function(self, setID) self.selectedSetID = setID end,
+    GetDefaultSetIDForBaseSet = function(_, baseSetID) return baseSetID end,
+    DisplaySet = function(self, setID) self.displayedSetID = setID end,
 }
+listContainer.GetParent = function() return setsFrame end
 WardrobeCollectionFrame = {
     FilterButton = filterButton,
     SetsCollectionFrame = setsFrame,
     GetName = function() return "WardrobeCollectionFrame" end,
+    UpdateProgressBar = function(_, value, max)
+        progressBar.value, progressBar.max = value, max
+    end,
     InitBaseSetsFilterButton = function(self)
         self.FilterButton.menu = "stock"
     end,
@@ -92,6 +119,7 @@ assert(C_TransmogSets.GetBaseSets()[1].setID == 2, "returned Blizzard's default 
 assert(#devLogs > 0, "reported the in-game hook state through Dev Mode")
 
 local sortLabels, sortSetters = {}, {}
+local sourceToggles = {}
 local root = {
     CreateCheckbox = function() end,
     CreateDivider = function() end,
@@ -99,7 +127,11 @@ local root = {
         return {
             CreateButton = function() end,
             CreateDivider = function() end,
-            CreateCheckbox = function() end,
+            CreateCheckbox = function(_, checkboxLabel, _isChecked, toggle)
+                if label == SOURCES then
+                    sourceToggles[checkboxLabel] = toggle
+                end
+            end,
             CreateRadio = function(_, radioLabel, _isSelected, setSelected)
                 if label == "Sort By" then
                     sortLabels[#sortLabels + 1] = radioLabel
@@ -116,5 +148,34 @@ sortSetters.Completion()
 assert(refreshes == 1, "refreshed the Sets list after choosing Completion")
 assert(scrollBox.dataProvider[1].setID == 1, "preserved completion order at the rendered list")
 assert(C_TransmogSets.GetBaseSets()[1].setID == 1, "returned completion order after the menu click")
+
+assert(sourceToggles["Raid"] and sourceToggles["Miscellaneous"],
+    "listed a checkbox per source category in the Sources submenu")
+
+testSets = {
+    { setID = 5, expansionID = 1, favorite = false, description = "Mythic", classMask = 4 },
+    { setID = 4, expansionID = 1, favorite = false, classMask = 4 },
+}
+collectedSets = { [4] = true }
+setsFrame.selectedSetID = 4
+setsFrame:OnSearchUpdate()
+assert(progressBar.value == 1 and progressBar.max == 2,
+    "counted the whole list while nothing was unticked")
+
+local refreshesBefore = refreshes
+sourceToggles["Miscellaneous"]()
+assert(refreshes == refreshesBefore + 1, "refreshed the Sets list after unticking a source")
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].setID == 5,
+    "hid the sets whose source was unticked")
+assert(setsFrame.selectedSetID == 5, "moved the selection off the hidden set")
+assert(progressBar.value == 0 and progressBar.max == 1,
+    "counted only the sets left after filtering")
+
+setsFrame.displayedSetID = 5
+sourceToggles["Raid"]()
+assert(#scrollBox.dataProvider == 0, "emptied the list with every reachable source unticked")
+assert(setsFrame.selectedSetID == nil and setsFrame.displayedSetID == nil,
+    "cleared the selection and details panel with nothing left to show")
+assert(progressBar.value == 0 and progressBar.max == 0, "counted nothing with the list empty")
 
 print("Lucky's Ensemble sets browser test passed")
