@@ -10,6 +10,7 @@ local opened = false
 local initializedDB
 local minimapOptions
 local trackingDB
+local transmogDB
 
 function CreateFrame()
     return {
@@ -62,6 +63,12 @@ LuckysEnsemble.SetsBrowser = {
     Init = function() end,
 }
 
+LuckysEnsemble.Transmog = {
+    Init = function(_, db)
+        transmogDB = db
+    end,
+}
+
 dofile("src/Strings.lua")
 dofile("src/Defaults.lua")
 dofile("src/Core.lua")
@@ -72,7 +79,9 @@ assert(LuckysEnsembleDB == nil, "ignored another addon's load event")
 eventHandler(nil, "ADDON_LOADED", "Luckys_Ensemble")
 assert(initializedDB == LuckysEnsembleDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysEnsembleDB, "initialized set tracking with saved variables")
+assert(transmogDB == LuckysEnsembleDB, "initialized transmog tab memory with saved variables")
 assert(LuckysEnsembleDB.devMode == false, "applied database defaults")
+assert(LuckysEnsembleDB.keepTransmogTab == false, "disabled transmog tab memory by default")
 assert(LuckysEnsembleDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSENSEMBLE1 == "/ensemble", "registered slash command")

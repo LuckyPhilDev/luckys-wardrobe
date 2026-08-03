@@ -11,6 +11,7 @@ LuckysEnsemble.Strings = {
         groups = {
             general = "General",
             appearances = "Appearances",
+            transmog = "Transmog",
         },
         devMode = {
             label = "Dev Mode",
@@ -20,6 +21,10 @@ LuckysEnsemble.Strings = {
         trackSets = {
             label = "Track Sets on Shift-Click",
             desc = "Shift-click a set in Blizzard's Sets collection to track every appearance you are still missing from it.",
+        },
+        keepTransmogTab = {
+            label = "Keep Active Transmog Tab",
+            desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
         version = {
             section = "Version Info",

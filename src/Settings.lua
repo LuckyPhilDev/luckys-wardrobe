@@ -38,6 +38,16 @@ function LuckysEnsemble.Settings:Init(db)
         end,
     })
 
+    local transmog = panel:Group(S.settings.groups.transmog)
+    transmog:Toggle({
+        label = S.settings.keepTransmogTab.label,
+        desc = S.settings.keepTransmogTab.desc,
+        checked = db.keepTransmogTab,
+        onToggle = function(checked)
+            db.keepTransmogTab = checked
+        end,
+    })
+
     panel:Finalize()
 end
 

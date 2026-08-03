@@ -11,5 +11,6 @@ Strings.lua
 Defaults.lua
 SetsBrowser.lua
 SetTracking.lua
+Transmog.lua
 Settings.lua
 Core.lua
