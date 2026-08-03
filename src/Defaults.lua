@@ -5,4 +5,5 @@ LuckysEnsemble.DB_DEFAULTS = {
     devMode = false,
     keepTransmogTab = false,
     trackSetsOnShiftClick = true,
+    situationPresets = {},
 }

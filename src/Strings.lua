@@ -32,6 +32,14 @@ LuckysEnsemble.Strings = {
             utils = "Lucky's Utils",
         },
     },
+    situationPresets = {
+        save = "Save Current Situation",
+        saveDialog = "Save Situation",
+        load = "Load Situation",
+        replaceDialog = "A saved situation named \"%s\" already exists. Replace it?",
+        deleteTooltip = "Delete Saved Situation",
+        deleteDialog = "Delete saved situation \"%s\"? This cannot be undone.",
+    },
     tracking = {
         tracked = "Tracking %d missing appearance(s) from %s.",
         failed = "%d could not be tracked.",
