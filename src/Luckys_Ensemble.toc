@@ -12,6 +12,7 @@ Defaults.lua
 SetsBrowser.lua
 SetTracking.lua
 Transmog.lua
+SituationLabels.lua
 SituationPresets.lua
 Settings.lua
 Core.lua

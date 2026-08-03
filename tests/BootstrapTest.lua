@@ -12,6 +12,7 @@ local minimapOptions
 local trackingDB
 local transmogDB
 local presetsDB
+local labelsDB
 
 function CreateFrame()
     return {
@@ -76,6 +77,12 @@ LuckysEnsemble.SituationPresets = {
     end,
 }
 
+LuckysEnsemble.SituationLabels = {
+    Init = function(_, db)
+        labelsDB = db
+    end,
+}
+
 dofile("src/Strings.lua")
 dofile("src/Defaults.lua")
 dofile("src/Core.lua")
@@ -89,6 +96,9 @@ assert(trackingDB == LuckysEnsembleDB, "initialized set tracking with saved vari
 assert(transmogDB == LuckysEnsembleDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysEnsembleDB, "initialized situation presets with saved variables")
 assert(type(LuckysEnsembleDB.situationPresets) == "table", "applied the situation presets default")
+assert(labelsDB == LuckysEnsembleDB, "initialized situation labels with saved variables")
+assert(LuckysEnsembleDB.showSituationValues == true, "enabled situation values by default")
+assert(LuckysEnsembleDB.showSituationTooltips == true, "enabled situation tooltips by default")
 assert(LuckysEnsembleDB.devMode == false, "applied database defaults")
 assert(LuckysEnsembleDB.keepTransmogTab == false, "disabled transmog tab memory by default")
 assert(LuckysEnsembleDB.trackSetsOnShiftClick == true, "enabled set tracking by default")

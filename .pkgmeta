@@ -2,6 +2,7 @@ package-as: Luckys_Ensemble
 
 ignore:
   - tests
+  - images
 
 move-folders:
   Luckys_Ensemble/src: Luckys_Ensemble

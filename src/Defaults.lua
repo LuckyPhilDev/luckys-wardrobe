@@ -6,4 +6,7 @@ LuckysEnsemble.DB_DEFAULTS = {
     keepTransmogTab = false,
     trackSetsOnShiftClick = true,
     situationPresets = {},
+    showSituationValues = true,
+    showSituationTooltips = true,
+    situationLabels = {},
 }

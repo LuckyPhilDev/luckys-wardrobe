@@ -26,11 +26,24 @@ LuckysEnsemble.Strings = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
+        showSituationValues = {
+            label = "Show Situation Values",
+            desc = "Shows the selected situation values on outfit entries instead of just the category names.",
+        },
+        showSituationTooltips = {
+            label = "Show Situation Tooltips",
+            desc = "Shows an outfit's full situation list, with the values selected in each category, in a tooltip when you hover it.",
+        },
         version = {
             section = "Version Info",
             addon = "Lucky's Ensemble",
             utils = "Lucky's Utils",
         },
+    },
+    situationLabels = {
+        scanTitle = "Reading Outfit Situations",
+        scanMessage = "Each outfit is being opened to read its situation values. Please wait, using the wardrobe now will interrupt the scan.",
+        scanCount = "%d of %d outfits",
     },
     situationPresets = {
         save = "Save Current Situation",

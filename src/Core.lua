@@ -14,6 +14,7 @@ local function initialize()
     LuckysEnsemble.SetsBrowser:Init()
     LuckysEnsemble.SetTracking:Init(LuckysEnsembleDB)
     LuckysEnsemble.Transmog:Init(LuckysEnsembleDB)
+    LuckysEnsemble.SituationLabels:Init(LuckysEnsembleDB)
     LuckysEnsemble.SituationPresets:Init(LuckysEnsembleDB)
     LuckyMinimap:Create({
         name = "LuckysEnsembleMinimapButton",
