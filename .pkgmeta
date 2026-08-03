@@ -1,0 +1,16 @@
+package-as: Luckys_Ensemble
+
+externals:
+  src/Luckys_Utils:
+    url: https://github.com/LuckyPhilDev/LuckyUtils.git
+    branch: main
+
+ignore:
+  - tests
+
+move-folders:
+  Luckys_Ensemble/src: Luckys_Ensemble
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

@@ -1,0 +1,14 @@
+## Interface: 120007
+## Title: Lucky's Ensemble
+## Notes: Plan, track, and browse transmog collections.
+## Version: 0.0.1
+## Author: Lucky Phil
+## SavedVariables: LuckysEnsembleDB
+## OptionalDeps: Luckys_Utils
+## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
+
+Luckys_Utils\embeds.xml
+Strings.lua
+Defaults.lua
+Settings.lua
+Core.lua
