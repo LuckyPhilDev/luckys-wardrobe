@@ -34,7 +34,11 @@ C_TransmogSets = {
             [3] = { { collected = false } },
         })[setID] or {}
     end,
-    GetVariantSets = function() return {} end,
+    GetVariantSets = function(setID)
+        return ({
+            [4] = { { setID = 41, favorite = true } },
+        })[setID] or {}
+    end,
 }
 
 dofile("src/SetSources.lua")
@@ -49,6 +53,21 @@ local sorted = browser:FilterAndSort({
 assert(sorted[1].setID == 3, "use Blizzard's expansion-first order by default")
 assert(sorted[2].setID == 2, "use Blizzard's set order within an expansion")
 assert(sorted[3].setID == 1, "leave older sets later in the default order")
+
+local withFavorite = browser:FilterAndSort({
+    { setID = 1, expansionID = 1, favorite = false },
+    { setID = 2, expansionID = 1, favorite = true },
+    { setID = 3, expansionID = 2, favorite = false },
+})
+assert(withFavorite[1].setID == 2, "surface a favourited set above newer expansions")
+assert(withFavorite[2].setID == 3, "keep the expansion order below the favourites")
+
+local withFavoriteVariant = browser:FilterAndSort({
+    { setID = 1, expansionID = 1, favorite = false },
+    { setID = 3, expansionID = 2, favorite = false },
+    { setID = 4, expansionID = 1, favorite = false },
+})
+assert(withFavoriteVariant[1].setID == 4, "surface a set whose variant is favourited")
 
 local filterButton = {
     SetIsDefaultCallback = function(self, callback) self.defaultCheck = callback end,
@@ -118,7 +137,7 @@ assert(type(filterButton.menu) == "function", "restored the Ensemble menu after 
 assert(C_TransmogSets.GetBaseSets()[1].setID == 2, "returned Blizzard's default order initially")
 assert(#devLogs > 0, "reported the in-game hook state through Dev Mode")
 
-local sortLabels, sortSetters = {}, {}
+local sortLabels, sortSetters, directionSetters = {}, {}, {}
 local sourceToggles = {}
 local root = {
     CreateCheckbox = function() end,
@@ -136,6 +155,8 @@ local root = {
                 if label == "Sort By" then
                     sortLabels[#sortLabels + 1] = radioLabel
                     sortSetters[radioLabel] = setSelected
+                elseif label == "Sort Direction" then
+                    directionSetters[radioLabel] = setSelected
                 end
             end,
         }
@@ -148,6 +169,26 @@ sortSetters.Completion()
 assert(refreshes == 1, "refreshed the Sets list after choosing Completion")
 assert(scrollBox.dataProvider[1].setID == 1, "preserved completion order at the rendered list")
 assert(C_TransmogSets.GetBaseSets()[1].setID == 1, "returned completion order after the menu click")
+
+sortSetters.Default()
+directionSetters.Descending()
+local descending = browser:FilterAndSort({
+    { setID = 1, expansionID = 1, favorite = false },
+    { setID = 2, expansionID = 1, favorite = true },
+    { setID = 3, expansionID = 2, favorite = false },
+})
+assert(descending[1].setID == 2, "keep favourites on top when sorting descending")
+assert(descending[2].setID == 1, "reverse the remaining sets when sorting descending")
+directionSetters.Ascending()
+
+sortSetters.Completion()
+local byCompletion = browser:FilterAndSort({
+    { setID = 1, expansionID = 1, favorite = false },
+    { setID = 2, expansionID = 1, favorite = false },
+    { setID = 3, expansionID = 2, favorite = true },
+})
+assert(byCompletion[1].setID == 1, "sort strictly by completion rather than by favourite")
+assert(byCompletion[3].setID == 3, "leave a favourited set at the completion position it earned")
 
 assert(sourceToggles["Raid"] and sourceToggles["Miscellaneous"],
     "listed a checkbox per source category in the Sources submenu")

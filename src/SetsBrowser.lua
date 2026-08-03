@@ -53,13 +53,31 @@ end
 setAllExpansions(true)
 setAllSources(true)
 
-local function defaultOrder(left, right)
-    local leftFavorite = left.favorite and true or false
-    local rightFavorite = right.favorite and true or false
-    if leftFavorite ~= rightFavorite then return leftFavorite end
+-- Blizzard populates favoriteSetID from DetermineFavorites, which calls GetBaseSets and so runs
+-- after our sort. Work the favourite out ourselves: a base set counts when it or a variant is one.
+local function isFavorite(set, favorites)
+    local favorite = favorites[set.setID]
+    if favorite == nil then
+        favorite = set.favorite and true or false
+        if not favorite then
+            for _, variant in ipairs(C_TransmogSets.GetVariantSets(set.setID) or {}) do
+                if variant.favorite then
+                    favorite = true
+                    break
+                end
+            end
+        end
+        favorites[set.setID] = favorite
+    end
+    return favorite
+end
+
+local function releaseOrder(left, right)
     if left.expansionID ~= right.expansionID then return left.expansionID > right.expansionID end
-    if left.patchID ~= right.patchID then return (left.patchID or 0) > (right.patchID or 0) end
-    if left.uiOrder ~= right.uiOrder then return (left.uiOrder or 0) > (right.uiOrder or 0) end
+    local leftPatch, rightPatch = left.patchID or 0, right.patchID or 0
+    if leftPatch ~= rightPatch then return leftPatch > rightPatch end
+    local leftUiOrder, rightUiOrder = left.uiOrder or 0, right.uiOrder or 0
+    if leftUiOrder ~= rightUiOrder then return leftUiOrder > rightUiOrder end
     return left.setID > right.setID
 end
 
@@ -89,7 +107,7 @@ local function completionCounts(setID, counts)
 end
 
 function SetsBrowser:FilterAndSort(sets)
-    local result, counts = {}, {}
+    local result, counts, favorites = {}, {}, {}
     for _, set in ipairs(sets) do
         if state.expansions[set.expansionID] and state.sources[SetSources:Classify(set)] then
             result[#result + 1] = set
@@ -108,10 +126,15 @@ function SetsBrowser:FilterAndSort(sets)
             elseif leftCounts.total ~= rightCounts.total then
                 before = leftCounts.total > rightCounts.total
             else
-                before = defaultOrder(left, right)
+                before = releaseOrder(left, right)
             end
         else
-            before = defaultOrder(left, right)
+            -- Favourites lead the default order in both directions. Completion sorts strictly by
+            -- what is left to collect, so a favourite stays wherever its progress puts it.
+            local leftFavorite = isFavorite(left, favorites)
+            local rightFavorite = isFavorite(right, favorites)
+            if leftFavorite ~= rightFavorite then return leftFavorite end
+            before = releaseOrder(left, right)
         end
         if state.sortDirection == "descending" then return not before end
         return before
