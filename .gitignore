@@ -1,3 +1,5 @@
 .release/
 .docs/
 *.zip
+
+.claude/
