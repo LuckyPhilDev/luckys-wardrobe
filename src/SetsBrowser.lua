@@ -1,4 +1,4 @@
--- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 122
 
 -- Lucky's Ensemble: Sorting and filtering for Blizzard's official Sets tab.
@@ -6,11 +6,13 @@ LuckysEnsemble = LuckysEnsemble or {}
 LuckysEnsemble.SetsBrowser = {}
 
 local SetsBrowser = LuckysEnsemble.SetsBrowser
+local SetSources = LuckysEnsemble.SetSources
 local DEBUG_TAG = "[DEBUG-settab-c7a2]"
 local state = {
     sortMode = "default",
     sortDirection = "ascending",
     expansions = {},
+    sources = {},
 }
 
 local expansionNames = {
@@ -30,6 +32,10 @@ local expansionNames = {
 
 for index = 1, #expansionNames do
     state.expansions[index] = true
+end
+
+for _, category in ipairs(SetSources.Categories) do
+    state.sources[category.id] = true
 end
 
 local function defaultOrder(left, right)
@@ -70,7 +76,7 @@ end
 function SetsBrowser:FilterAndSort(sets)
     local result, counts = {}, {}
     for _, set in ipairs(sets) do
-        if state.expansions[set.expansionID] then
+        if state.expansions[set.expansionID] and state.sources[SetSources:Classify(set)] then
             result[#result + 1] = set
         end
     end
@@ -105,10 +111,34 @@ function SetsBrowser:ApplyListOrder(container)
         ScrollBoxConstants.RetainScrollPosition
     )
     if container.UpdateListSelection then container:UpdateListSelection() end
+    self:ReselectIfHidden(container:GetParent())
     if state.traceListApply then
         state.traceListApply = nil
         LuckysEnsemble.DevLog(DEBUG_TAG .. " rendered list applied; first="
             .. tostring(self.lastSets[1] and self.lastSets[1].setID))
+    end
+end
+
+-- Filtering can hide the set that is currently selected. Left alone, the
+-- details panel keeps showing it while the list highlights whichever row took
+-- its place, so move the selection to the top of the filtered list instead.
+function SetsBrowser:ReselectIfHidden(setsFrame)
+    local selectedSetID = setsFrame:GetSelectedSetID()
+    if selectedSetID then
+        -- Matched on either ID: the list holds base sets, but the selected set
+        -- may be a variant of one of them.
+        local selectedBaseSetID = C_TransmogSets.GetBaseSetID(selectedSetID)
+        for _, set in ipairs(self.lastSets) do
+            if set.setID == selectedBaseSetID or set.setID == selectedSetID then return end
+        end
+    end
+
+    local first = self.lastSets[1]
+    if first then
+        setsFrame:SelectSet(setsFrame:GetDefaultSetIDForBaseSet(first.setID))
+    else
+        setsFrame.selectedSetID = nil
+        setsFrame:DisplaySet(nil)
     end
 end
 
@@ -141,11 +171,15 @@ function SetsBrowser:SetupFilterMenu(frame)
         for index = 1, #expansionNames do
             if not state.expansions[index] then return false end
         end
+        for _, category in ipairs(SetSources.Categories) do
+            if not state.sources[category.id] then return false end
+        end
         return C_TransmogSets.IsUsingDefaultBaseSetsFilters()
     end)
 
     button:SetDefaultCallback(function()
         for index = 1, #expansionNames do state.expansions[index] = true end
+        for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = true end
         C_TransmogSets.SetDefaultBaseSetsFilters()
         refresh(setsFrame)
     end)
@@ -207,6 +241,26 @@ function SetsBrowser:SetupFilterMenu(frame)
             local expansionIndex = index
             expansions:CreateCheckbox(name, function() return state.expansions[expansionIndex] end, function()
                 state.expansions[expansionIndex] = not state.expansions[expansionIndex]
+                refresh(setsFrame)
+            end)
+        end
+
+        local sources = root:CreateButton(SOURCES)
+        sources:CreateButton(CHECK_ALL, function()
+            for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = true end
+            refresh(setsFrame)
+            return MenuResponse.Refresh
+        end)
+        sources:CreateButton(UNCHECK_ALL, function()
+            for _, category in ipairs(SetSources.Categories) do state.sources[category.id] = false end
+            refresh(setsFrame)
+            return MenuResponse.Refresh
+        end)
+        sources:CreateDivider()
+        for _, category in ipairs(SetSources.Categories) do
+            local source = category
+            sources:CreateCheckbox(source.label, function() return state.sources[source.id] end, function()
+                state.sources[source.id] = not state.sources[source.id]
                 refresh(setsFrame)
             end)
         end

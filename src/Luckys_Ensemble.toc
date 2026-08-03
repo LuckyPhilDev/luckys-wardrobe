@@ -9,6 +9,7 @@
 
 Strings.lua
 Defaults.lua
+SetSources.lua
 SetsBrowser.lua
 SetTracking.lua
 Transmog.lua

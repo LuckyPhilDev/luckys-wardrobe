@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysEnsemble ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysEnsemble SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 121
 
 local devLogs = {}
@@ -6,15 +6,16 @@ LuckysEnsemble = {
     DevLog = function(message) devLogs[#devLogs + 1] = message end,
 }
 DEFAULT = "Default"
+SOURCES = "Sources"
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
+local testSets = {
+    { setID = 2, expansionID = 1, favorite = false },
+    { setID = 1, expansionID = 1, favorite = false },
+}
 C_TransmogSets = {
-    GetBaseSets = function()
-        return {
-            { setID = 2, expansionID = 1, favorite = false },
-            { setID = 1, expansionID = 1, favorite = false },
-        }
-    end,
+    GetBaseSets = function() return testSets end,
+    GetBaseSetID = function(setID) return setID end,
     GetSetPrimaryAppearances = function(setID)
         return ({
             [1] = { { collected = true }, { collected = true }, { collected = false } },
@@ -25,6 +26,7 @@ C_TransmogSets = {
     GetVariantSets = function() return {} end,
 }
 
+dofile("src/SetSources.lua")
 dofile("src/SetsBrowser.lua")
 
 local browser = LuckysEnsemble.SetsBrowser
@@ -65,7 +67,12 @@ local setsFrame = {
         refreshes = refreshes + 1
         listContainer:UpdateDataProvider()
     end,
+    GetSelectedSetID = function(self) return self.selectedSetID end,
+    SelectSet = function(self, setID) self.selectedSetID = setID end,
+    GetDefaultSetIDForBaseSet = function(_, baseSetID) return baseSetID end,
+    DisplaySet = function(self, setID) self.displayedSetID = setID end,
 }
+listContainer.GetParent = function() return setsFrame end
 WardrobeCollectionFrame = {
     FilterButton = filterButton,
     SetsCollectionFrame = setsFrame,
@@ -92,6 +99,7 @@ assert(C_TransmogSets.GetBaseSets()[1].setID == 2, "returned Blizzard's default 
 assert(#devLogs > 0, "reported the in-game hook state through Dev Mode")
 
 local sortLabels, sortSetters = {}, {}
+local sourceToggles = {}
 local root = {
     CreateCheckbox = function() end,
     CreateDivider = function() end,
@@ -99,7 +107,11 @@ local root = {
         return {
             CreateButton = function() end,
             CreateDivider = function() end,
-            CreateCheckbox = function() end,
+            CreateCheckbox = function(_, checkboxLabel, _isChecked, toggle)
+                if label == SOURCES then
+                    sourceToggles[checkboxLabel] = toggle
+                end
+            end,
             CreateRadio = function(_, radioLabel, _isSelected, setSelected)
                 if label == "Sort By" then
                     sortLabels[#sortLabels + 1] = radioLabel
@@ -116,5 +128,25 @@ sortSetters.Completion()
 assert(refreshes == 1, "refreshed the Sets list after choosing Completion")
 assert(scrollBox.dataProvider[1].setID == 1, "preserved completion order at the rendered list")
 assert(C_TransmogSets.GetBaseSets()[1].setID == 1, "returned completion order after the menu click")
+
+assert(sourceToggles["Raid"] and sourceToggles["Miscellaneous"],
+    "listed a checkbox per source category in the Sources submenu")
+
+testSets = {
+    { setID = 5, expansionID = 1, favorite = false, description = "Mythic", classMask = 4 },
+    { setID = 4, expansionID = 1, favorite = false, classMask = 4 },
+}
+setsFrame.selectedSetID = 4
+sourceToggles["Miscellaneous"]()
+assert(refreshes == 2, "refreshed the Sets list after unticking a source")
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].setID == 5,
+    "hid the sets whose source was unticked")
+assert(setsFrame.selectedSetID == 5, "moved the selection off the hidden set")
+
+setsFrame.displayedSetID = 5
+sourceToggles["Raid"]()
+assert(#scrollBox.dataProvider == 0, "emptied the list with every reachable source unticked")
+assert(setsFrame.selectedSetID == nil and setsFrame.displayedSetID == nil,
+    "cleared the selection and details panel with nothing left to show")
 
 print("Lucky's Ensemble sets browser test passed")
