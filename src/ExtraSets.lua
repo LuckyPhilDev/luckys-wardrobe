@@ -12,6 +12,14 @@ local ExtraSets = LuckysWardrobe.ExtraSets
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
+
+-- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
+-- runs underneath it. It moves to the end of the strip and gives up some width
+-- to stay clear of the class dropdown on the right.
+local PROGRESS_BAR_WIDTH = 150
+local PROGRESS_BAR_TAB_GAP = 10
+local PROGRESS_BAR_TAB_DROP = -11
+local PROGRESS_BAR_BORDER_MARGIN = 9
 local RECORD_TYPES = { TransmogSet = true, ItemSet = true }
 
 -- Locale-free slot keys, in display order. The catalogue emits these same tokens.
@@ -368,7 +376,7 @@ function ExtraSets:CreatePage(wardrobe)
     filterButton:SetPoint("TOPLEFT", 166, -8)
 
     local progressBar = CreateFrame("StatusBar", nil, page, "CollectionsProgressBarTemplate")
-    progressBar:SetPoint("TOPLEFT", 249, 21)
+    page.progressBar = progressBar
 
     local listContainer = CreateFrame("Frame", nil, page)
     listContainer:SetSize(255, 499)
@@ -797,6 +805,16 @@ local function updateSelectedTab(wardrobe, selectedTabID)
     end
 end
 
+-- Anchoring to the last tab keeps the bar clear of the strip as tab widths
+-- change with the selection. The border art is a fixed texture, so it has to be
+-- narrowed alongside the bar it frames.
+local function layOutProgressBar(progressBar)
+    progressBar:ClearAllPoints()
+    progressBar:SetPoint("TOPLEFT", extraTab, "TOPRIGHT", PROGRESS_BAR_TAB_GAP, PROGRESS_BAR_TAB_DROP)
+    progressBar:SetWidth(PROGRESS_BAR_WIDTH)
+    progressBar.border:SetWidth(PROGRESS_BAR_WIDTH + PROGRESS_BAR_BORDER_MARGIN)
+end
+
 function ExtraSets:Attach(wardrobe)
     if attachedWardrobe or not wardrobe or not wardrobe.numTabs then return end
 
@@ -833,6 +851,8 @@ function ExtraSets:Attach(wardrobe)
 
     PanelTemplates_SetNumTabs(wardrobe, extraTabID)
     PanelTemplates_ResizeTabsToFit(wardrobe, TAB_FIT_WIDTH)
+    layOutProgressBar(wardrobe.progressBar)
+    layOutProgressBar(extraPage.progressBar)
     updateSelectedTab(wardrobe, wardrobe.selectedCollectionTab)
 end
 

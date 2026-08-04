@@ -238,8 +238,20 @@ local function newTexture()
     function texture:SetSize() end
     function texture:SetPoint() end
     function texture:SetHeight() end
+    function texture:SetWidth(width) self.width = width end
     function texture:Hide() end
     return texture
+end
+
+-- Anchors are recorded rather than resolved: the tests only ask what a frame
+-- was pinned to, never where it landed on screen.
+local function recordAnchors(frame)
+    frame.points = {}
+    function frame:ClearAllPoints() self.points = {} end
+    function frame:SetPoint(point, relativeTo, relativePoint, x, y)
+        self.points[#self.points + 1] = { point, relativeTo, relativePoint, x, y }
+    end
+    return frame
 end
 
 function CreateFrame(frameType, name, parent, template)
@@ -259,11 +271,10 @@ function CreateFrame(frameType, name, parent, template)
     function frame:Hide() self.shown = false end
     function frame:SetShown(shown) self.shown = shown end
     function frame:IsShown() return self.shown end
-    function frame:SetPoint() end
+    recordAnchors(frame)
     function frame:SetAllPoints() end
-    function frame:ClearAllPoints() end
     function frame:SetSize() end
-    function frame:SetWidth() end
+    function frame:SetWidth(width) self.width = width end
     function frame:SetFrameStrata() end
     function frame:SetFrameLevel(level) self.frameLevel = level end
     function frame:GetFrameLevel() return self.frameLevel end
@@ -293,6 +304,7 @@ function CreateFrame(frameType, name, parent, template)
         frame.BGCornerTopRight = newTexture()
     elseif template == "CollectionsProgressBarTemplate" then
         frame.text = newFontString()
+        frame.border = newTexture()
     end
 
     createdFrames[#createdFrames + 1] = frame
@@ -425,6 +437,17 @@ local function visibilityFrame(shown)
     }
 end
 
+-- Blizzard's own bar, laid out for two tabs before the addon gets to it.
+local NATIVE_PROGRESS_BAR_WIDTH = 196
+
+local function nativeProgressBar()
+    local bar = recordAnchors(visibilityFrame(true))
+    bar.width = NATIVE_PROGRESS_BAR_WIDTH
+    bar.border = newTexture()
+    function bar:SetWidth(width) self.width = width end
+    return bar
+end
+
 local wardrobe
 wardrobe = {
     name = "WardrobeCollectionFrame",
@@ -436,7 +459,7 @@ wardrobe = {
     SearchBox = visibilityFrame(true),
     FilterButton = visibilityFrame(true),
     ClassDropdown = visibilityFrame(true),
-    progressBar = visibilityFrame(true),
+    progressBar = nativeProgressBar(),
     ContentFrames = {},
     GetName = function(self) return self.name end,
 }
@@ -510,6 +533,18 @@ assert(wardrobe.ContentFrames[1] == page, "joined the native content lifecycle")
 assert(page.searchType == wardrobe.SetsCollectionFrame.searchType, "kept the native search-event contract")
 assert(resizeWidth ~= nil, "made room for the third tab")
 assert(capturedView.template == "WardrobeSetsScrollFrameButtonTemplate", "reused the native sets row template")
+
+-- The third tab reaches into where Blizzard parked the progress bar, so both
+-- the native bar and the addon's own copy move past the end of the tab strip.
+
+for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
+    assert(#bar.points == 1, "gave the progress bar a single anchor")
+    local anchor = bar.points[1]
+    assert(anchor[1] == "TOPLEFT" and anchor[2] == extraTab and anchor[3] == "TOPRIGHT",
+        "anchored the progress bar to the end of the tab strip")
+    assert(bar.width < NATIVE_PROGRESS_BAR_WIDTH, "narrowed the progress bar to clear the class dropdown")
+    assert(bar.border.width > bar.width, "kept the border art framing the narrowed bar")
+end
 
 -- Tab switching.
 
