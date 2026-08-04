@@ -14,9 +14,13 @@ local testSets = {
     { setID = 1, expansionID = 1, favorite = false },
 }
 local collectedSets = {}
+-- Sets the game itself would never put on this list, which is how another class's
+-- set reads to the Sets tab.
+local unlistedSets = {}
 C_TransmogSets = {
     GetBaseSets = function() return testSets end,
     GetBaseSetID = function(setID) return setID end,
+    IsSetVisible = function(setID) return not unlistedSets[setID] end,
     IsBaseSetCollected = function(setID) return collectedSets[setID] == true end,
     -- Blizzard's own counter, which sees only its own filters and so always
     -- covers the whole list the Ensemble filters are narrowing.
@@ -228,5 +232,20 @@ assert(#scrollBox.dataProvider == 0, "emptied the list with every reachable sour
 assert(setsFrame.selectedSetID == nil and setsFrame.displayedSetID == nil,
     "cleared the selection and details panel with nothing left to show")
 assert(progressBar.value == 0 and progressBar.max == 0, "counted nothing with the list empty")
+
+-- Another class's set, put on screen by the instance list. The game does not list
+-- it here at all, so nothing of ours hid it and nothing of ours should replace it.
+sourceToggles["Raid"]()
+unlistedSets[9] = true
+setsFrame.selectedSetID, setsFrame.displayedSetID = 9, 9
+setsFrame:OnSearchUpdate()
+assert(setsFrame.selectedSetID == 9 and setsFrame.displayedSetID == 9,
+    "a set opened from outside the list was replaced by one from it")
+
+-- A set the list would hold and the filters took away is still moved off, which is
+-- the case this reselect exists for.
+setsFrame.selectedSetID = 4
+setsFrame:OnSearchUpdate()
+assert(setsFrame.selectedSetID == 5, "the selection stayed on a set the filters had hidden")
 
 print("Lucky's Ensemble sets browser test passed")

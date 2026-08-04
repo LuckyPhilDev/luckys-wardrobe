@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="LUCKYSENSEMBLE_TOGGLE_SET_LIST" header="LUCKYSENSEMBLE">
+		LuckysEnsemble.SetCompletion:Toggle()
+	</Binding>
+</Bindings>
