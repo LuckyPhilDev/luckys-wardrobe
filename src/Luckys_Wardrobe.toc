@@ -19,6 +19,7 @@ Classes.lua
 SetSources.lua
 SetsBrowser.lua
 SetTracking.lua
+WowheadLink.lua
 Catalyst.lua
 SetCompletion.lua
 LootAlerts.lua

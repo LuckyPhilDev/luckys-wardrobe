@@ -72,6 +72,13 @@ LuckysWardrobe.SetTracking = {
     end,
 }
 
+local wowheadDB
+LuckysWardrobe.WowheadLink = {
+    Init = function(_, db)
+        wowheadDB = db
+    end,
+}
+
 LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }
@@ -151,6 +158,7 @@ assert(LuckysWardrobeDB == nil, "ignored another addon's load event")
 eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
+assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")

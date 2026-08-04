@@ -5,6 +5,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     keepTransmogTab = false,
     trackSetsOnShiftClick = true,
+    wowheadLinkOnCtrlClick = true,
     situationPresets = {},
     showSituationValues = true,
     showSituationTooltips = true,

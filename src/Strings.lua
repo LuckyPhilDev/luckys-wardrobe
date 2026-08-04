@@ -81,6 +81,10 @@ LuckysWardrobe.Strings = {
             label = "Track Sets on Shift-Click",
             desc = "Shift-click a set in Blizzard's Sets collection to track every appearance you are still missing from it.",
         },
+        wowheadLink = {
+            label = "Wowhead Address on Ctrl-Click",
+            desc = "Ctrl-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy. This takes ctrl-click off the dressing room preview.",
+        },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
@@ -115,6 +119,9 @@ LuckysWardrobe.Strings = {
         replaceDialog = "A saved situation named \"%s\" already exists. Replace it?",
         deleteTooltip = "Delete Saved Situation",
         deleteDialog = "Delete saved situation \"%s\"? This cannot be undone.",
+    },
+    wowheadLink = {
+        dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
     },
     tracking = {
         tracked = "Tracking %d missing appearance(s) from %s.",

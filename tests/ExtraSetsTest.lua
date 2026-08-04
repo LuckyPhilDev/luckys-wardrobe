@@ -550,6 +550,16 @@ LuckysWardrobe.SetTracking = {
     end,
 }
 
+local ctrlDown = false
+local linkedSource
+LuckysWardrobe.WowheadLink = {
+    HandlesClick = function(_, buttonName) return ctrlDown and buttonName == "LeftButton" end,
+    ShowForSource = function(_, sourceID)
+        linkedSource = sourceID
+        return true
+    end,
+}
+
 local function visibilityFrame(shown)
     return {
         shown = shown,
@@ -929,6 +939,20 @@ shiftDown = false
 -- A look with a single item has nothing to cycle, and the offer is not made.
 collectedPiece.scripts.OnEnter(collectedPiece)
 assert(not wardrobe.tooltipCycle, "one item behind a look means nothing to cycle through")
+
+-- Ctrl-click hands back a piece's Wowhead address, and shift-click still tracks.
+trackedSources = nil
+ctrlDown = true
+missingPiece.scripts.OnClick(missingPiece, "LeftButton")
+assert(linkedSource == missingPiece.piece.sourceID, "ctrl-click asked for the piece's address")
+assert(trackedSources == nil, "ctrl-click did not also track the piece")
+ctrlDown = false
+
+shiftDown = true
+missingPiece.scripts.OnClick(missingPiece, "LeftButton")
+assert(trackedSources and trackedSources[1] == missingPiece.piece.sourceID,
+    "shift-click still tracks a missing piece")
+shiftDown = false
 
 collectedPiece.scripts.OnLeave(collectedPiece)
 assert(not tooltip.shown, "leaving a piece hides the tooltip")

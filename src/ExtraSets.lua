@@ -645,7 +645,11 @@ function ExtraSets:CreatePage(wardrobe)
         itemFrame.border:SetPoint("RIGHT", itemFrame.icon, "CENTER", 20, 1)
         itemFrame:SetScript("OnEnter", pieceTooltip)
         itemFrame:SetScript("OnLeave", hidePieceTooltip)
-        itemFrame:SetScript("OnClick", function(self)
+        itemFrame:SetScript("OnClick", function(self, buttonName)
+            if LuckysWardrobe.WowheadLink:HandlesClick(buttonName)
+                and LuckysWardrobe.WowheadLink:ShowForSource(self.piece.sourceID) then
+                return
+            end
             if IsShiftKeyDown() and self.piece.state == "missing" then
                 LuckysWardrobe.SetTracking:TrackSources({ self.piece.sourceID }, selectedEntry and selectedEntry.name)
             end
