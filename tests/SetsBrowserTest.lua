@@ -54,6 +54,16 @@ assert(sorted[1].setID == 3, "use Blizzard's expansion-first order by default")
 assert(sorted[2].setID == 2, "use Blizzard's set order within an expansion")
 assert(sorted[3].setID == 1, "leave older sets later in the default order")
 
+-- Blizzard numbers expansions from 0 for Classic, so a set from the oldest
+-- expansion has to survive the default filter like any other. Keying the filter
+-- as a 1-based array silently dropped every vanilla set from the Sets tab.
+local withClassic = browser:FilterAndSort({
+    { setID = 1, expansionID = 0, favorite = false },
+    { setID = 3, expansionID = 2, favorite = false },
+})
+assert(#withClassic == 2, "a Classic set survives the default filter, got " .. #withClassic)
+assert(withClassic[2].setID == 1, "and sorts oldest last")
+
 local withFavorite = browser:FilterAndSort({
     { setID = 1, expansionID = 1, favorite = false },
     { setID = 2, expansionID = 1, favorite = true },

@@ -30,8 +30,10 @@ local expansionNames = {
     EXPANSION_NAME11,
 }
 
+-- Keyed by Blizzard's expansionID, which counts from 0 for Classic. The name
+-- list is a Lua array counting from 1, so every lookup here is index - 1.
 local function setAllExpansions(shown)
-    for index = 1, #expansionNames do state.expansions[index] = shown end
+    for index = 1, #expansionNames do state.expansions[index - 1] = shown end
 end
 
 local function setAllSources(shown)
@@ -42,7 +44,7 @@ end
 -- list differ from the one Blizzard's own filters produced.
 local function isNarrowed()
     for index = 1, #expansionNames do
-        if not state.expansions[index] then return true end
+        if not state.expansions[index - 1] then return true end
     end
     for _, category in ipairs(SetSources.Categories) do
         if not state.sources[category.id] then return true end
@@ -296,9 +298,9 @@ function SetsBrowser:SetupFilterMenu(frame)
         end)
         expansions:CreateDivider()
         for index, name in ipairs(expansionNames) do
-            local expansionIndex = index
-            expansions:CreateCheckbox(name, function() return state.expansions[expansionIndex] end, function()
-                state.expansions[expansionIndex] = not state.expansions[expansionIndex]
+            local expansionID = index - 1
+            expansions:CreateCheckbox(name, function() return state.expansions[expansionID] end, function()
+                state.expansions[expansionID] = not state.expansions[expansionID]
                 refresh(setsFrame)
             end)
         end
