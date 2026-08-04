@@ -1,4 +1,4 @@
--- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 122
 
 -- Lucky's Wardrobe: Sorting and filtering for Blizzard's official Sets tab.
@@ -337,8 +337,7 @@ end
 function SetsBrowser:Init()
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         LuckysWardrobe.DevLog(DEBUG_TAG .. " collections loaded; stock="
-            .. tostring(WardrobeCollectionFrame ~= nil) .. " better="
-            .. tostring(BetterWardrobeCollectionFrame ~= nil) .. " initializer="
+            .. tostring(WardrobeCollectionFrame ~= nil) .. " initializer="
             .. type(WardrobeCollectionFrame and WardrobeCollectionFrame.InitBaseSetsFilterButton) .. " GetBaseSets="
             .. type(C_TransmogSets.GetBaseSets) .. " GetAllSets="
             .. type(C_TransmogSets.GetAllSets))
