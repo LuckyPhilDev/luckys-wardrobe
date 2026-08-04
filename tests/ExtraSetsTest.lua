@@ -500,6 +500,10 @@ C_TransmogSets = {
     GetTransmogSetsClassFilter = function() return setsClassFilter end,
     SetTransmogSetsClassFilter = function(classID) setsClassFilter = classID end,
 }
+-- Item data arrives from the server, so the client holds it only once asked.
+local loadedItems = {}
+local requestedItems = {}
+
 C_TransmogCollection = {
     GetSourceInfo = function(sourceID)
         local state = sourceStates[sourceID]
@@ -508,6 +512,10 @@ C_TransmogCollection = {
             sourceID = sourceID,
             visualID = state.appearanceID,
             isCollected = state.sourceCollected or false,
+            itemID = state.itemID,
+            -- The client answers this from the item's own data, so a source
+            -- whose item it has not loaded says no rather than saying nothing.
+            isValidSourceForPlayer = loadedItems[state.itemID] ~= nil and not state.unwearable,
         }
     end,
     GetAllAppearanceSources = function(visualID)
@@ -531,6 +539,8 @@ C_TransmogCollection = {
 C_Item = {
     GetItemSetInfo = function() return nil end,
     GetItemSubClassInfo = function(_, subClassID) return "Armour " .. subClassID end,
+    GetItemInfo = function(itemID) return loadedItems[itemID] end,
+    RequestLoadItemDataByID = function(itemID) requestedItems[#requestedItems + 1] = itemID end,
 }
 
 local trackedSources, trackedName
@@ -938,6 +948,45 @@ assert(tooltip.lines[1] == LuckysWardrobe.Strings.extraSets.pieceUnavailable,
     "unavailable pieces say so honestly")
 assert(tooltip.shown, "unavailable pieces still show a tooltip")
 
+-- Sets this character cannot wear. The client works that out from the items
+-- behind the pieces, which it loads only once asked, and a piece it has not
+-- loaded yet answers no. Reading a set cold therefore calls every set
+-- unwearable, and the sets that arrive cold are the ones this character can
+-- wear: building the list only asks the client about the pieces it declines to
+-- judge. So the page says nothing until the items land, and says it then.
+
+local noticeFont
+for _, fontString in ipairs(createdFontStrings) do
+    if fontString.points[1] and fontString.points[1][1] == "BOTTOM" then noticeFont = fontString end
+end
+assert(noticeFont, "found the notice line under the model")
+
+sourceStates[4001] = { appearanceID = 9401, collected = true, itemID = 44001 }
+sourceStates[4002] = { appearanceID = 9402, collected = true, itemID = 44002, unwearable = true }
+catalogRecords = {
+    validRecord({
+        setID = 40,
+        name = "Cold Set",
+        pieces = pieces({ "HEAD", 4001, 44001 }, { "CHEST", 4002, 44002 }),
+    }),
+}
+requestedItems = {}
+collectionUpdated()
+assert(not noticeFont.shown, "a set read before its items arrive is not called unwearable")
+assert(#requestedItems == 2, "asked the client for the items behind the pieces")
+
+loadedItems[44001], loadedItems[44002] = "Cold Helm", "Cold Chest"
+runTimers()
+assert(noticeFont.shown and noticeFont.text == LuckysWardrobe.Strings.extraSets.notUsable,
+    "said so once the client could answer")
+
+requestedItems = {}
+sourceStates[4002].unwearable = nil
+collectionUpdated()
+assert(not noticeFont.shown, "a set this character can wear says nothing")
+assert(#requestedItems == 0, "items the client already holds are not asked for again")
+
+sourceStates[4001], sourceStates[4002] = nil, nil
 catalogRecords = { records[1] }
 collectionUpdated()
 

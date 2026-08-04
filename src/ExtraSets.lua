@@ -17,6 +17,11 @@ local NATIVE_SETS_TAB_ID = 2
 -- reads the catalogue again. Long enough to collapse a burst, short enough
 -- that collecting something still updates the list while you are looking at it.
 local REBUILD_DELAY_SECONDS = 0.25
+-- How long the page waits for the items behind a set's pieces to arrive before
+-- reading them again. Some never arrive, so the wait is given up after a few
+-- passes rather than run until it succeeds.
+local ITEM_LOAD_DELAY_SECONDS = 0.5
+local ITEM_LOAD_PASSES = 3
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -369,9 +374,15 @@ function ExtraSets.LiveResolver()
         -- Whether this character could wear a piece at all, which is armour
         -- type more often than class. Asked only of the set on screen: it costs
         -- a table for every piece, and nothing in the list is built from it.
+        --
+        -- The client works the answer out from the item's own data, and a piece
+        -- it has not loaded yet says no rather than declining. Cold is not the
+        -- same as no, so an unloaded piece goes unjudged and the set waits for
+        -- a real answer instead of being called unwearable on first sight.
         sourceValidity = function(sourceID)
             local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
             if not sourceInfo then return nil end
+            if not sourceInfo.itemID or not C_Item.GetItemInfo(sourceInfo.itemID) then return nil end
             return sourceInfo.isValidSourceForPlayer and true or false
         end,
         playerClassID = function()
@@ -655,6 +666,40 @@ function ExtraSets:CreatePage(wardrobe)
         return wrap and longNameText or nameText
     end
 
+    local function showNotice(entry)
+        local resolver = ExtraSets.LiveResolver()
+        local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
+        if entry.unavailable > 0 then
+            noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
+        elseif not wearable then
+            noticeText:SetText(S.notUsable)
+        end
+        noticeText:SetShown(entry.unavailable > 0 or not wearable)
+    end
+
+    -- Asking for a set's items is what starts them loading, and the answers
+    -- land frames later. Sets this character can wear are the ones that arrive
+    -- cold, since building the list only asks the client about pieces it will
+    -- not judge, so without this pass the notice would be wrong exactly where
+    -- it matters and right only after leaving the set and coming back.
+    local function loadPieceItems(entry, pass)
+        local waiting = false
+        for _, piece in ipairs(entry.pieces) do
+            if piece.itemID and not C_Item.GetItemInfo(piece.itemID) then
+                C_Item.RequestLoadItemDataByID(piece.itemID)
+                waiting = true
+            end
+        end
+        if not waiting or pass >= ITEM_LOAD_PASSES then return end
+
+        C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
+            -- The set on screen may have moved on while the client answered.
+            if not selectedEntry or selectedEntry.key ~= entry.key then return end
+            showNotice(entry)
+            loadPieceItems(entry, pass + 1)
+        end)
+    end
+
     -- Dressing the model is the most expensive thing this page does, and the
     -- pieces of a set never change while a session runs. Only a different set,
     -- or a model that has been rebuilt underneath us, is worth redressing for.
@@ -677,19 +722,12 @@ function ExtraSets:CreatePage(wardrobe)
         dressedKey = entry.key
         if redress then LuckysWardrobe.Perf:Count("model dressed") end
 
-        local resolver = ExtraSets.LiveResolver()
-        local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
-
         labelText:ClearAllPoints()
         labelText:SetPoint("TOP", showSetName(entry.name), "BOTTOM", 0, -2)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
-        if entry.unavailable > 0 then
-            noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
-        elseif not wearable then
-            noticeText:SetText(S.notUsable)
-        end
-        noticeText:SetShown(entry.unavailable > 0 or not wearable)
+        showNotice(entry)
+        loadPieceItems(entry, 1)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
