@@ -12,6 +12,7 @@ local function initialize()
 
     LuckysWardrobe.Settings:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetsBrowser:Init()
+    LuckysWardrobe.ExtraSets:Init()
     LuckysWardrobe.SetTracking:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetCompletion:Init(LuckysWardrobeDB)
     LuckysWardrobe.LootAlerts:Init(LuckysWardrobeDB)

@@ -76,6 +76,13 @@ LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }
 
+local extraSetsInitialized = false
+LuckysWardrobe.ExtraSets = {
+    Init = function()
+        extraSetsInitialized = true
+    end,
+}
+
 LuckysWardrobe.Transmog = {
     Init = function(_, db)
         transmogDB = db
@@ -131,6 +138,7 @@ assert(LuckysWardrobeDB == nil, "ignored another addon's load event")
 eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
+assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
 assert(type(LuckysWardrobeDB.situationPresets) == "table", "applied the situation presets default")

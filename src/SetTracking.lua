@@ -46,24 +46,7 @@ local function trackAppearance(sourceID)
     return false, lastError
 end
 
-function SetTracking:TrackSet(setID)
-    local setInfo = C_TransmogSets.GetSetInfo(setID)
-    local appearances = C_TransmogSets.GetSetPrimaryAppearances(setID) or {}
-    local tracked, failed, lastError = 0, 0, nil
-
-    for _, appearance in ipairs(appearances) do
-        if not appearance.collected then
-            local didTrack, err = trackAppearance(appearance.appearanceID)
-            if didTrack then
-                tracked = tracked + 1
-            elseif err then
-                failed = failed + 1
-                lastError = err
-            end
-        end
-    end
-
-    local setName = (setInfo and setInfo.name) or tostring(setID)
+local function reportTracking(setName, tracked, failed, lastError)
     if tracked > 0 then
         local message = LuckysWardrobe.Strings.tracking.tracked:format(tracked, setName)
         if failed > 0 then
@@ -76,6 +59,36 @@ function SetTracking:TrackSet(setID)
     else
         print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.tracking.nothing:format(setName))
     end
+end
+
+local function trackAll(sourceIDs)
+    local tracked, failed, lastError = 0, 0, nil
+    for _, sourceID in ipairs(sourceIDs) do
+        local didTrack, err = trackAppearance(sourceID)
+        if didTrack then
+            tracked = tracked + 1
+        elseif err then
+            failed = failed + 1
+            lastError = err
+        end
+    end
+    return tracked, failed, lastError
+end
+
+function SetTracking:TrackSet(setID)
+    local setInfo = C_TransmogSets.GetSetInfo(setID)
+    local missing = {}
+    for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
+        if not appearance.collected then missing[#missing + 1] = appearance.appearanceID end
+    end
+
+    reportTracking((setInfo and setInfo.name) or tostring(setID), trackAll(missing))
+end
+
+-- Tracks exact appearance sources by ID, used by the Extra Sets page where the
+-- catalogue rather than a runtime set defines the membership.
+function SetTracking:TrackSources(sourceIDs, setName)
+    reportTracking(setName or "?", trackAll(sourceIDs))
 end
 
 function SetTracking:Init(db)
