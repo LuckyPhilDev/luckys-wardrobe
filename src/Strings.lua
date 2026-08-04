@@ -180,4 +180,16 @@ LuckysWardrobe.Strings = {
             unnamed = "(no name)",
         },
     },
+    recolorGroups = {
+        header = "Recolor families from %d appearance(s): %d family(ies), %d cluster(s) left out.",
+        shortCoverage = "Only read %d of %d appearances this client holds (%d pass the current filters), so families are incomplete.",
+        hint = "Use /wardrobe recolors dump to save the whole report, then reload and read it from saved variables.",
+        dumped = "Saved %d family(ies) and %d cluster(s) left out. Reload, then read LuckysWardrobeDB.recolorDump.",
+        warming = "Asking the client for %d item names, then dumping. This takes a moment.",
+        funnelLine = "%s: %d appearances, %d with sources, %d with an item, %d named by source, %d named by item.",
+        familyLine = "%s (%d pieces, span %d):",
+        memberLine = "  %s: %s (order %d)",
+        rejectedHeader = "Clusters left out (%d):",
+        rejectionLine = "  %s: %s",
+    },
 }

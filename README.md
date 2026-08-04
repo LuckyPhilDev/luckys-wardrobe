@@ -29,6 +29,9 @@ Lucky's Wardrobe is in early development. The first release establishes its sett
 | `/wardrobe extrasets full` | List every extra set and every candidate left out, with its reason |
 | `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
 | `/wardrobe extrasets sweep <name>` | Search this client for a set name, ignoring which ones the addon lists |
+| `/wardrobe recolors` | Report how many recolor families this client's appearances form |
+| `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
+| `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |
 
 ## Settings
 

@@ -20,6 +20,7 @@ LootAlerts.lua
 Randomiser.lua
 ExtraSetsCatalog.lua
 ExtraSets.lua
+RecolorGroups.lua
 Transmog.lua
 SituationLabels.lua
 SituationPresets.lua

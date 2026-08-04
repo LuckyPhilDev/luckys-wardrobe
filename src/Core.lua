@@ -65,6 +65,26 @@ local function initialize()
             else
                 LuckysWardrobe.ExtraSetsCatalog:PrintReport(subcommand == "full")
             end
+        elseif command == "recolors" then
+            local S = LuckysWardrobe.Strings.recolorGroups
+            local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+            if argument:lower() == "probe" then
+                LuckysWardrobe.RecolorGroups:PrintFunnel()
+            elseif argument:lower() == "dump" then
+                -- Names come from the item cache, so a cold client has to be
+                -- asked for the data and given time to answer before the dump is
+                -- worth reading. Waiting here beats asking a person to count
+                -- seconds between two commands.
+                local _, coverage = LuckysWardrobe.RecolorGroups.LiveAppearances()
+                say(S.warming:format(#coverage.items))
+                LuckysWardrobe.RecolorGroups:WarmItemNames(coverage.items, function()
+                    local families, rejections =
+                        LuckysWardrobe.RecolorGroups:DumpReport(LuckysWardrobeDB)
+                    say(S.dumped:format(families, rejections))
+                end)
+            else
+                LuckysWardrobe.RecolorGroups:PrintReport(argument:lower() == "full")
+            end
         else
             LuckysWardrobe.Settings:Open()
         end
