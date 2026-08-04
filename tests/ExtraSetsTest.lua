@@ -1,4 +1,4 @@
--- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
 
 LuckysWardrobe = {}
 
@@ -286,31 +286,6 @@ filterState.expansions = { true, true }
 local createdFrames = {}
 local capturedView
 
-local function newFontString()
-    local fontString = { shown = true }
-    function fontString:SetPoint() end
-    function fontString:SetWidth() end
-    function fontString:SetTextColor() end
-    function fontString:SetText(text) self.text = text end
-    function fontString:SetFormattedText(format, ...) self.text = format:format(...) end
-    function fontString:SetShown(shown) self.shown = shown end
-    return fontString
-end
-
-local function newTexture()
-    local texture = {}
-    function texture:SetAtlas() end
-    function texture:SetTexture(value) self.texture = value end
-    function texture:SetDesaturated() end
-    function texture:SetAlpha() end
-    function texture:SetSize() end
-    function texture:SetPoint() end
-    function texture:SetHeight() end
-    function texture:SetWidth(width) self.width = width end
-    function texture:Hide() end
-    return texture
-end
-
 -- Anchors are recorded rather than resolved: the tests only ask what a frame
 -- was pinned to, never where it landed on screen.
 local function recordAnchors(frame)
@@ -320,6 +295,47 @@ local function recordAnchors(frame)
         self.points[#self.points + 1] = { point, relativeTo, relativePoint, x, y }
     end
     return frame
+end
+
+-- Blizzard's own scaler, which shrinks a font string until its text fits the
+-- lines it is allowed. The stub records that it ran; a test says whether the
+-- text still failed to fit by setting truncated.
+AutoScalingFontStringMixin = {
+    SetText = function(self, text)
+        self.text = text
+        self.scaled = true
+    end,
+    SetMinLineHeight = function(self, height) self.minLineHeight = height end,
+}
+
+local createdFontStrings = {}
+
+local function newFontString()
+    local fontString = recordAnchors({ shown = true, truncated = false })
+    function fontString:SetWidth() end
+    function fontString:SetTextColor() end
+    function fontString:SetText(text) self.text = text end
+    function fontString:SetFormattedText(format, ...) self.text = format:format(...) end
+    function fontString:SetShown(shown) self.shown = shown end
+    function fontString:Show() self.shown = true end
+    function fontString:Hide() self.shown = false end
+    function fontString:SetMaxLines(lines) self.maxLines = lines end
+    function fontString:IsTruncated() return self.truncated end
+    createdFontStrings[#createdFontStrings + 1] = fontString
+    return fontString
+end
+
+local function newTexture()
+    local texture = recordAnchors({})
+    function texture:SetAtlas(atlas) self.atlas = atlas end
+    function texture:SetTexture(value) self.texture = value end
+    function texture:SetDesaturated() end
+    function texture:SetAlpha(alpha) self.alpha = alpha end
+    function texture:SetSize() end
+    function texture:SetHeight() end
+    function texture:SetWidth(width) self.width = width end
+    function texture:Hide() end
+    return texture
 end
 
 function CreateFrame(frameType, name, parent, template)
@@ -425,8 +441,11 @@ GameTooltip = {
 }
 CollectionWardrobeUtil = {
     SortSources = function(sources) tooltip.sortedSources = sources end,
+    -- The real one answers with the item it settled on and whether there are
+    -- others to cycle through, which is what drives the Tab key.
     SetAppearanceTooltip = function(_, appearanceData)
         tooltip.appearanceData = appearanceData
+        return appearanceData.selectedIndex or 1, #appearanceData.sources > 1
     end,
 }
 QUESTION_MARK_ICON = 134400
@@ -598,6 +617,23 @@ end
 function wardrobe:ClickTab(tab)
     self:SetTab(tab:GetID())
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+end
+
+function wardrobe:HideAppearanceTooltip()
+    self.tooltipContentFrame = nil
+    self.tooltipCycle = nil
+    self.tooltipSourceIndex = nil
+    GameTooltip:Hide()
+end
+
+-- Blizzard's own key handler, the one thing that makes Tab cycle a tooltip: it
+-- walks the source index and asks the frame that owns the tooltip to draw
+-- itself again.
+function wardrobe:OnKeyDown(key)
+    if not (self.tooltipCycle and key == "TAB") then return end
+
+    self.tooltipSourceIndex = self.tooltipSourceIndex + (IsShiftKeyDown() and -1 or 1)
+    self.tooltipContentFrame:RefreshAppearanceTooltip()
 end
 
 local originalSetTab = wardrobe.SetTab
@@ -840,6 +876,14 @@ assert(detailsFrame:GetFrameLevel() > modelFrame:GetFrameLevel(),
 
 local collectedPiece = pieceButtons[1]
 assert(collectedPiece.piece.state == "collected", "first piece is the collected one")
+
+-- The border art is wider than the icon it frames and sits off-centre within
+-- itself, so it hangs by its right edge exactly as the Sets tab hangs it.
+-- Centring it instead leaves the frame beside the icon rather than around it.
+assert(#collectedPiece.border.points == 1, "gave the border a single anchor")
+local borderAnchor = collectedPiece.border.points[1]
+assert(borderAnchor[1] == "RIGHT" and borderAnchor[2] == collectedPiece.icon and borderAnchor[3] == "CENTER",
+    "hung the border by its right edge off the icon's centre")
 collectedPiece.scripts.OnEnter(collectedPiece)
 assert(tooltip.owner == collectedPiece, "anchored the tooltip to the hovered piece")
 assert(tooltip.appearanceData, "built a native appearance tooltip")
@@ -850,13 +894,36 @@ assert(tooltip.shown, "showed the tooltip")
 
 local missingPiece = pieceButtons[2]
 assert(missingPiece.piece.state == "missing", "second piece is missing")
+assert(collectedPiece.border.alpha == 1 and missingPiece.border.alpha < 1,
+    "faded the border with the piece it holds, rather than framing nothing brightly")
 missingPiece.scripts.OnEnter(missingPiece)
 assert(tooltip.appearanceData, "missing pieces still get the native tooltip")
 assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.extraSets.trackHint,
     "missing pieces mention shift-click tracking")
 
+-- The tooltip offers Tab to cycle through the items sharing a look, and the
+-- wardrobe's key handler is what answers: it moves the index and asks the frame
+-- that owns the tooltip to draw it again. Sources 2003 and 2004 share one look,
+-- so this piece has something to cycle to.
+assert(wardrobe.tooltipContentFrame == page, "claimed the tooltip while a piece is hovered")
+assert(wardrobe.tooltipCycle, "told the wardrobe there are items to cycle through")
+local firstIndex = wardrobe.tooltipSourceIndex
+wardrobe:OnKeyDown("TAB")
+assert(wardrobe.tooltipSourceIndex == firstIndex + 1, "Tab moved on to the next item")
+assert(tooltip.appearanceData.selectedIndex == firstIndex + 1, "and the tooltip was drawn again at it")
+shiftDown = true
+wardrobe:OnKeyDown("TAB")
+assert(tooltip.appearanceData.selectedIndex == firstIndex, "shift-Tab went back the other way")
+shiftDown = false
+
+-- A look with a single item has nothing to cycle, and the offer is not made.
+collectedPiece.scripts.OnEnter(collectedPiece)
+assert(not wardrobe.tooltipCycle, "one item behind a look means nothing to cycle through")
+
 collectedPiece.scripts.OnLeave(collectedPiece)
 assert(not tooltip.shown, "leaving a piece hides the tooltip")
+assert(wardrobe.tooltipContentFrame == nil and wardrobe.tooltipSourceIndex == nil,
+    "handed the tooltip back, so the next piece starts at its own item")
 
 catalogRecords = { records[2] }
 collectionUpdated()
@@ -873,6 +940,40 @@ assert(tooltip.shown, "unavailable pieces still show a tooltip")
 
 catalogRecords = { records[1] }
 collectionUpdated()
+
+-- Long set names. The Sets tab shrinks the name to keep it on one line, and
+-- only wraps it, smaller again, when even that will not fit. A name left to
+-- wrap by itself pushes the label and the pieces down the page.
+
+local nameFont, longNameFont
+for _, fontString in ipairs(createdFontStrings) do
+    if fontString.maxLines == 1 then nameFont = fontString end
+    if fontString.maxLines == 2 then longNameFont = fontString end
+end
+assert(nameFont and longNameFont, "built both the one-line name and the wrapped fallback")
+assert(nameFont.scaled and nameFont.text == "Live Name", "scaled the name to fit the line it has")
+assert(nameFont.minLineHeight == 16, "let it shrink only as far as the Sets tab does")
+assert(nameFont.shown and not longNameFont.shown, "a name that fits keeps its one line")
+
+-- The label hangs off whichever name is on screen, since the two sit at
+-- different heights.
+local function fontAnchoredTo(target)
+    for _, fontString in ipairs(createdFontStrings) do
+        local anchor = fontString.points[1]
+        if anchor and anchor[2] == target then return fontString end
+    end
+end
+assert(fontAnchoredTo(nameFont), "hung the label under the one-line name")
+
+nameFont.truncated = true
+collectionUpdated()
+assert(not nameFont.shown and longNameFont.shown, "a name too long even shrunk wraps instead")
+assert(longNameFont.text == "Live Name", "the wrapped name is the same name")
+assert(fontAnchoredTo(longNameFont), "the label followed it")
+
+nameFont.truncated = false
+collectionUpdated()
+assert(nameFont.shown and not longNameFont.shown, "and the next set that fits goes back to one line")
 
 -- Filter menu, mirroring the Sets tab.
 

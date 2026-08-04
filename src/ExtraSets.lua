@@ -1,4 +1,4 @@
--- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -17,6 +17,10 @@ local NATIVE_SETS_TAB_ID = 2
 -- reads the catalogue again. Long enough to collapse a burst, short enough
 -- that collecting something still updates the list while you are looking at it.
 local REBUILD_DELAY_SECONDS = 0.25
+
+-- The smallest the Sets tab lets a set name shrink to before it gives up and
+-- wraps it instead.
+local NAME_MIN_LINE_HEIGHT = 16
 
 -- The offsets Blizzard gives the class dropdown above the Sets page.
 local CLASS_DROPDOWN_X = -9
@@ -492,10 +496,22 @@ function ExtraSets:CreatePage(wardrobe)
     detailsFrame:SetFrameLevel(model:GetFrameLevel() + 10)
     detailsFrame:Hide()
 
+    -- The Sets tab shrinks a long set name to keep it on one line, and only
+    -- wraps it, smaller again, when even the smallest size will not fit.
     local nameText = detailsFrame:CreateFontString(nil, "OVERLAY", "Fancy24Font")
     nameText:SetPoint("TOP", 0, -37)
     nameText:SetWidth(380)
     nameText:SetTextColor(1, 0.82, 0)
+    Mixin(nameText, AutoScalingFontStringMixin)
+    nameText:SetMaxLines(1)
+    nameText:SetMinLineHeight(NAME_MIN_LINE_HEIGHT)
+
+    local longNameText = detailsFrame:CreateFontString(nil, "OVERLAY", "Fancy16Font")
+    longNameText:SetPoint("TOP", 0, -30)
+    longNameText:SetWidth(380)
+    longNameText:SetTextColor(1, 0.82, 0)
+    longNameText:SetMaxLines(2)
+    longNameText:Hide()
 
     local labelText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     labelText:SetPoint("TOP", nameText, "BOTTOM", 0, -2)
@@ -556,26 +572,50 @@ function ExtraSets:CreatePage(wardrobe)
         return sources
     end
 
-    local function pieceTooltip(itemFrame)
-        local piece = itemFrame.piece
-        GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
+    -- The tooltip offers Tab to cycle through the items sharing a look, and it
+    -- is the wardrobe's own key handler that does the cycling: it moves the
+    -- source index and asks whichever frame owns the tooltip to draw it again.
+    -- A page that draws its tooltips behind the wardrobe's back never gets
+    -- asked, which is why the offer went unanswered here.
+    local hoveredPiece
 
+    local function drawPieceTooltip()
+        local piece = hoveredPiece
         local sources = piece.state ~= "unavailable" and pieceSources(piece) or nil
         if not sources then
             GameTooltip:SetText(S.pieceUnavailable, 1, 0.25, 0.25, 1, true)
-        else
+            GameTooltip:Show()
+            return
+        end
+
+        wardrobe.tooltipContentFrame = page
+        wardrobe.tooltipSourceIndex, wardrobe.tooltipCycle =
             CollectionWardrobeUtil.SetAppearanceTooltip(GameTooltip, {
                 sources = sources,
                 primarySourceID = piece.sourceID,
+                selectedIndex = wardrobe.tooltipSourceIndex,
                 showUseError = true,
                 showTrackingInfo = false,
                 slotType = _G[SLOT_TOOLTIP_GLOBALS[piece.slot]],
             })
-            if piece.state == "missing" then
-                GameTooltip:AddLine(S.trackHint, 0.5, 0.8, 1)
-            end
+        if piece.state == "missing" then
+            GameTooltip:AddLine(S.trackHint, 0.5, 0.8, 1)
         end
         GameTooltip:Show()
+    end
+
+    local function pieceTooltip(itemFrame)
+        hoveredPiece = itemFrame.piece
+        GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
+        drawPieceTooltip()
+    end
+
+    -- Handing the tooltip back matters as much as claiming it: the index Tab
+    -- walks belongs to the piece that was hovered, and the next piece starts
+    -- again from its own item.
+    local function hidePieceTooltip()
+        hoveredPiece = nil
+        wardrobe:HideAppearanceTooltip()
     end
 
     local function getItemFrame(index)
@@ -588,9 +628,12 @@ function ExtraSets:CreatePage(wardrobe)
         itemFrame.icon:SetSize(28, 28)
         itemFrame.icon:SetPoint("CENTER")
         itemFrame.border = itemFrame:CreateTexture(nil, "OVERLAY")
-        itemFrame.border:SetPoint("CENTER", itemFrame.icon, "CENTER", 4, 1)
+        -- The border art is wider than the icon and off-centre within itself, so
+        -- Blizzard hangs it by its right edge rather than its middle. Centring it
+        -- instead leaves the frame sitting beside the icon it frames.
+        itemFrame.border:SetPoint("RIGHT", itemFrame.icon, "CENTER", 20, 1)
         itemFrame:SetScript("OnEnter", pieceTooltip)
-        itemFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        itemFrame:SetScript("OnLeave", hidePieceTooltip)
         itemFrame:SetScript("OnClick", function(self)
             if IsShiftKeyDown() and self.piece.state == "missing" then
                 LuckysWardrobe.SetTracking:TrackSources({ self.piece.sourceID }, selectedEntry and selectedEntry.name)
@@ -598,6 +641,18 @@ function ExtraSets:CreatePage(wardrobe)
         end)
         itemFrames[index] = itemFrame
         return itemFrame
+    end
+
+    -- A name that fits once shrunk stays on its one line; one that still will
+    -- not fit wraps onto two smaller ones. Answers the line the rest of the
+    -- details hang from, since the two sit at different heights.
+    local function showSetName(name)
+        nameText:SetText(name)
+        local wrap = nameText:IsTruncated()
+        nameText:SetShown(not wrap)
+        longNameText:SetShown(wrap)
+        if wrap then longNameText:SetText(name) end
+        return wrap and longNameText or nameText
     end
 
     -- Dressing the model is the most expensive thing this page does, and the
@@ -625,7 +680,8 @@ function ExtraSets:CreatePage(wardrobe)
         local resolver = ExtraSets.LiveResolver()
         local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
 
-        nameText:SetText(entry.name)
+        labelText:ClearAllPoints()
+        labelText:SetPoint("TOP", showSetName(entry.name), "BOTTOM", 0, -2)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         if entry.unavailable > 0 then
@@ -648,9 +704,12 @@ function ExtraSets:CreatePage(wardrobe)
                 or QUESTION_MARK_ICON
             )
             itemFrame.icon:SetDesaturated(not collected)
-            itemFrame.icon:SetAlpha(collected and 1 or 0.35)
+            itemFrame.icon:SetAlpha(collected and 1 or 0.3)
             itemFrame.border:SetAtlas(collected and "loottab-set-itemborder-green" or "loottab-set-itemborder-white", true)
             itemFrame.border:SetDesaturated(not collected)
+            -- The Sets tab fades the frame with the icon it holds, or an
+            -- uncollected piece reads as a bright frame around nothing.
+            itemFrame.border:SetAlpha(collected and 1 or 0.3)
             itemFrame:ClearAllPoints()
             itemFrame:SetPoint("TOP", detailsFrame, "TOP", xOffset + (index - 1) * spacing, -98)
             itemFrame:Show()
@@ -888,7 +947,9 @@ function ExtraSets:CreatePage(wardrobe)
     page:SetScript("OnHide", function(self)
         self:UnregisterEvent("TRANSMOG_COLLECTION_UPDATED")
         self:SetScript("OnUpdate", nil)
-        GameTooltip:Hide()
+        -- A page that leaves the screen mid-hover would otherwise keep the
+        -- tooltip, and Tab would still be cycling it from another tab.
+        hidePieceTooltip()
     end)
     page:SetScript("OnEvent", function(_, event)
         LuckysWardrobe.Perf:Count("event " .. event)
@@ -897,6 +958,11 @@ function ExtraSets:CreatePage(wardrobe)
     page.Refresh = rebuildNow
     page.RefreshCameras = refreshCamera
     page.OnSearchUpdate = function() end
+    -- What the wardrobe calls on the frame that owns the tooltip once Tab has
+    -- moved the index along.
+    page.RefreshAppearanceTooltip = function()
+        if hoveredPiece then drawPieceTooltip() end
+    end
     -- Blizzard retries this every frame until it answers true, so a version of
     -- it that never does, or that makes the client change the model again,
     -- would cost a full redress on every frame. The counter says which.
