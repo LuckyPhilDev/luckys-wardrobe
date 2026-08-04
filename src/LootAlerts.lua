@@ -1,11 +1,11 @@
--- Lucky's Ensemble: Says something when what just dropped matters to a set you are
+-- Lucky's Wardrobe: Says something when what just dropped matters to a set you are
 -- close to finishing, either the appearance itself or an item the catalyst could
 -- turn into one. Not tied to instances, because gear that finishes a set drops in
 -- the open world and from quests as readily as it does off a boss.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.LootAlerts = {}
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.LootAlerts = {}
 
-local LootAlerts = LuckysEnsemble.LootAlerts
+local LootAlerts = LuckysWardrobe.LootAlerts
 
 -- Two of the game's own toasts, so the alerts sound like the game rather than like
 -- an addon. The bigger one is for the piece itself, since that is the rarer and
@@ -35,7 +35,7 @@ end
 local function announce(message)
     if not db.alertWithChat then return end
 
-    print(("%s %s"):format(LuckysEnsemble.Strings.addon.prefix, message))
+    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, message))
 end
 
 -- Blizzard's loot lines are format strings, so the only reliable way to tell the
@@ -69,7 +69,7 @@ local function wantedBy(itemLink, knownSourceID)
     sourceID = knownSourceID or sourceID
     if not sourceID and not visualID then return nil end
 
-    local wanted = LuckysEnsemble.SetCompletion:GetWantedPieces()
+    local wanted = LuckysWardrobe.SetCompletion:GetWantedPieces()
     if sourceID and wanted.bySource[sourceID] then
         return wanted.bySource[sourceID], sourceID
     end
@@ -86,7 +86,7 @@ end
 -- alert only fires while the collection says it is missing. So the set is finished
 -- when it was the last one left.
 local function setPieceMessage(itemLink, match)
-    local S = LuckysEnsemble.Strings.setTracker
+    local S = LuckysWardrobe.Strings.setTracker
     local setName = match.name or UNKNOWN
     local remaining = #(match.missing or {}) - 1
     if remaining < 1 then
@@ -112,14 +112,14 @@ local function alert(itemLink, knownSourceID)
             lastAlertAt[itemLink] = now
             announce(setPieceMessage(itemLink, match))
             play(DIRECT_SOUND)
-            LuckysEnsemble.SetCompletion:FlashPiece(sourceID)
+            LuckysWardrobe.SetCompletion:FlashPiece(sourceID)
             return "set", match
         end
     end
 
-    if db.alertCatalystLoot and LuckysEnsemble.Catalyst:WouldTeachAppearance(itemLink) then
+    if db.alertCatalystLoot and LuckysWardrobe.Catalyst:WouldTeachAppearance(itemLink) then
         lastAlertAt[itemLink] = now
-        announce(LuckysEnsemble.Strings.setTracker.lootCatalysable:format(itemLink))
+        announce(LuckysWardrobe.Strings.setTracker.lootCatalysable:format(itemLink))
         play(CATALYST_SOUND)
         return "catalyst"
     end

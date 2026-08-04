@@ -1,11 +1,11 @@
 -- luacheck: globals C_Timer C_TransmogOutfitInfo CreateFrame EventUtil GRAY_FONT_COLOR GameTooltip GameTooltip_AddHighlightLine GameTooltip_Hide GameTooltip_SetTitle LuckyUI TRANSMOG_SITUATION_CATEGORY_LIST_SEPARATOR TransmogFrame TransmogOutfitEntryMixin UnitGUID hooksecurefunc unpack
 
--- Lucky's Ensemble: Show selected situation values on the transmog outfit list.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.SituationLabels = {}
+-- Lucky's Wardrobe: Show selected situation values on the transmog outfit list.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.SituationLabels = {}
 
-local SituationLabels = LuckysEnsemble.SituationLabels
-local strings = LuckysEnsemble.Strings.situationLabels
+local SituationLabels = LuckysWardrobe.SituationLabels
+local strings = LuckysWardrobe.Strings.situationLabels
 local db
 
 local values
@@ -41,7 +41,7 @@ local BAR_INSET = 2
 local scanOverlay
 
 local function createScanOverlay()
-    local frame = CreateFrame("Frame", "LuckysEnsembleSituationScanOverlay", TransmogFrame)
+    local frame = CreateFrame("Frame", "LuckysWardrobeSituationScanOverlay", TransmogFrame)
     frame:SetAllPoints(TransmogFrame)
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
     frame:EnableMouse(true)

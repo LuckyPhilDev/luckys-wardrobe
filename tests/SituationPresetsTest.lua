@@ -1,6 +1,6 @@
--- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame LuckysEnsemble NO SAVE StaticPopupDialogs StaticPopup_Show UnitClass YES strtrim
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame LuckysWardrobe NO SAVE StaticPopupDialogs StaticPopup_Show UnitClass YES strtrim
 
-LuckysEnsemble = {}
+LuckysWardrobe = {}
 
 dofile("src/Strings.lua")
 
@@ -77,7 +77,7 @@ C_TransmogOutfitInfo = {
 
 dofile("src/SituationPresets.lua")
 
-local presets = LuckysEnsemble.SituationPresets
+local presets = LuckysWardrobe.SituationPresets
 local db = { situationPresets = {} }
 presets:Init(db)
 
@@ -96,11 +96,11 @@ assert(loadEnabled, "enabled the load button after saving")
 selected["3:0:0:0"] = false
 selected["4:0:0:0"] = true
 assert(not presets:Save("Rest Area"), "refused to overwrite without confirmation")
-assert(shownPopup.name == "LUCKYS_ENSEMBLE_REPLACE_SITUATION", "asked before replacing")
+assert(shownPopup.name == "LUCKYS_WARDROBE_REPLACE_SITUATION", "asked before replacing")
 assert(shownPopup.textArg == "Rest Area", "named the preset in the replace prompt")
 assert(db.situationPresets["Rest Area"].selections["3:0:0:0"], "kept the stored preset until confirmed")
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_REPLACE_SITUATION"].OnAccept(nil, "Rest Area")
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_SITUATION"].OnAccept(nil, "Rest Area")
 assert(db.situationPresets["Rest Area"].selections["4:0:0:0"], "replaced the preset on confirmation")
 assert(not db.situationPresets["Rest Area"].selections["3:0:0:0"], "dropped stale selections on replace")
 
@@ -116,7 +116,7 @@ assert(situationsEnabled, "enabled situations before applying")
 assert(refreshed, "refreshed the situations frame")
 assert(table.concat(calls, ",") == "enable,update,update,commit", "cleared before setting, then committed once")
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_DELETE_SITUATION"].OnAccept(nil, "Rest Area")
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Rest Area")
 assert(not db.situationPresets["Rest Area"], "deleted the preset")
 assert(not loadEnabled, "disabled the load button after the last delete")
 
@@ -147,8 +147,8 @@ playerClassID = 5
 presets:UpdateLoadButton()
 assert(loadEnabled, "listed the shared preset on any class")
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
 presets:UpdateLoadButton()
 assert(not loadEnabled, "hid class scoped presets from other classes after the shared delete")
 
-print("Lucky's Ensemble situation presets test passed")
+print("Lucky's Wardrobe situation presets test passed")

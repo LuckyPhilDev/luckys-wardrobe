@@ -1,9 +1,9 @@
 -- luacheck: globals C_Timer CreateFrame TransmogFrame hooksecurefunc
 
--- Lucky's Ensemble: Keep the active transmog tab during outfit refreshes, and
+-- Lucky's Wardrobe: Keep the active transmog tab during outfit refreshes, and
 -- host the appearance randomiser's session on the same transmogrifier events.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.Transmog = {}
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.Transmog = {}
 
 local db
 local hooked = false
@@ -34,10 +34,10 @@ end
 -- the transmogrifier opens.
 local function setUpFrames()
     installHooks()
-    LuckysEnsemble.Randomiser:OnTransmogOpen()
+    LuckysWardrobe.Randomiser:OnTransmogOpen()
 end
 
-function LuckysEnsemble.Transmog:Init(database)
+function LuckysWardrobe.Transmog:Init(database)
     db = database
 
     local eventFrame = CreateFrame("Frame")
@@ -50,7 +50,7 @@ function LuckysEnsemble.Transmog:Init(database)
             C_Timer.After(0.1, setUpFrames)
         else
             if watcher then watcher:Hide() end
-            LuckysEnsemble.Randomiser:OnTransmogClose()
+            LuckysWardrobe.Randomiser:OnTransmogClose()
         end
     end)
 end

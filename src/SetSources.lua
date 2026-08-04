@@ -1,13 +1,13 @@
 -- luacheck: globals BATTLE_PET_SOURCE_10 BATTLE_PET_SOURCE_12
 -- luacheck: ignore 122
 
--- Lucky's Ensemble: Source categories for Blizzard's official transmog sets.
+-- Lucky's Wardrobe: Source categories for Blizzard's official transmog sets.
 -- The game exposes no source field on a set, so the category is read from what
 -- the set data does carry: its ID, name, label, description, and class mask.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.SetSources = {}
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.SetSources = {}
 
-local SetSources = LuckysEnsemble.SetSources
+local SetSources = LuckysWardrobe.SetSources
 
 SetSources.RAID = 1
 SetSources.PVP = 2

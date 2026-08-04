@@ -4,4 +4,4 @@
 
 ### Added
 
-- Initial settings panel and `/ensemble` command.
+- Initial settings panel and `/wardrobe` command.

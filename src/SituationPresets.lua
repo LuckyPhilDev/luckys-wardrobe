@@ -1,11 +1,11 @@
 -- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame MenuTemplates MenuUtil MenuVariants NO SAVE StaticPopupDialogs StaticPopup_OnClick StaticPopup_Show TransmogFrame UnitClass YES strtrim
 
--- Lucky's Ensemble: Save and load Situation selections at the transmog window.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.SituationPresets = {}
+-- Lucky's Wardrobe: Save and load Situation selections at the transmog window.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.SituationPresets = {}
 
-local SituationPresets = LuckysEnsemble.SituationPresets
-local strings = LuckysEnsemble.Strings.situationPresets
+local SituationPresets = LuckysWardrobe.SituationPresets
+local strings = LuckysWardrobe.Strings.situationPresets
 local db
 
 local OPTION_FIELDS = { "situationID", "specID", "loadoutID", "equipmentSetID" }
@@ -77,7 +77,7 @@ function SituationPresets:Save(name, overwrite)
     local selections, classID = captureSelections()
     local key = presetKey(name, classID)
     if not overwrite and db.situationPresets[key] then
-        StaticPopup_Show("LUCKYS_ENSEMBLE_REPLACE_SITUATION", name, nil, name)
+        StaticPopup_Show("LUCKYS_WARDROBE_REPLACE_SITUATION", name, nil, name)
         return false
     end
 
@@ -111,7 +111,7 @@ function SituationPresets:Apply(preset, situationsFrame)
     situationsFrame:Refresh()
 end
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_SAVE_SITUATION"] = {
+StaticPopupDialogs["LUCKYS_WARDROBE_SAVE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.saveDialog,
     button1 = SAVE,
@@ -144,7 +144,7 @@ StaticPopupDialogs["LUCKYS_ENSEMBLE_SAVE_SITUATION"] = {
     end,
 }
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_REPLACE_SITUATION"] = {
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.replaceDialog,
     button1 = YES,
@@ -157,7 +157,7 @@ StaticPopupDialogs["LUCKYS_ENSEMBLE_REPLACE_SITUATION"] = {
     end,
 }
 
-StaticPopupDialogs["LUCKYS_ENSEMBLE_DELETE_SITUATION"] = {
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.deleteDialog,
     button1 = YES,
@@ -195,7 +195,7 @@ local function installButtons()
                     deleteIcon:SetAllPoints()
                     deleteIcon:SetTexture(MenuVariants.CancelButtonTexture)
                     deleteButton:SetScript("OnClick", function()
-                        StaticPopup_Show("LUCKYS_ENSEMBLE_DELETE_SITUATION", entry.name, nil, entry.key)
+                        StaticPopup_Show("LUCKYS_WARDROBE_DELETE_SITUATION", entry.name, nil, entry.key)
                         menu:Close()
                     end)
                     MenuUtil.HookTooltipScripts(deleteButton, function(tooltip)
@@ -213,7 +213,7 @@ local function installButtons()
     saveButton.tooltipText = strings.save
     saveButton:SetPoint("RIGHT", loadButton, "LEFT", -4, 0)
     saveButton:SetScript("OnClick", function()
-        StaticPopup_Show("LUCKYS_ENSEMBLE_SAVE_SITUATION")
+        StaticPopup_Show("LUCKYS_WARDROBE_SAVE_SITUATION")
     end)
 
     SituationPresets.loadButton = loadButton

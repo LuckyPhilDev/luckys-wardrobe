@@ -1,6 +1,6 @@
--- Lucky's Ensemble: Settings panel.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.Settings = {}
+-- Lucky's Wardrobe: Settings panel.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.Settings = {}
 
 local settingsPanel
 
@@ -8,21 +8,21 @@ local settingsPanel
 -- the same thing said twice.
 local function classOptions()
     local options = {}
-    for index, class in ipairs(LuckysEnsemble.Classes:All()) do
+    for index, class in ipairs(LuckysWardrobe.Classes:All()) do
         options[index] = {
             key = class.file,
-            label = LuckysEnsemble.Classes:Colour(class, class.name),
+            label = LuckysWardrobe.Classes:Colour(class, class.name),
         }
     end
     return options
 end
 
-function LuckysEnsemble.Settings:Init(db)
-    local S = LuckysEnsemble.Strings
-    local addonVersion = C_AddOns.GetAddOnMetadata("Luckys_Ensemble", "Version") or "?"
+function LuckysWardrobe.Settings:Init(db)
+    local S = LuckysWardrobe.Strings
+    local addonVersion = C_AddOns.GetAddOnMetadata("Luckys_Wardrobe", "Version") or "?"
     local utilsVersion = C_AddOns.GetAddOnMetadata("Luckys_Utils", "Version") or "?"
     local panel = LuckySettings:NewRichPanel(S.addon.title, {
-        addonFolder = "Luckys_Ensemble",
+        addonFolder = "Luckys_Wardrobe",
         imagesRoot = "Images",
     })
     settingsPanel = panel
@@ -34,7 +34,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.devMode,
         onToggle = function(checked)
             db.devMode = checked
-            LuckysEnsemble.DevLog(S.settings.devMode.enabled)
+            LuckysWardrobe.DevLog(S.settings.devMode.enabled)
         end,
     })
 
@@ -69,7 +69,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.showSituationValues,
         onToggle = function(checked)
             db.showSituationValues = checked
-            LuckysEnsemble.SituationLabels:Refresh()
+            LuckysWardrobe.SituationLabels:Refresh()
         end,
     })
     transmog:Toggle({
@@ -80,7 +80,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.showSituationTooltips,
         onToggle = function(checked)
             db.showSituationTooltips = checked
-            LuckysEnsemble.SituationLabels:Refresh()
+            LuckysWardrobe.SituationLabels:Refresh()
         end,
     })
 
@@ -88,7 +88,7 @@ function LuckysEnsemble.Settings:Init(db)
     -- the threshold that decides what counts as close to finishing, so the threshold
     -- leads and neither side owns it.
     local setTracker = panel:Group(S.settings.groups.setTracker)
-    local catalystAvailable = LuckysEnsemble.Catalyst:IsAvailable()
+    local catalystAvailable = LuckysWardrobe.Catalyst:IsAvailable()
 
     setTracker:Section(S.settings.sections.whatToTrack)
     setTracker:Slider({
@@ -102,7 +102,7 @@ function LuckysEnsemble.Settings:Init(db)
         value = db.instanceSetsMaxMissing,
         onChanged = function(value)
             db.instanceSetsMaxMissing = value
-            LuckysEnsemble.SetCompletion:Refresh()
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
     setTracker:Toggle({
@@ -111,7 +111,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.includeCurrentTier,
         onToggle = function(checked)
             db.includeCurrentTier = checked
-            LuckysEnsemble.SetCompletion:Refresh()
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
     setTracker:Toggle({
@@ -120,7 +120,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.includeOtherClassSets,
         onToggle = function(checked)
             db.includeOtherClassSets = checked
-            LuckysEnsemble.SetCompletion:Refresh()
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
     setTracker:MultiSelect({
@@ -135,7 +135,7 @@ function LuckysEnsemble.Settings:Init(db)
             else
                 db.hiddenSetClasses[classFile] = true
             end
-            LuckysEnsemble.SetCompletion:Refresh()
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
     setTracker:Toggle({
@@ -146,7 +146,7 @@ function LuckysEnsemble.Settings:Init(db)
         checked = db.markCatalysablePieces,
         onToggle = function(checked)
             db.markCatalysablePieces = checked
-            LuckysEnsemble.SetCompletion:Refresh()
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
 
@@ -175,7 +175,7 @@ function LuckysEnsemble.Settings:Init(db)
         label = S.settings.resetPosition.label,
         desc = S.settings.resetPosition.desc,
         onClick = function()
-            LuckysEnsemble.SetCompletion:ResetPosition()
+            LuckysWardrobe.SetCompletion:ResetPosition()
         end,
     })
 
@@ -212,6 +212,6 @@ function LuckysEnsemble.Settings:Init(db)
     panel:Finalize()
 end
 
-function LuckysEnsemble.Settings:Open()
+function LuckysWardrobe.Settings:Open()
     if settingsPanel then settingsPanel:Open() end
 end

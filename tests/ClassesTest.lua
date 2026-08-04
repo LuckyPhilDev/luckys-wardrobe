@@ -1,9 +1,9 @@
--- luacheck: globals C_ClassColor C_CreatureInfo GetNumClasses LuckysEnsemble
+-- luacheck: globals C_ClassColor C_CreatureInfo GetNumClasses LuckysWardrobe
 
 -- Covers reading a set's class mask: which classes a mask names, and how they read
 -- once coloured.
 
-LuckysEnsemble = {}
+LuckysWardrobe = {}
 
 -- Class IDs and files as the game hands them over, deliberately not in
 -- alphabetical order so the sort has something to do.
@@ -33,7 +33,7 @@ _G.C_ClassColor = {
 
 dofile("src/Classes.lua")
 
-local Classes = LuckysEnsemble.Classes
+local Classes = LuckysWardrobe.Classes
 
 -- Only the classes the client reports, alphabetically.
 local all = Classes:All()

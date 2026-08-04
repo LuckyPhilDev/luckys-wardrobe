@@ -1,6 +1,6 @@
--- luacheck: globals C_Timer C_TransmogCollection C_TransmogOutfitInfo Constants CreateFrame Enum LuckysEnsemble TRANSMOG_SLOTS TransmogFrame hooksecurefunc math
+-- luacheck: globals C_Timer C_TransmogCollection C_TransmogOutfitInfo Constants CreateFrame Enum LuckysWardrobe TRANSMOG_SLOTS TransmogFrame hooksecurefunc math
 
-LuckysEnsemble = {}
+LuckysWardrobe = {}
 
 local eventFrame
 local watcher
@@ -212,7 +212,7 @@ dofile("src/Randomiser.lua")
 dofile("src/Transmog.lua")
 
 local db = { keepTransmogTab = true }
-LuckysEnsemble.Transmog:Init(db)
+LuckysWardrobe.Transmog:Init(db)
 eventFrame.scripts.OnEvent(nil, "TRANSMOGRIFY_OPEN")
 watcher.scripts.OnUpdate()
 
@@ -351,4 +351,4 @@ pendingCalls = {}
 button.scripts.OnMouseDown(button, "LeftButton")
 assert(#pendingCalls == 0, "did not roll against a closed transmogrifier")
 
-print("Lucky's Ensemble transmog test passed")
+print("Lucky's Wardrobe transmog test passed")

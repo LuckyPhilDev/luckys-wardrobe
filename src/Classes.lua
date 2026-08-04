@@ -1,10 +1,10 @@
 -- luacheck: globals C_ClassColor C_CreatureInfo GetNumClasses
 
--- Lucky's Ensemble: The classes a set belongs to, and their colours.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.Classes = {}
+-- Lucky's Wardrobe: The classes a set belongs to, and their colours.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.Classes = {}
 
-local Classes = LuckysEnsemble.Classes
+local Classes = LuckysWardrobe.Classes
 
 -- A set names its classes as a bitmask, one bit per class ID. Read with plain
 -- arithmetic rather than the bit library so the same code runs under the tests,

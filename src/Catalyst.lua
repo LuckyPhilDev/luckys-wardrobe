@@ -1,14 +1,14 @@
 -- luacheck: globals GetInventoryItemLink TransmogUpgradeMaster INVSLOT_FIRST_EQUIPPED INVSLOT_LAST_EQUIPPED
 
--- Lucky's Ensemble: Everything the addon knows about the catalyst, which is
+-- Lucky's Wardrobe: Everything the addon knows about the catalyst, which is
 -- everything Transmog Upgrade Master will tell it. The game exposes no way to ask
 -- what the catalyst turns an item into, so without that addon there is no honest
 -- answer and this module says no to everything rather than guessing. Nowhere else
 -- names it.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.Catalyst = {}
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.Catalyst = {}
 
-local Catalyst = LuckysEnsemble.Catalyst
+local Catalyst = LuckysWardrobe.Catalyst
 
 function Catalyst:IsAvailable()
     return TransmogUpgradeMaster_API ~= nil
@@ -30,7 +30,7 @@ function Catalyst:WouldTeachAppearance(itemLink)
 
     local ok, canCatalyse, _canUpgrade, catalystMissing = pcall(api.IsAppearanceMissing, itemLink)
     if not ok then
-        LuckysEnsemble.DevLog(("Catalyst lookup failed for %s. %s"):format(itemLink, tostring(canCatalyse)))
+        LuckysWardrobe.DevLog(("Catalyst lookup failed for %s. %s"):format(itemLink, tostring(canCatalyse)))
         return false
     end
 
@@ -63,7 +63,7 @@ local function setSources(seasonID, tier, slot)
 
     local ok, sets = pcall(tum.GetSetsForClass, tum, classID(), seasonID)
     if not ok then
-        LuckysEnsemble.DevLog(("Catalyst set lookup failed for season %s tier %s. %s")
+        LuckysWardrobe.DevLog(("Catalyst set lookup failed for season %s tier %s. %s")
             :format(tostring(seasonID), tostring(tier), tostring(sets)))
         return nil
     end
@@ -84,7 +84,7 @@ local function catalystItemSources(seasonID, tier, slot)
 
     local ok, sourceIDs = pcall(tum.GetSourceIDsForItemID, tum, itemID)
     if not ok then
-        LuckysEnsemble.DevLog(("Catalyst item lookup failed for item %s tier %s. %s")
+        LuckysWardrobe.DevLog(("Catalyst item lookup failed for item %s tier %s. %s")
             :format(tostring(itemID), tostring(tier), tostring(sourceIDs)))
         return nil
     end
@@ -181,6 +181,6 @@ function Catalyst:Init()
     events:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
     events:SetScript("OnEvent", function()
         Catalyst:ForgetHeldTargets()
-        LuckysEnsemble.SetCompletion:RedrawIfShown()
+        LuckysWardrobe.SetCompletion:RedrawIfShown()
     end)
 end

@@ -1,10 +1,10 @@
 -- luacheck: globals C_TransmogCollection C_TransmogOutfitInfo Constants CreateFrame Enum TRANSMOG_SLOTS TransmogFrame
 
--- Lucky's Ensemble: Spin every armour slot through appearances you already own.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.Randomiser = {}
+-- Lucky's Wardrobe: Spin every armour slot through appearances you already own.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.Randomiser = {}
 
-local Randomiser = LuckysEnsemble.Randomiser
+local Randomiser = LuckysWardrobe.Randomiser
 
 -- Held rolls run fast enough to blur into a spin. Letting go stretches each
 -- wait by SLOWDOWN until the next one would outlast a reel coming to rest.
@@ -172,7 +172,7 @@ local function releaseRoll()
 end
 
 local function createButton(preview)
-    local strings = LuckysEnsemble.Strings.randomiser
+    local strings = LuckysWardrobe.Strings.randomiser
 
     button = CreateFrame("Button", nil, preview, "SquareIconButtonTemplate")
     button:SetPoint("TOPRIGHT", -23, -92)

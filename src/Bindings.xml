@@ -1,5 +1,5 @@
 <Bindings>
-	<Binding name="LUCKYSENSEMBLE_TOGGLE_SET_LIST" header="LUCKYSENSEMBLE">
-		LuckysEnsemble.SetCompletion:Toggle()
+	<Binding name="LUCKYSWARDROBE_TOGGLE_SET_LIST" header="LUCKYSWARDROBE">
+		LuckysWardrobe.SetCompletion:Toggle()
 	</Binding>
 </Bindings>
