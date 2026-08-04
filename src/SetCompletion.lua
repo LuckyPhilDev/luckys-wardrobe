@@ -1,11 +1,11 @@
 -- luacheck: globals C_Texture ITEM_CLASSES_ALLOWED PixelUtil PLAYER_DIFFICULTY1 PLAYER_DIFFICULTY2 PLAYER_DIFFICULTY3 PLAYER_DIFFICULTY6 WARDROBE_TAB_SETS
 
--- Lucky's Ensemble: Sets you are close to completing whose missing pieces drop in
+-- Lucky's Wardrobe: Sets you are close to completing whose missing pieces drop in
 -- the instance you're standing in.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.SetCompletion = {}
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.SetCompletion = {}
 
-local SetCompletion = LuckysEnsemble.SetCompletion
+local SetCompletion = LuckysWardrobe.SetCompletion
 
 local APPEARANCES_TAB = 5
 local INSTANCE_TYPES = { party = true, raid = true }
@@ -13,7 +13,7 @@ local INSTANCE_TYPES = { party = true, raid = true }
 local db
 
 local function say(text)
-    print(("%s %s"):format(LuckysEnsemble.Strings.addon.prefix, text))
+    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, text))
 end
 
 --- Whether a set belongs to the tier the game is currently on.
@@ -177,7 +177,7 @@ end
 local function wantsOtherClassSet(classMask)
     if not db.includeOtherClassSets then return false end
 
-    local classes = LuckysEnsemble.Classes:FromMask(classMask)
+    local classes = LuckysWardrobe.Classes:FromMask(classMask)
     if #classes == 0 then return true end
 
     for _, class in ipairs(classes) do
@@ -265,7 +265,7 @@ end
 -- per item in the bags and does not change while a scan is running.
 local function catalysableSources()
     if not db.markCatalysablePieces then return {} end
-    return LuckysEnsemble.Catalyst:GetHeldTargets().bySource
+    return LuckysWardrobe.Catalyst:GetHeldTargets().bySource
 end
 
 --- Every piece of the set, and how many of them the player holds the makings of.
@@ -647,7 +647,7 @@ end
 local MAX_DROP_LINES = 6
 
 local function showPieceTooltip(anchor, piece)
-    local S = LuckysEnsemble.Strings.setTracker
+    local S = LuckysWardrobe.Strings.setTracker
     GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
 
     GameTooltip:AddLine(piece.name or UNKNOWN, 1, 0.82, 0)
@@ -709,7 +709,7 @@ local function showPieceTooltip(anchor, piece)
 end
 
 local function showRowTooltip(row, match)
-    local S = LuckysEnsemble.Strings.setTracker
+    local S = LuckysWardrobe.Strings.setTracker
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:AddLine(match.name or UNKNOWN, 1, 0.82, 0)
     local subtitle = match.variant or match.source
@@ -719,9 +719,9 @@ local function showRowTooltip(row, match)
 
     -- The row has room to name one class. Where a set is shared by an armour type's
     -- worth of them, this is the only place they are all named.
-    local classes = LuckysEnsemble.Classes:FromMask(match.classMask)
+    local classes = LuckysWardrobe.Classes:FromMask(match.classMask)
     if #classes > 0 then
-        GameTooltip:AddLine(ITEM_CLASSES_ALLOWED:format(LuckysEnsemble.Classes:Names(classes)),
+        GameTooltip:AddLine(ITEM_CLASSES_ALLOWED:format(LuckysWardrobe.Classes:Names(classes)),
             0.91, 0.86, 0.78)
     end
 
@@ -770,7 +770,7 @@ local function showSetInJournal(match)
     end)
 
     if not ok then
-        LuckysEnsemble.DevLog(("Could not open set %s in the journal. %s")
+        LuckysWardrobe.DevLog(("Could not open set %s in the journal. %s")
             :format(tostring(match.setID), tostring(err)))
     end
 end
@@ -865,9 +865,9 @@ end
 -- belongs to an armour type rather than to anybody, so the row stays quiet about it
 -- and leaves the full list to the tooltip.
 local function rowClassName(classMask)
-    local classes = LuckysEnsemble.Classes:FromMask(classMask)
+    local classes = LuckysWardrobe.Classes:FromMask(classMask)
     if #classes ~= 1 then return "" end
-    return LuckysEnsemble.Classes:Colour(classes[1], classes[1].name)
+    return LuckysWardrobe.Classes:Colour(classes[1], classes[1].name)
 end
 
 local function updateRow(row, match)
@@ -935,8 +935,8 @@ local function ease(t)
 end
 
 local function buildPanel()
-    local S = LuckysEnsemble.Strings.setTracker
-    local frame = LuckyUI.CreatePanel("LuckysEnsembleInstanceSets", UIParent, 100, 100)
+    local S = LuckysWardrobe.Strings.setTracker
+    local frame = LuckyUI.CreatePanel("LuckysWardrobeInstanceSets", UIParent, 100, 100)
     frame:SetFrameStrata("HIGH")
     frame:Hide()
 
@@ -1211,19 +1211,19 @@ end
 --- up, and once more when its moment is over so it settles back down on its own.
 function SetCompletion:FlashPiece(sourceID)
     if not sourceID then
-        LuckysEnsemble.DevLog("FlashPiece called with no source, nothing to light up")
+        LuckysWardrobe.DevLog("FlashPiece called with no source, nothing to light up")
         return
     end
 
     flashUntil[sourceID] = GetTime() + FLASH_SECONDS
     if not (panel and panel:IsShown()) then
-        LuckysEnsemble.DevLog(("Flagged source %d, but the panel is not open to show it")
+        LuckysWardrobe.DevLog(("Flagged source %d, but the panel is not open to show it")
             :format(sourceID))
         return
     end
 
     self:Draw()
-    LuckysEnsemble.DevLog(("Flashing source %d for %ds"):format(sourceID, FLASH_SECONDS))
+    LuckysWardrobe.DevLog(("Flashing source %d for %ds"):format(sourceID, FLASH_SECONDS))
 
     C_Timer.After(FLASH_SECONDS + 0.1, function()
         if panel and panel:IsShown() then
@@ -1280,7 +1280,7 @@ function SetCompletion:Toggle()
     end
 
     if not self:Draw() then
-        say(LuckysEnsemble.Strings.setTracker.notInInstance)
+        say(LuckysWardrobe.Strings.setTracker.notInInstance)
         return
     end
 
@@ -1313,7 +1313,7 @@ local function scanOnEntry()
     end
 
     if not db.showInstanceSets then
-        LuckysEnsemble.DevLog("Instance scan skipped, the setting is off")
+        LuckysWardrobe.DevLog("Instance scan skipped, the setting is off")
         return
     end
 
@@ -1325,12 +1325,12 @@ local function scanOnEntry()
     -- as long as the player stayed in the instance.
     local ok, found = pcall(function() return SetCompletion:Draw() or 0 end)
     if not ok then
-        geterrorhandler()(("Lucky's Ensemble: instance set list failed. %s"):format(tostring(found)))
+        geterrorhandler()(("Lucky's Wardrobe: instance set list failed. %s"):format(tostring(found)))
         return
     end
 
     shownForInstance = key
-    LuckysEnsemble.DevLog(("Instance scan of %s found %d sets"):format(instance.name, found))
+    LuckysWardrobe.DevLog(("Instance scan of %s found %d sets"):format(instance.name, found))
     if found > 0 then
         SetCompletion:ShowExpanded()
     end
@@ -1356,7 +1356,7 @@ end
 -- window. What came of it is said out loud, because an entry that opens nothing is
 -- the answer as often as one that does, and the two look identical from outside.
 function SetCompletion:ReplayEntry()
-    local S = LuckysEnsemble.Strings.setTracker
+    local S = LuckysWardrobe.Strings.setTracker
     if not self:GetCurrentInstance() then
         say(S.notInInstance)
         return false

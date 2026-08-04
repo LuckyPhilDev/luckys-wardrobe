@@ -1,14 +1,14 @@
--- luacheck: globals LuckysEnsemble PLAYER_DIFFICULTY6
+-- luacheck: globals LuckysWardrobe PLAYER_DIFFICULTY6
 -- luacheck: ignore 121
 
-LuckysEnsemble = {}
+LuckysWardrobe = {}
 
 -- A localised difficulty global must classify alongside the English fallbacks.
 PLAYER_DIFFICULTY6 = "Mythisch"
 
 dofile("src/SetSources.lua")
 
-local SetSources = LuckysEnsemble.SetSources
+local SetSources = LuckysWardrobe.SetSources
 
 -- Every category has a distinct ID and a label, so no two sources share a
 -- checkbox and none renders blank.
@@ -90,4 +90,4 @@ for _, category in ipairs(SetSources.Categories) do
     assert(reached[category.id], category.label .. " is never produced by the classifier")
 end
 
-print("Lucky's Ensemble set sources test passed")
+print("Lucky's Wardrobe set sources test passed")

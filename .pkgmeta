@@ -1,11 +1,11 @@
-package-as: Luckys_Ensemble
+package-as: Luckys_Wardrobe
 
 ignore:
   - tests
   - images
 
 move-folders:
-  Luckys_Ensemble/src: Luckys_Ensemble
+  Luckys_Wardrobe/src: Luckys_Wardrobe
 
 manual-changelog:
   filename: CHANGELOG.md

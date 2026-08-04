@@ -1,10 +1,10 @@
 -- luacheck: globals EventUtil
 
--- Lucky's Ensemble: Shift-click tracking for Blizzard's stock set list.
-LuckysEnsemble = LuckysEnsemble or {}
-LuckysEnsemble.SetTracking = {}
+-- Lucky's Wardrobe: Shift-click tracking for Blizzard's stock set list.
+LuckysWardrobe = LuckysWardrobe or {}
+LuckysWardrobe.SetTracking = {}
 
-local SetTracking = LuckysEnsemble.SetTracking
+local SetTracking = LuckysWardrobe.SetTracking
 local APPEARANCE = Enum.ContentTrackingType.Appearance
 
 local function getCandidates(sourceID)
@@ -65,16 +65,16 @@ function SetTracking:TrackSet(setID)
 
     local setName = (setInfo and setInfo.name) or tostring(setID)
     if tracked > 0 then
-        local message = LuckysEnsemble.Strings.tracking.tracked:format(tracked, setName)
+        local message = LuckysWardrobe.Strings.tracking.tracked:format(tracked, setName)
         if failed > 0 then
-            message = message .. " " .. LuckysEnsemble.Strings.tracking.failed:format(failed)
+            message = message .. " " .. LuckysWardrobe.Strings.tracking.failed:format(failed)
         end
-        print(LuckysEnsemble.Strings.addon.prefix .. " " .. message)
+        print(LuckysWardrobe.Strings.addon.prefix .. " " .. message)
         PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK)
     elseif lastError then
         ContentTrackingUtil.DisplayTrackingError(lastError)
     else
-        print(LuckysEnsemble.Strings.addon.prefix .. " " .. LuckysEnsemble.Strings.tracking.nothing:format(setName))
+        print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.tracking.nothing:format(setName))
     end
 end
 

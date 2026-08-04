@@ -1,58 +1,59 @@
--- Lucky's Ensemble: Addon initialization.
-LuckysEnsemble = LuckysEnsemble or {}
+-- Lucky's Wardrobe: Addon initialization.
+LuckysWardrobe = LuckysWardrobe or {}
 
-local ADDON_NAME = "Luckys_Ensemble"
+local ADDON_NAME = "Luckys_Wardrobe"
 
 local function initialize()
-    LuckysEnsembleDB = LuckysEnsembleDB or {}
-    LuckyUtils.ApplyDefaults(LuckysEnsembleDB, LuckysEnsemble.DB_DEFAULTS)
-    LuckysEnsemble.DevLog = LuckyLog:New(LuckysEnsemble.Strings.addon.prefix, function()
-        return LuckysEnsembleDB.devMode
+    LuckysWardrobeDB = LuckysWardrobeDB or {}
+    LuckyUtils.ApplyDefaults(LuckysWardrobeDB, LuckysWardrobe.DB_DEFAULTS)
+    LuckysWardrobe.DevLog = LuckyLog:New(LuckysWardrobe.Strings.addon.prefix, function()
+        return LuckysWardrobeDB.devMode
     end)
 
-    LuckysEnsemble.Settings:Init(LuckysEnsembleDB)
-    LuckysEnsemble.SetsBrowser:Init()
-    LuckysEnsemble.SetTracking:Init(LuckysEnsembleDB)
-    LuckysEnsemble.SetCompletion:Init(LuckysEnsembleDB)
-    LuckysEnsemble.LootAlerts:Init(LuckysEnsembleDB)
-    LuckysEnsemble.Catalyst:Init()
-    LuckysEnsemble.Transmog:Init(LuckysEnsembleDB)
-    LuckysEnsemble.SituationLabels:Init(LuckysEnsembleDB)
-    LuckysEnsemble.SituationPresets:Init(LuckysEnsembleDB)
+    LuckysWardrobe.Settings:Init(LuckysWardrobeDB)
+    LuckysWardrobe.SetsBrowser:Init()
+    LuckysWardrobe.SetTracking:Init(LuckysWardrobeDB)
+    LuckysWardrobe.SetCompletion:Init(LuckysWardrobeDB)
+    LuckysWardrobe.LootAlerts:Init(LuckysWardrobeDB)
+    LuckysWardrobe.Catalyst:Init()
+    LuckysWardrobe.Transmog:Init(LuckysWardrobeDB)
+    LuckysWardrobe.SituationLabels:Init(LuckysWardrobeDB)
+    LuckysWardrobe.SituationPresets:Init(LuckysWardrobeDB)
     LuckyMinimap:Create({
-        name = "LuckysEnsembleMinimapButton",
+        name = "LuckysWardrobeMinimapButton",
         icon = "Interface\\GossipFrame\\transmogrifyGossipIcon.blp",
         dbKey = "minimap",
-        db = LuckysEnsembleDB,
+        db = LuckysWardrobeDB,
         defaultAngle = 160,
         onClick = function(_, mouseButton)
             if mouseButton == "RightButton" then
-                LuckysEnsemble.Settings:Open()
+                LuckysWardrobe.Settings:Open()
             elseif IsShiftKeyDown() then
-                LuckysEnsemble.SetCompletion:Toggle()
+                LuckysWardrobe.SetCompletion:Toggle()
             end
         end,
         tooltip = function(tooltip)
-            tooltip:AddLine(LuckysEnsemble.Strings.addon.title)
+            tooltip:AddLine(LuckysWardrobe.Strings.addon.title)
             tooltip:AddLine(" ")
             tooltip:AddLine("Shift-click: Sets you can finish here", 0.91, 0.86, 0.78)
             tooltip:AddLine("Right-click: Open settings", 0.91, 0.86, 0.78)
             tooltip:AddLine("Drag: Move button", 0.54, 0.49, 0.42)
         end,
     })
-    LuckysEnsemble.DevLog(LuckysEnsemble.Strings.addon.initialized)
+    LuckysWardrobe.DevLog(LuckysWardrobe.Strings.addon.initialized)
 
-    SLASH_LUCKYSENSEMBLE1 = "/ensemble"
-    SlashCmdList.LUCKYSENSEMBLE = function(input)
+    SLASH_LUCKYSWARDROBE1 = "/wardrobe"
+    SLASH_LUCKYSWARDROBE2 = "/lw"
+    SlashCmdList.LUCKYSWARDROBE = function(input)
         local command = (input or ""):match("^%s*(%S*)"):lower()
         if command == "sets" then
-            LuckysEnsemble.SetCompletion:Toggle()
+            LuckysWardrobe.SetCompletion:Toggle()
         elseif command == "scan" then
-            LuckysEnsemble.SetCompletion:Diagnose()
+            LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "replay" then
-            LuckysEnsemble.SetCompletion:ReplayEntry()
+            LuckysWardrobe.SetCompletion:ReplayEntry()
         else
-            LuckysEnsemble.Settings:Open()
+            LuckysWardrobe.Settings:Open()
         end
     end
 end

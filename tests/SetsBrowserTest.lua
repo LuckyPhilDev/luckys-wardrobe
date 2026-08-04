@@ -1,8 +1,8 @@
--- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysEnsemble SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 121
 
 local devLogs = {}
-LuckysEnsemble = {
+LuckysWardrobe = {
     DevLog = function(message) devLogs[#devLogs + 1] = message end,
 }
 DEFAULT = "Default"
@@ -23,7 +23,7 @@ C_TransmogSets = {
     IsSetVisible = function(setID) return not unlistedSets[setID] end,
     IsBaseSetCollected = function(setID) return collectedSets[setID] == true end,
     -- Blizzard's own counter, which sees only its own filters and so always
-    -- covers the whole list the Ensemble filters are narrowing.
+    -- covers the whole list our own filters are narrowing.
     GetFilteredBaseSetsCounts = function()
         local collected = 0
         for _, set in ipairs(testSets) do
@@ -48,7 +48,7 @@ C_TransmogSets = {
 dofile("src/SetSources.lua")
 dofile("src/SetsBrowser.lua")
 
-local browser = LuckysEnsemble.SetsBrowser
+local browser = LuckysWardrobe.SetsBrowser
 local sorted = browser:FilterAndSort({
     { setID = 1, expansionID = 1, favorite = false },
     { setID = 2, expansionID = 1, favorite = false },
@@ -147,7 +147,7 @@ browser:Init()
 assert(filterButton.menu, "attached the filter menu to the Collections Journal Sets tab")
 filterButton.menu = nil
 WardrobeCollectionFrame:InitBaseSetsFilterButton()
-assert(type(filterButton.menu) == "function", "restored the Ensemble menu after Blizzard rebuilt it")
+assert(type(filterButton.menu) == "function", "restored our filter menu after Blizzard rebuilt it")
 assert(C_TransmogSets.GetBaseSets()[1].setID == 2, "returned Blizzard's default order initially")
 assert(#devLogs > 0, "reported the in-game hook state through Dev Mode")
 
@@ -248,4 +248,4 @@ setsFrame.selectedSetID = 4
 setsFrame:OnSearchUpdate()
 assert(setsFrame.selectedSetID == 5, "the selection stayed on a set the filters had hidden")
 
-print("Lucky's Ensemble sets browser test passed")
+print("Lucky's Wardrobe sets browser test passed")

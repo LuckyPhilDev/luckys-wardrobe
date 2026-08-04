@@ -1,7 +1,7 @@
--- Lucky's Ensemble: Saved-variable defaults.
-LuckysEnsemble = LuckysEnsemble or {}
+-- Lucky's Wardrobe: Saved-variable defaults.
+LuckysWardrobe = LuckysWardrobe or {}
 
-LuckysEnsemble.DB_DEFAULTS = {
+LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     keepTransmogTab = false,
     trackSetsOnShiftClick = true,

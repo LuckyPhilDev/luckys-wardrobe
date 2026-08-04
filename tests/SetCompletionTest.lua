@@ -1,10 +1,10 @@
--- luacheck: globals C_Item C_Map C_Texture C_Timer C_TransmogCollection C_TransmogSets CreateFrame EJ_GetInstanceForMap EJ_GetInstanceInfo EJ_GetInvTypeSortOrder GetBuildInfo GetInstanceInfo GetTime IsInInstance LuckyUI LuckysEnsemble PLAYER_DIFFICULTY1 PLAYER_DIFFICULTY2 PLAYER_DIFFICULTY3 PLAYER_DIFFICULTY6 UISpecialFrames UNKNOWN
+-- luacheck: globals C_Item C_Map C_Texture C_Timer C_TransmogCollection C_TransmogSets CreateFrame EJ_GetInstanceForMap EJ_GetInstanceInfo EJ_GetInvTypeSortOrder GetBuildInfo GetInstanceInfo GetTime IsInInstance LuckyUI LuckysWardrobe PLAYER_DIFFICULTY1 PLAYER_DIFFICULTY2 PLAYER_DIFFICULTY3 PLAYER_DIFFICULTY6 UISpecialFrames UNKNOWN
 
 -- Covers the instance scan: which sets qualify, which pieces count as dropping
 -- here, and the order they come back in. The panel is not exercised; everything
 -- below the UI split is.
 
-LuckysEnsemble = { DevLog = function() end }
+LuckysWardrobe = { DevLog = function() end }
 
 _G.EJ_GetInvTypeSortOrder = function() return 1 end
 _G.C_Item = {
@@ -170,7 +170,7 @@ dofile("src/Strings.lua")
 dofile("src/Classes.lua")
 dofile("src/SetCompletion.lua")
 
-local SetCompletion = LuckysEnsemble.SetCompletion
+local SetCompletion = LuckysWardrobe.SetCompletion
 -- Everything below the tier block wants to see every set that qualifies, including
 -- the current tier's, which is left out by default.
 SetCompletion:Init({ instanceSetsMaxMissing = 3, includeCurrentTier = true })
@@ -313,7 +313,7 @@ end
 -- A piece the player is already carrying the makings of is stamped, and carries the
 -- item it would be made from so the hover can name it. Source 5 is already collected
 -- and source 7 is not, so only one of the two is news.
-LuckysEnsemble.Catalyst = {
+LuckysWardrobe.Catalyst = {
     GetHeldTargets = function()
         return { bySource = { [5] = "|Hitem:9|h[Spare]|h", [7] = "|Hitem:9|h[Spare]|h" }, bySet = {}, items = 1 }
     end,
@@ -340,7 +340,7 @@ assert(stamped.match.catalysable == 1, "the row should count one stamped piece")
 -- Turning it off stops the panel asking at all, which is what a player without the
 -- catalyst addon, or without the patience for another mark, gets.
 SetCompletion:Init({ instanceSetsMaxMissing = 3, includeCurrentTier = true, markCatalysablePieces = false })
-LuckysEnsemble.Catalyst.GetHeldTargets = function() error("the panel asked while the setting was off") end
+LuckysWardrobe.Catalyst.GetHeldTargets = function() error("the panel asked while the setting was off") end
 local unstamped = halfDonePieces()
 assert(unstamped[7].catalysable == nil, "a stamp survived the setting being turned off")
 assert(unstamped.match.catalysable == 0)
@@ -475,4 +475,4 @@ assert(not scanWithout({ ROGUE = true, DRUID = true })["Shared Leather Set"])
 assert(scanWithout({ ROGUE = true, DRUID = true })["Heritage Set"],
     "a set belonging to no class was hidden by a choice about classes")
 
-print("Lucky's Ensemble set completion test passed")
+print("Lucky's Wardrobe set completion test passed")

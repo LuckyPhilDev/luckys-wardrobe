@@ -1,17 +1,17 @@
--- luacheck: globals BINDING_HEADER_LUCKYSENSEMBLE BINDING_NAME_LUCKYSENSEMBLE_TOGGLE_SET_LIST
+-- luacheck: globals BINDING_HEADER_LUCKYSWARDROBE BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST
 
--- Lucky's Ensemble: User-facing strings.
-LuckysEnsemble = LuckysEnsemble or {}
+-- Lucky's Wardrobe: User-facing strings.
+LuckysWardrobe = LuckysWardrobe or {}
 
 -- The keybinding UI reads these out of the global namespace by name, so they have
 -- to be globals rather than entries in the table below.
-BINDING_HEADER_LUCKYSENSEMBLE = "Lucky's Ensemble"
-BINDING_NAME_LUCKYSENSEMBLE_TOGGLE_SET_LIST = "Sets You Can Finish Here"
+BINDING_HEADER_LUCKYSWARDROBE = "Lucky's Wardrobe"
+BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST = "Sets You Can Finish Here"
 
-LuckysEnsemble.Strings = {
+LuckysWardrobe.Strings = {
     addon = {
-        title = "Lucky's Ensemble",
-        prefix = "|cffc8902aLucky's Ensemble:|r",
+        title = "Lucky's Wardrobe",
+        prefix = "|cffc8902aLucky's Wardrobe:|r",
         initialized = "Initialized.",
     },
     settings = {
@@ -48,7 +48,7 @@ LuckysEnsemble.Strings = {
         },
         showInstanceSets = {
             label = "Open the List Automatically",
-            desc = "Opens a list when you enter a dungeon or raid of the sets you are close to completing whose missing pieces drop there. Type /ensemble sets or use a keybinding to open it any time, whether this is on or off.",
+            desc = "Opens a list when you enter a dungeon or raid of the sets you are close to completing whose missing pieces drop there. Type /wardrobe sets or use a keybinding to open it any time, whether this is on or off.",
         },
         dwellSeconds = {
             label = "Move Aside After",
@@ -95,7 +95,7 @@ LuckysEnsemble.Strings = {
         },
         version = {
             section = "Version Info",
-            addon = "Lucky's Ensemble",
+            addon = "Lucky's Wardrobe",
             utils = "Lucky's Utils",
         },
     },

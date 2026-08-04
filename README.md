@@ -1,33 +1,34 @@
-# Lucky's Ensemble
+# Lucky's Wardrobe
 
 A focused transmog collection planner and outfit companion for World of Warcraft.
 
-Lucky's Ensemble is in early development. The first release establishes its settings and command entry point while the collection browser is built.
+Lucky's Wardrobe is in early development. The first release establishes its settings and command entry point while the collection browser is built.
 
 ## Features
 
-- **Settings access**: Open the addon settings with `/ensemble`.
+- **Settings access**: Open the addon settings with `/wardrobe`.
 
 ## Installation
 
-1. Place `Luckys_Ensemble` in `World of Warcraft/_retail_/Interface/AddOns`.
+1. Place `Luckys_Wardrobe` in `World of Warcraft/_retail_/Interface/AddOns`.
 2. Install **Lucky's Utils** alongside it. Release packages will include the shared dependency.
 3. Restart World of Warcraft or reload the interface.
 
 ## Usage
 
-1. Log in and enter `/ensemble`.
+1. Log in and enter `/wardrobe`.
 2. Use the General page to configure development logging while the first features are built.
 
 ## Slash Commands
 
 | Command | Action |
 |---|---|
-| `/ensemble` | Open addon settings |
+| `/wardrobe` | Open addon settings |
+| `/lw` | Short form of `/wardrobe` |
 
 ## Settings
 
-Open **Options > AddOns > Lucky's Ensemble** or enter `/ensemble`.
+Open **Options > AddOns > Lucky's Wardrobe** or enter `/wardrobe`.
 
 ## Roadmap
 

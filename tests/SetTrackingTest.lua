@@ -1,8 +1,8 @@
--- luacheck: globals C_ContentTracking C_TransmogCollection C_TransmogSets ContentTrackingUtil Enum EventUtil IsShiftKeyDown LuckysEnsemble PlaySound SOUNDKIT WardrobeCollectionFrame WardrobeSetsScrollFrameButtonMixin
+-- luacheck: globals C_ContentTracking C_TransmogCollection C_TransmogSets ContentTrackingUtil Enum EventUtil IsShiftKeyDown LuckysWardrobe PlaySound SOUNDKIT WardrobeCollectionFrame WardrobeSetsScrollFrameButtonMixin
 
-LuckysEnsemble = {
+LuckysWardrobe = {
     Strings = {
-        addon = { prefix = "Ensemble:" },
+        addon = { prefix = "Wardrobe:" },
         tracking = {
             tracked = "Tracking %d from %s.",
             failed = "%d failed.",
@@ -93,7 +93,7 @@ WardrobeCollectionFrame = {
 dofile("src/SetTracking.lua")
 
 local db = { trackSetsOnShiftClick = true }
-LuckysEnsemble.SetTracking:Init(db)
+LuckysWardrobe.SetTracking:Init(db)
 local setRow = { setID = 10 }
 setmetatable(setRow, { __index = WardrobeSetsScrollFrameButtonMixin })
 
@@ -117,4 +117,4 @@ setRow:OnClick("LeftButton")
 assert(#tracked == 1, "respected disabled setting")
 assert(stockClicks == 3, "restored stock Shift-left-click when disabled")
 
-print("Lucky's Ensemble set tracking test passed")
+print("Lucky's Wardrobe set tracking test passed")

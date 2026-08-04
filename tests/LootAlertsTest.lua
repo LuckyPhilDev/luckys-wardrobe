@@ -1,10 +1,10 @@
--- luacheck: globals C_Container C_TransmogCollection C_TransmogSets CreateFrame GetInventoryItemLink GetTime INVSLOT_FIRST_EQUIPPED INVSLOT_LAST_EQUIPPED LOOT_ITEM_PUSHED_SELF LOOT_ITEM_PUSHED_SELF_MULTIPLE LOOT_ITEM_SELF LOOT_ITEM_SELF_MULTIPLE LuckySound LuckysEnsemble NUM_BAG_SLOTS SOUNDKIT TransmogUpgradeMaster_API UnitClass UNKNOWN
+-- luacheck: globals C_Container C_TransmogCollection C_TransmogSets CreateFrame GetInventoryItemLink GetTime INVSLOT_FIRST_EQUIPPED INVSLOT_LAST_EQUIPPED LOOT_ITEM_PUSHED_SELF LOOT_ITEM_PUSHED_SELF_MULTIPLE LOOT_ITEM_SELF LOOT_ITEM_SELF_MULTIPLE LuckySound LuckysWardrobe NUM_BAG_SLOTS SOUNDKIT TransmogUpgradeMaster_API UnitClass UNKNOWN
 
 -- Covers what decides an alert: whose loot it is, whether the item finishes a
 -- tracked set, which way the alert speaks, and what happens when the catalyst
 -- source is absent.
 
-LuckysEnsemble = { DevLog = function() end }
+LuckysWardrobe = { DevLog = function() end }
 
 _G.UNKNOWN = "Unknown"
 _G.LOOT_ITEM_SELF = "You receive loot: %s."
@@ -45,7 +45,7 @@ _G.C_TransmogCollection = {
 local trackedSet = { name = "Tracked Set", total = 5, missing = { 10 } }
 
 local flashed = {}
-LuckysEnsemble.SetCompletion = {
+LuckysWardrobe.SetCompletion = {
     GetWantedPieces = function()
         return {
             bySource = { [10] = trackedSet },
@@ -83,7 +83,7 @@ local settings = {
     alertWithSound = true,
     alertWithChat = true,
 }
-LuckysEnsemble.LootAlerts:Init(settings)
+LuckysWardrobe.LootAlerts:Init(settings)
 assert(registered, "the loot handler was never registered")
 
 local function loot(message)
@@ -163,7 +163,7 @@ settings.alertWithSound = true
 
 -- Without Transmog Upgrade Master there is no way to know what the catalyst makes,
 -- so the catalyst alert stays silent rather than guessing.
-assert(not LuckysEnsemble.Catalyst:IsAvailable())
+assert(not LuckysWardrobe.Catalyst:IsAvailable())
 loot("You receive loot: |Hitem:200|h[Ignored]|h.")
 assert(#played == 0, "a catalyst alert fired with no source of catalyst data")
 
@@ -172,7 +172,7 @@ _G.TransmogUpgradeMaster_API = {
     IsCacheWarmedUp = function() return true end,
     IsAppearanceMissing = function() return true, false, true end,
 }
-assert(LuckysEnsemble.Catalyst:IsAvailable())
+assert(LuckysWardrobe.Catalyst:IsAvailable())
 loot("You receive loot: |Hitem:200|h[Ignored]|h.")
 assert(#played == 1 and played[1] == SOUNDKIT.UI_EPICLOOT_TOAST)
 
@@ -189,23 +189,23 @@ assert(#played == 0, "alerted on an answer the cache could not yet give")
 -- lifts the repeat silence so the same item can be fired again on purpose.
 _G.TransmogUpgradeMaster_API = nil
 played, printed = {}, {}
-local outcome, match = LuckysEnsemble.LootAlerts:SimulateLoot("|Hitem:100|h[Wanted]|h")
+local outcome, match = LuckysWardrobe.LootAlerts:SimulateLoot("|Hitem:100|h[Wanted]|h")
 assert(outcome == "set" and match.name == "Tracked Set")
 assert(#played == 1)
 
 played = {}
-outcome = LuckysEnsemble.LootAlerts:SimulateLoot("|Hitem:100|h[Wanted]|h")
+outcome = LuckysWardrobe.LootAlerts:SimulateLoot("|Hitem:100|h[Wanted]|h")
 assert(outcome == "set" and #played == 1, "a repeat simulation should not be silenced")
 
-outcome = LuckysEnsemble.LootAlerts:SimulateLoot("|Hitem:200|h[Ignored]|h")
+outcome = LuckysWardrobe.LootAlerts:SimulateLoot("|Hitem:200|h[Ignored]|h")
 assert(outcome == "nothing")
 
 -- A raid set's difficulties share item IDs, so a link built from an ID alone
 -- resolves to the wrong one. A caller that already knows which piece it means says
 -- so, and that wins over what the link reads as.
 flashed = {}
-outcome = LuckysEnsemble.LootAlerts:SimulateLoot("|Hitem:200|h[Ignored]|h", 10)
+outcome = LuckysWardrobe.LootAlerts:SimulateLoot("|Hitem:200|h[Ignored]|h", 10)
 assert(outcome == "set", "the known source should have been used over the link's")
 assert(flashed[1] == 10, "the known source should be the one flashed")
 
-realPrint("Lucky's Ensemble loot alerts test passed")
+realPrint("Lucky's Wardrobe loot alerts test passed")

@@ -1,6 +1,6 @@
--- luacheck: globals C_Timer C_TransmogOutfitInfo CreateFrame EventUtil GRAY_FONT_COLOR GameTooltip GameTooltip_AddHighlightLine GameTooltip_Hide GameTooltip_SetTitle LuckyUI LuckysEnsemble TRANSMOG_SITUATION_CATEGORY_LIST_SEPARATOR TransmogFrame TransmogOutfitEntryMixin UnitGUID hooksecurefunc unpack
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CreateFrame EventUtil GRAY_FONT_COLOR GameTooltip GameTooltip_AddHighlightLine GameTooltip_Hide GameTooltip_SetTitle LuckyUI LuckysWardrobe TRANSMOG_SITUATION_CATEGORY_LIST_SEPARATOR TransmogFrame TransmogOutfitEntryMixin UnitGUID hooksecurefunc unpack
 
-LuckysEnsemble = {}
+LuckysWardrobe = {}
 
 dofile("src/Strings.lua")
 
@@ -131,7 +131,7 @@ TransmogFrame = {
 
 dofile("src/SituationLabels.lua")
 
-local labels = LuckysEnsemble.SituationLabels
+local labels = LuckysWardrobe.SituationLabels
 local db = {
     showSituationValues = true,
     showSituationTooltips = true,
@@ -228,4 +228,4 @@ runTimers()
 assert(type(cache[40]) == "table", "cached the interrupted outfit on the next open")
 assert(viewedOutfitID == 40, "read the now-viewed outfit directly instead of switching away")
 
-print("Lucky's Ensemble situation labels test passed")
+print("Lucky's Wardrobe situation labels test passed")
