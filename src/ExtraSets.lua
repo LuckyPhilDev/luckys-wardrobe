@@ -88,6 +88,10 @@ local function setAllExpansions(shown)
     for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
 end
 
+-- Which colourway each set is showing, keyed by group. Session-only, like the
+-- filters: which tint you were last looking at is not worth keeping past logout.
+local selectedVariants = {}
+
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
     for index = 1, #expansionNames do
@@ -102,6 +106,13 @@ local attachedWardrobe
 local extraPage
 local extraTab
 local extraTabID
+
+-- The colourway picker, sized and placed like the one the Sets tab hangs in the
+-- top corner of its own details pane.
+local VARIANT_DROPDOWN_WIDTH = 170
+local VARIANT_DROPDOWN_HEIGHT = 22
+local VARIANT_DROPDOWN_X = -10
+local VARIANT_DROPDOWN_Y = -8
 
 -- Pure catalogue logic. Everything below takes plain tables plus injected
 -- resolvers so the rules stay testable outside the client.
@@ -172,6 +183,192 @@ function ExtraSets.RecordsForClass(records, classID)
     return matching
 end
 
+-- What a set looks like, as one comparable value: its distinct appearances in a
+-- fixed order. Two sets with the same key are one look wearing two names, which
+-- is what makes the second a duplicate rather than something else to collect.
+--
+-- A set still loading has no key. Its unresolved pieces would leave it looking
+-- like a shorter set and fold it into one it has nothing to do with, so it waits
+-- for the rebuild that follows the client answering.
+function ExtraSets.AppearanceKey(appearances, loading)
+    if loading then return nil end
+
+    local ids = {}
+    for id in pairs(appearances) do ids[#ids + 1] = id end
+    if #ids == 0 then return nil end
+
+    table.sort(ids)
+    return table.concat(ids, ",")
+end
+
+-- The colourways of one set share a name and differ only in the parenthetical
+-- the snapshot puts after it: "(Heroic Recolor)", "(Alliance Recolor)". Dropping
+-- that gives the set itself, which is what gathers its colourways together. A
+-- name the client supplied carries no parenthetical, so it is its own base name.
+function ExtraSets.BaseName(name)
+    local stripped = name:gsub("%s*%b()%s*$", "")
+    if stripped == "" then return name end
+    return stripped
+end
+
+-- What a colourway is called once its set name is the row above it. Repeating
+-- the set name on every one of its colourways is the noise the grouping exists
+-- to remove, so only the parenthetical that tells them apart is left.
+function ExtraSets.VariantLabel(name)
+    return name:match("%(([^()]*)%)%s*$") or name
+end
+
+-- Sets gathered by the name they share, in the order they first appear, so
+-- whatever sort produced the list still decides where each set lands.
+local function families(entries)
+    local byName, order = {}, {}
+    for _, entry in ipairs(entries) do
+        local key = entry.armorType .. "|" .. ExtraSets.BaseName(entry.name)
+        if not byName[key] then
+            byName[key] = { key = key }
+            order[#order + 1] = byName[key]
+        end
+        table.insert(byName[key], entry)
+    end
+    return order
+end
+
+local function containsLookOf(larger, smaller)
+    for id in pairs(smaller.appearances) do
+        if larger.appearances[id] == nil then return false end
+    end
+    return true
+end
+
+-- The first set in the family whose looks include all of this one's and more,
+-- meaning this set adds nothing there is left to collect.
+local function containedIn(entry, family)
+    if not entry.appearanceKey then return nil end
+
+    for _, other in ipairs(family) do
+        if other.appearanceKey and other.total > entry.total and containsLookOf(other, entry) then
+            return other
+        end
+    end
+end
+
+-- Folds the sets that are the same look into one row. Wowhead names a single
+-- appearance twice, once "(... Recolor)" and once "(... Lookalike)", and the
+-- snapshot carries each as its own set: around a fifth of the catalogue is a
+-- look already listed under another name.
+--
+-- Identical looks fold whatever they are called, because two names for one look
+-- are one row however far apart the names sit. A look merely *contained* in
+-- another, a Lookalike that is its Recolor without the helm, folds only within
+-- one set name: containment happens often enough between unrelated sets that
+-- allowing it across names would hide small sets inside big ones.
+--
+-- The surviving row keeps the names it absorbed, so searching for one still
+-- finds it.
+function ExtraSets.CollapseDuplicates(entries)
+    local survivorOf, firstOfLook, kept = {}, {}, {}
+    for _, entry in ipairs(entries) do
+        local twin = entry.appearanceKey and firstOfLook[entry.appearanceKey]
+        if twin then
+            survivorOf[entry] = twin
+        else
+            if entry.appearanceKey then firstOfLook[entry.appearanceKey] = entry end
+            kept[#kept + 1] = entry
+        end
+    end
+
+    for _, family in ipairs(families(kept)) do
+        for _, entry in ipairs(family) do
+            survivorOf[entry] = containedIn(entry, family)
+        end
+    end
+
+    -- Names are gathered against the row that survives, following a chain of
+    -- containments to its end: each step holds strictly more looks than the
+    -- last, so the walk always finishes.
+    local absorbedNames = {}
+    for _, entry in ipairs(entries) do
+        local survivor = survivorOf[entry]
+        if survivor then
+            while survivorOf[survivor] do survivor = survivorOf[survivor] end
+            absorbedNames[survivor] = absorbedNames[survivor] or {}
+            table.insert(absorbedNames[survivor], entry.name)
+        end
+    end
+
+    local rows = {}
+    for _, entry in ipairs(kept) do
+        if not survivorOf[entry] then
+            entry.alternateNames = absorbedNames[entry]
+            rows[#rows + 1] = entry
+        end
+    end
+    return rows
+end
+
+-- One row standing for a set's several colourways: named for the set, counting
+-- every look across them so the row says how much of the whole set is collected.
+-- It carries the first colourway's pieces, which is what the details pane shows
+-- when the row is picked.
+function ExtraSets.BuildGroup(variants)
+    local first = variants[1]
+    local collected, total, unavailable, loading = 0, 0, 0, false
+    local appearances = {}
+    for _, variant in ipairs(variants) do
+        loading = loading or variant.loading
+        unavailable = unavailable + variant.unavailable
+        for id, isCollected in pairs(variant.appearances) do
+            if appearances[id] == nil then
+                appearances[id] = isCollected
+                total = total + 1
+                if isCollected then collected = collected + 1 end
+            end
+        end
+    end
+
+    return {
+        key = "group:" .. first.armorType .. "|" .. ExtraSets.BaseName(first.name),
+        isGroup = true,
+        variants = variants,
+        name = ExtraSets.BaseName(first.name),
+        label = LuckysWardrobe.Strings.extraSets.colours:format(#variants),
+        expansionID = first.expansionID,
+        armorType = first.armorType,
+        classMask = first.classMask,
+        pieces = first.pieces,
+        appearances = appearances,
+        collected = collected,
+        total = total,
+        missing = total - collected,
+        unavailable = unavailable,
+        loading = loading,
+    }
+end
+
+-- The rows the list shows: one per set, whatever it has been called and however
+-- many colourways it comes in. A set with one look is that row unchanged; a set
+-- with several is one row standing for them, and the details pane picks between
+-- them the way the Sets tab does. Filters can leave a set with a single
+-- colourway, and it goes back to being that plain row.
+function ExtraSets.BuildRows(entries)
+    local rows = {}
+    for _, family in ipairs(families(entries)) do
+        rows[#rows + 1] = #family == 1 and family[1] or ExtraSets.BuildGroup(family)
+    end
+    return rows
+end
+
+-- Which colourway of a set is on show. Defaults to the first, and falls back to
+-- it when the one last picked has been filtered out from under the row.
+function ExtraSets.VariantOf(row, chosenSetID)
+    if not row.isGroup then return row end
+
+    for _, variant in ipairs(row.variants) do
+        if variant.setID == chosenSetID then return variant end
+    end
+    return row.variants[1]
+end
+
 -- resolver.sourceState(sourceID) returns nil when the source does not exist on
 -- this client, or { appearanceID, collected } where collected == nil means the
 -- appearance data has not loaded yet.
@@ -205,7 +402,7 @@ function ExtraSets.BuildEntry(record, resolver)
     local collected, total = 0, 0
     local unavailable = record.unresolvedPieces or 0
     local loading = false
-    local seenAppearanceIDs = {}
+    local appearances = {}
     for _, piece in ipairs(pieces) do
         local state = resolver.sourceState(piece.sourceID)
         if not state then
@@ -219,8 +416,8 @@ function ExtraSets.BuildEntry(record, resolver)
             -- Sources sharing an appearance count once, matching how Blizzard
             -- counts official set completion.
             piece.state = state.collected and "collected" or "missing"
-            if not seenAppearanceIDs[state.appearanceID] then
-                seenAppearanceIDs[state.appearanceID] = true
+            if appearances[state.appearanceID] == nil then
+                appearances[state.appearanceID] = state.collected and true or false
                 total = total + 1
                 if state.collected then collected = collected + 1 end
             end
@@ -236,6 +433,10 @@ function ExtraSets.BuildEntry(record, resolver)
         armorType = record.armorType,
         classMask = record.classMask,
         pieces = pieces,
+        -- Which looks this set is made of, and whether each is collected. What
+        -- makes two sets the same set, and what lets one row speak for several.
+        appearances = appearances,
+        appearanceKey = ExtraSets.AppearanceKey(appearances, loading),
         collected = collected,
         total = total,
         missing = total - collected,
@@ -364,8 +565,13 @@ function ExtraSets.FilterEntries(entries, query)
 
     local filtered = {}
     for _, entry in ipairs(entries) do
-        local text = (entry.name .. " " .. entry.label):lower()
-        if text:find(normalized, 1, true) then filtered[#filtered + 1] = entry end
+        -- A collapsed row answers for the names it absorbed as well as its own,
+        -- or folding "(Heroic Lookalike)" away would make it unsearchable.
+        local words = { entry.name, entry.label }
+        for _, name in ipairs(entry.alternateNames or {}) do words[#words + 1] = name end
+        if table.concat(words, " "):lower():find(normalized, 1, true) then
+            filtered[#filtered + 1] = entry
+        end
     end
     return filtered
 end
@@ -484,6 +690,17 @@ function ExtraSets.Records()
     return LuckysWardrobe.ExtraSetsCatalog:GetRecords()
 end
 
+-- How many sets the page folded into another row as the same look. Without it
+-- the report's own count of what this class is shown looks short by hundreds
+-- with nothing to say why.
+function ExtraSets.FoldedCount(entries)
+    local folded = 0
+    for _, entry in ipairs(entries) do
+        folded = folded + #(entry.alternateNames or {})
+    end
+    return folded
+end
+
 -- Thousands of sets, each asking the client about every one of its pieces, is
 -- far too much work to redo for a keystroke in the search box. Entries are
 -- built once for the chosen class and kept until something the client owns
@@ -515,10 +732,10 @@ end
 function ExtraSets.Entries()
     if not cachedEntries then
         LuckysWardrobe.Perf:Begin("entries built")
-        cachedEntries = ExtraSets.BuildEntries(
+        cachedEntries = ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
             ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
             ExtraSets.LiveResolver()
-        )
+        ))
         LuckysWardrobe.Perf:End("entries built")
     end
     return cachedEntries
@@ -638,6 +855,13 @@ function ExtraSets:CreatePage(wardrobe)
     local noticeText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     noticeText:SetPoint("BOTTOM", 0, 12)
     noticeText:SetWidth(380)
+
+    -- Where the Sets tab puts the same control: the top corner of the details
+    -- pane, over the model rather than beside the list.
+    local variantDropdown = CreateFrame("DropdownButton", nil, detailsFrame, "WowStyle1DropdownTemplate")
+    variantDropdown:SetSize(VARIANT_DROPDOWN_WIDTH, VARIANT_DROPDOWN_HEIGHT)
+    variantDropdown:SetPoint("TOPRIGHT", detailsFrame, "TOPRIGHT", VARIANT_DROPDOWN_X, VARIANT_DROPDOWN_Y)
+    variantDropdown:Hide()
 
     local detailsText = rightInset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     detailsText:SetPoint("CENTER")
@@ -810,18 +1034,50 @@ function ExtraSets:CreatePage(wardrobe)
     -- or a model that has been rebuilt underneath us, is worth redressing for.
     local dressedKey
 
-    local function displayEntry(entry)
+    -- A row standing for several colourways has no look of its own, so the pane
+    -- shows the one the dropdown is set to and names and counts that set rather
+    -- than a summary of several.
+    local displayEntry
+
+    -- The colourways of the set on screen, each with what it is worth
+    -- collecting, the way the Sets tab offers its own variants.
+    local function fillVariantDropdown(row)
+        variantDropdown:SetShown(row.isGroup or false)
+        if not row.isGroup then return end
+
+        local chosen = ExtraSets.VariantOf(row, selectedVariants[row.key])
+        variantDropdown:SetText(S.variantOption:format(
+            ExtraSets.VariantLabel(chosen.name), chosen.collected, chosen.total))
+        variantDropdown:SetupMenu(function(_, menu)
+            for _, variant in ipairs(row.variants) do
+                menu:CreateRadio(
+                    S.variantOption:format(
+                        ExtraSets.VariantLabel(variant.name), variant.collected, variant.total),
+                    function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
+                    function()
+                        selectedVariants[row.key] = variant.setID
+                        displayEntry(row)
+                    end
+                )
+            end
+        end)
+    end
+
+    displayEntry = function(row)
         LuckysWardrobe.Perf:Begin("set displayed")
-        selectedEntry = entry
+        selectedEntry = row
+        local entry = row and ExtraSets.VariantOf(row, selectedVariants[row.key])
         local shown = entry ~= nil
         model:SetShown(shown)
         detailsFrame:SetShown(shown)
         detailsText:SetShown(not shown)
         if not shown then
             dressedKey = nil
+            variantDropdown:Hide()
             LuckysWardrobe.Perf:End("set displayed")
             return
         end
+        fillVariantDropdown(row)
 
         local redress = dressedKey ~= entry.key
         dressedKey = entry.key
@@ -929,6 +1185,11 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
             GameTooltip:AddLine(S.counts:format(entry.collected, entry.total), 1, 1, 1)
+            -- A row that folded other names in says so, or the set the player
+            -- was looking for reads as missing from the list.
+            for _, name in ipairs(entry.alternateNames or {}) do
+                GameTooltip:AddLine(S.alsoListed:format(name), 0.6, 0.6, 0.6)
+            end
             GameTooltip:Show()
         end)
         button.IconFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -940,11 +1201,12 @@ function ExtraSets:CreatePage(wardrobe)
         LuckysWardrobe.Perf:Begin("page refresh")
         local allEntries = ExtraSets.Entries()
         local narrowed = ExtraSets.ApplyFilters(allEntries, filters)
-        local entries = ExtraSets.SortEntries(
+        local matching = ExtraSets.SortEntries(
             ExtraSets.FilterEntries(narrowed, searchBox:GetText()),
             filters.sortMode,
             filters.sortDirection
         )
+        local entries = ExtraSets.BuildRows(matching)
 
         if selectedEntry then
             local selectedKey = selectedEntry.key
@@ -1171,10 +1433,15 @@ function ExtraSets:PrintPieceReport()
     end
 end
 
+-- Shift-clicking a set tracks everything left in it, across every colourway it
+-- stands for: the row says how much of the whole set is missing, so tracking it
+-- is expected to go after all of it.
 function ExtraSets:TrackMissing(entry)
     local missing = {}
-    for _, piece in ipairs(entry.pieces) do
-        if piece.state == "missing" then missing[#missing + 1] = piece.sourceID end
+    for _, variant in ipairs(entry.variants or { entry }) do
+        for _, piece in ipairs(variant.pieces) do
+            if piece.state == "missing" then missing[#missing + 1] = piece.sourceID end
+        end
     end
     LuckysWardrobe.SetTracking:TrackSources(missing, entry.name)
 end
@@ -1276,6 +1543,7 @@ function ExtraSets:Init()
     filters.sortMode = "default"
     filters.sortDirection = "ascending"
     setAllExpansions(true)
+    selectedVariants = {}
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         LuckysWardrobe.ExtraSetsCatalog:StartBuild()
         ExtraSets:Attach(WardrobeCollectionFrame)

@@ -321,7 +321,9 @@ function Catalog:PrintReport(verbose)
     -- The catalogue spans every class, while the tab shows one class at a time.
     -- Counting the page's own entries keeps the report and the page from ever
     -- disagreeing about how much of it this character sees.
-    say(S.shownLine:format(#LuckysWardrobe.ExtraSets.Entries()))
+    local shown = LuckysWardrobe.ExtraSets.Entries()
+    say(S.shownLine:format(#shown))
+    say(S.foldedLine:format(LuckysWardrobe.ExtraSets.FoldedCount(shown)))
     say(S.officialLine:format(report.alsoOfficial))
     if report.identityMismatches > 0 then
         say(S.mismatchLine:format(report.identityMismatches))

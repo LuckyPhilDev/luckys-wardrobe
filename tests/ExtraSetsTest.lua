@@ -308,6 +308,110 @@ local partlyBundledEntry = ExtraSets.BuildEntries({ partlyBundled }, stubResolve
 assert(partlyBundledEntry.unavailable == 2, "pieces this client has no appearance for are counted, not dropped")
 assert(partlyBundledEntry.total == 2, "unresolved pieces stay out of the collectable total")
 
+-- Duplicate looks and colourways. The bundled snapshot lists one appearance
+-- twice, once "(... Recolor)" and once "(... Lookalike)", and sometimes lists a
+-- Lookalike that is its Recolor without a piece. Neither is a second set to
+-- collect, while the difficulty tints of one set genuinely are several looks.
+
+sourceStates[5101] = { appearanceID = 9501, collected = true }
+sourceStates[5102] = { appearanceID = 9502, collected = true }
+sourceStates[5103] = { appearanceID = 9503, collected = true }
+sourceStates[5201] = { appearanceID = 9601, collected = true }
+sourceStates[5202] = { appearanceID = 9602, collected = false }
+sourceStates[5203] = { appearanceID = 9603, collected = false }
+
+local function colourway(setID, name, sourceIDs)
+    local slots = { "HEAD", "CHEST", "LEGS" }
+    local list = {}
+    for index, sourceID in ipairs(sourceIDs) do
+        list[index] = { slot = slots[index], sourceID = sourceID }
+    end
+    return { setID = setID, name = name, armorType = CLOTH, classMask = 0, pieces = list }
+end
+
+local colourwayRecords = {
+    colourway(601, "Charm Vestments (Heroic Recolor)", { 5101, 5102, 5103 }),
+    colourway(602, "Charm Vestments (Heroic Lookalike)", { 5101, 5102, 5103 }),
+    colourway(603, "Charm Vestments (Normal Recolor)", { 5201, 5202, 5203 }),
+    colourway(604, "Charm Vestments (Normal Lookalike)", { 5201, 5202 }),
+    -- The same looks as the Heroic colourway less one, under a name of its own.
+    colourway(605, "Other Garb (Heroic Recolor)", { 5101, 5102 }),
+    -- The Normal colourway exactly, under a name of its own.
+    colourway(606, "Distinct Regalia (Alliance Recolor)", { 5201, 5202, 5203 }),
+}
+
+local colourwayEntries = ExtraSets.BuildEntries(colourwayRecords, stubResolver(CLOTH_CLASS))
+assert(#colourwayEntries == 6, "every listing starts as its own entry")
+
+assert(ExtraSets.AppearanceKey({ [9502] = true, [9501] = false }) == "9501,9502",
+    "a set's looks make one key, in a fixed order whatever order they resolved in")
+assert(ExtraSets.AppearanceKey({ [9501] = true }, true) == nil, "a set still loading has no key to fold on")
+assert(ExtraSets.AppearanceKey({}) == nil, "a set with nothing resolved has no key")
+assert(colourwayEntries[1].appearanceKey == colourwayEntries[2].appearanceKey, "two names for one look share a key")
+assert(colourwayEntries[1].appearanceKey ~= colourwayEntries[3].appearanceKey, "two tints of one set do not")
+
+assert(ExtraSets.BaseName("Charm Vestments (Heroic Recolor)") == "Charm Vestments", "dropped the colourway")
+assert(ExtraSets.BaseName("Live Name") == "Live Name", "a name with no parenthetical is its own base name")
+assert(ExtraSets.BaseName("(Recolor)") == "(Recolor)", "a name that is nothing but a parenthetical keeps it")
+assert(ExtraSets.VariantLabel("Charm Vestments (Heroic Recolor)") == "Heroic Recolor", "kept what tells it apart")
+assert(ExtraSets.VariantLabel("Live Name") == "Live Name", "with nothing to strip, the name stands as the label")
+
+local collapsed = ExtraSets.CollapseDuplicates(colourwayEntries)
+assert(#collapsed == 3, "six listings of three looks became three rows")
+assert(collapsed[1].setID == 601 and collapsed[2].setID == 603 and collapsed[3].setID == 605,
+    "the first listing of a look is the one that survives")
+assert(#collapsed[1].alternateNames == 1
+    and collapsed[1].alternateNames[1] == "Charm Vestments (Heroic Lookalike)",
+    "the identical listing folded in and left its name behind")
+assert(#collapsed[2].alternateNames == 2
+    and collapsed[2].alternateNames[1] == "Charm Vestments (Normal Lookalike)"
+    and collapsed[2].alternateNames[2] == "Distinct Regalia (Alliance Recolor)",
+    "an identical look folds whatever it is called, a contained one only under the same name")
+assert(collapsed[3].alternateNames == nil,
+    "a look contained only in a differently-named set keeps its own row")
+assert(#ExtraSets.FilterEntries(collapsed, "Lookalike") == 2, "folded names are still searchable")
+assert(#ExtraSets.FilterEntries(collapsed, "Distinct Regalia") == 1,
+    "a set folded under another name is found by the name it lost")
+
+-- A set with a piece still loading cannot be told apart from a shorter set, so
+-- it waits for the rebuild that follows rather than folding into the wrong row.
+local pendingRecords = {
+    colourway(611, "Pending Robes (Recolor)", { 5101, 5102 }),
+    colourway(612, "Pending Robes (Lookalike)", { 5101, 5102, 3002 }),
+}
+local pendingRows = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(pendingRecords, stubResolver(CLOTH_CLASS)))
+assert(#pendingRows == 2, "a set still loading is never folded away on what has resolved so far")
+
+local rows = ExtraSets.BuildRows(collapsed)
+assert(#rows == 2, "the colourways of one set became one row, and the other set kept its own")
+
+local group = rows[1]
+assert(group.isGroup and group.name == "Charm Vestments", "the row is named for the set, not a colourway")
+assert(#group.variants == 2, "and holds every colourway of it")
+assert(group.label == "2 colours", "saying how many there are without opening it")
+assert(group.pieces == collapsed[1].pieces, "the row carries the first colourway's pieces")
+assert(rows[2].setID == 605 and not rows[2].isGroup,
+    "a set with a single look stays the plain row it was")
+
+-- The row counts every look across its colourways, so it says how much of the
+-- whole set is collected rather than of one tint.
+assert(group.total == 6 and group.collected == 4, "counted the looks of both colourways, each once")
+assert(group.missing == 2, "and derived what is left")
+assert(not ExtraSets.IsComplete(group), "a set with a colourway still missing is not complete")
+
+-- Which colourway the details pane is showing. Nothing chosen means the first,
+-- and a choice that has been filtered out from under the row means it again.
+assert(ExtraSets.VariantOf(group, nil).setID == 601, "a set opens on its first colourway")
+assert(ExtraSets.VariantOf(group, 603).setID == 603, "and shows the one that was picked")
+assert(ExtraSets.VariantOf(group, 999).setID == 601, "falling back when that one is no longer there")
+assert(ExtraSets.VariantOf(rows[2], nil) == rows[2], "a plain row is its own colourway")
+
+-- Filters can leave a set with one colourway, and it goes back to a plain row.
+local lastStanding = ExtraSets.BuildRows({ collapsed[1], collapsed[3] })
+assert(#lastStanding == 2 and not lastStanding[1].isGroup,
+    "the last colourway left is a plain row again")
+
 -- Search.
 
 assert(#ExtraSets.FilterEntries(entries, "") == 3, "blank query keeps everything")
@@ -380,6 +484,13 @@ local function recordAnchors(frame)
     function frame:SetPoint(point, relativeTo, relativePoint, x, y)
         self.points[#self.points + 1] = { point, relativeTo, relativePoint, x, y }
     end
+    -- The client answers with the anchor as five values, which is how the row
+    -- reads the name's native position before indenting from it.
+    function frame:GetPoint(index)
+        local anchor = self.points[index or 1]
+        if not anchor then return nil end
+        return anchor[1], anchor[2], anchor[3], anchor[4], anchor[5]
+    end
     return frame
 end
 
@@ -420,7 +531,8 @@ local function newTexture()
     function texture:SetSize() end
     function texture:SetHeight() end
     function texture:SetWidth(width) self.width = width end
-    function texture:Hide() end
+    function texture:SetShown(shown) self.shown = shown end
+    function texture:Hide() self.shown = false end
     return texture
 end
 
@@ -932,19 +1044,25 @@ catalogRecords = { records[1] }
 page.scripts.OnShow(page)
 local entry = scrollBox.dataProvider[1]
 
-local button = {
-    Name = newFontString(),
-    Label = newFontString(),
-    IconFrame = { Icon = newTexture(), Cover = { SetShown = function() end }, Favorite = { Hide = function() end } },
-    New = { Hide = function() end },
-    SelectedTexture = { SetShown = function() end },
-    ProgressBar = { SetShown = function() end, SetWidth = function() end },
-    SetScript = function(self, script, handler)
-        self.scripts = self.scripts or {}
-        self.scripts[script] = handler
-    end,
-}
-button.IconFrame.SetScript = button.SetScript
+-- Blizzard's row template, as much of it as the initializer touches.
+local function newRowButton()
+    local rowButton = {
+        Name = newFontString(),
+        Label = newFontString(),
+        IconFrame = { Icon = newTexture(), Cover = { SetShown = function() end }, Favorite = { Hide = function() end } },
+        New = { Hide = function() end },
+        SelectedTexture = { SetShown = function() end },
+        ProgressBar = { SetShown = function() end, SetWidth = function() end },
+        SetScript = function(self, script, handler)
+            self.scripts = self.scripts or {}
+            self.scripts[script] = handler
+        end,
+    }
+    rowButton.IconFrame.SetScript = rowButton.SetScript
+    return rowButton
+end
+
+local button = newRowButton()
 capturedView.initializer(button, entry)
 assert(button.Name.text == "Live Name", "row shows the set name")
 
@@ -1216,8 +1334,11 @@ radioSetters["Sort By"][DEFAULT]()
 -- the two pages can never disagree about which class they are showing.
 
 local classDropdown = wardrobe.ClassDropdown
-assert(not findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end),
-    "built no class dropdown of its own")
+-- The colourway picker inside the details pane is a dropdown too, so this asks
+-- specifically that no second class dropdown was hung on the page itself.
+assert(not findFrame(function(frame)
+    return frame.template == "WowStyle1DropdownTemplate" and frame.parent == page
+end), "built no class dropdown of its own")
 assert(classDropdown.shown, "kept the native dropdown on screen for this page")
 assert(#classDropdown.points == 1, "gave the dropdown a single anchor")
 local classAnchor = classDropdown.points[1]
@@ -1263,5 +1384,75 @@ classRadios[8].select(classRadios[8].data)
 assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
     "kept it for a class the Sets tab does not list it for")
 records[1].officialClassMask = nil
+
+-- Colourways on the page: one row per set however many tints it has, with the
+-- details pane picking between them the way the Sets tab does.
+
+catalogRecords = colourwayRecords
+collectionUpdated()
+assert(#scrollBox.dataProvider == 2, "the page lists one row per set, not one per listing")
+
+local groupButton = newRowButton()
+capturedView.initializer(groupButton, scrollBox.dataProvider[1])
+assert(groupButton.Name.text == "Charm Vestments", "the row is named for the set, not a colourway")
+assert(groupButton.Label.text == "2 colours", "and says how many colourways it holds without being opened")
+
+local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
+assert(variantDropdown, "built a colourway picker for the details pane")
+assert(variantDropdown.shown, "a set with several colourways offers it")
+assert(variantDropdown.text == "Heroic Recolor (3/3)", "opening on the first, named for what tells it apart")
+assert(nameFont.text == "Charm Vestments (Heroic Recolor)", "and the pane shows that colourway")
+
+local variantRadios = {}
+variantDropdown.menuBuilder(nil, {
+    CreateRadio = function(_, label, isSelected, select)
+        variantRadios[#variantRadios + 1] = { label = label, isSelected = isSelected, select = select }
+    end,
+})
+assert(#variantRadios == 2, "the picker lists every colourway")
+assert(variantRadios[1].label == "Heroic Recolor (3/3)" and variantRadios[2].label == "Normal Recolor (1/3)",
+    "each with what is collected of it, as the Sets tab shows its own variants")
+assert(variantRadios[1].isSelected() and not variantRadios[2].isSelected(), "the one on show is the one ticked")
+
+variantRadios[2].select()
+assert(nameFont.text == "Charm Vestments (Normal Recolor)", "picking a colourway shows it")
+assert(variantDropdown.text == "Normal Recolor (1/3)", "and the picker says which one that is")
+assert(#scrollBox.dataProvider == 2, "picking a colourway never changes the list")
+
+-- A set that only ever had one look has nothing to pick between.
+local plainButton = newRowButton()
+capturedView.initializer(plainButton, scrollBox.dataProvider[2])
+plainButton.scripts.OnClick(plainButton, "LeftButton")
+assert(not variantDropdown.shown, "a set with a single look offers no picker")
+assert(nameFont.text == "Other Garb (Heroic Recolor)", "and shows itself")
+
+capturedView.initializer(groupButton, scrollBox.dataProvider[1])
+groupButton.scripts.OnClick(groupButton, "LeftButton")
+assert(nameFont.text == "Charm Vestments (Normal Recolor)",
+    "coming back to a set keeps the colourway last picked")
+
+-- Shift-clicking a set goes after everything left in it, across every colourway,
+-- which is what the row's own count promised.
+shiftDown = true
+groupButton.scripts.OnClick(groupButton, "LeftButton")
+assert(#trackedSources == 2 and trackedName == "Charm Vestments",
+    "tracked what is missing from every colourway of the set")
+shiftDown = false
+
+searchBox.text = "Normal Lookalike"
+searchBox.scripts.OnTextChanged()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].setID == 603,
+    "a name folded into another row still finds that row")
+
+searchBox.text = "Charm"
+searchBox.scripts.OnTextChanged()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].isGroup,
+    "a search keeping both colourways still shows the one row for the set")
+searchBox.text = ""
+searchBox.scripts.OnTextChanged()
+
+-- The progress bar counts sets to collect: three survive the folding, two of
+-- them finished.
+assert(progressBar.value == 2 and progressBar.max == 3, "counted the sets left after folding, not the listings")
 
 print("Lucky's Wardrobe extra sets tests passed")

@@ -142,10 +142,18 @@ end
 dofile("src/ExtraSetsCatalog.lua")
 local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
--- The report asks the page how many sets this character's class sees, so the
--- page stands in for itself here.
-local shownEntries = { {}, {} }
-LuckysWardrobe.ExtraSets = { Entries = function() return shownEntries end }
+-- The report asks the page how many sets this character's class sees and how
+-- many it folded away as the same look, so the page stands in for itself here.
+-- One of the two rows below speaks for a set listed again under another name.
+local shownEntries = { {}, { alternateNames = { "Live Name (Recolor)" } } }
+LuckysWardrobe.ExtraSets = {
+    Entries = function() return shownEntries end,
+    FoldedCount = function(entries)
+        local folded = 0
+        for _, entry in ipairs(entries) do folded = folded + #(entry.alternateNames or {}) end
+        return folded
+    end,
+}
 
 local function runBuild()
     for _ = 1, 100 do
@@ -311,6 +319,8 @@ local reportText = table.concat(printed, "\n")
 assert(reportText:find("2026%-08%-04"), "named the snapshot the sets came from")
 assert(reportText:find("6 of 7 set%(s%) listed"), "counted what was listed against what was bundled")
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
+assert(reportText:find("folded into another row as the same look: 1"),
+    "accounted for the sets the page folded away, so the count is not short with nothing to say why")
 assert(reportText:find("hidden as Blizzard's own Sets tab lists them: 1"), "counted the overlap it hides")
 assert(reportText:find("no appearance for: 2"), "counted the pieces this client could not resolve")
 
