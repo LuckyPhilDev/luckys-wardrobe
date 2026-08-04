@@ -137,6 +137,21 @@ local forCloth = ExtraSets.RecordsForClass(
 assert(#forCloth == 2 and forCloth[1] == lockedCloth and forCloth[2] == anyoneCloth,
     "narrowed the catalogue to the sets that class could wear")
 
+-- Sets the Sets tab already shows. Both tabs read one class dropdown, so the
+-- duplicate is only a duplicate for the classes Blizzard lists the set under.
+-- Class 8 is the other cloth class here, and its Sets tab does not list it.
+
+local nativeToCloth = validRecord({ classMask = 0, armorType = CLOTH, officialClassMask = clothBit })
+assert(ExtraSets.ListedNatively(nativeToCloth, CLOTH_CLASS), "the Sets tab shows this class the same set")
+assert(not ExtraSets.ListedNatively(nativeToCloth, 8), "another class's Sets tab does not show it")
+assert(not ExtraSets.ListedNatively(anyoneCloth, CLOTH_CLASS), "a set no Sets tab lists is never a duplicate")
+assert(ExtraSets.ListedNatively(nativeToCloth, nil), "with no class chosen, any Sets tab listing is a duplicate")
+
+local deduped = ExtraSets.RecordsForClass({ anyoneCloth, nativeToCloth }, CLOTH_CLASS)
+assert(#deduped == 1 and deduped[1] == anyoneCloth, "dropped the set the Sets tab already shows this class")
+assert(#ExtraSets.RecordsForClass({ anyoneCloth, nativeToCloth }, 8) == 2,
+    "kept it for the class whose Sets tab has no such row")
+
 -- Entry building against a stub resolver.
 
 local sourceStates = {
@@ -1237,5 +1252,16 @@ classDropdown:SetClassFilter(CLOTH_CLASS)
 wardrobe:SetTab(3)
 page.scripts.OnShow(page)
 assert(#scrollBox.dataProvider == 2, "opened on the class the Sets tab was left showing")
+
+-- Duplicates of the Sets tab, on the page rather than in the pure rules.
+
+records[1].officialClassMask = clothBit
+collectionUpdated()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
+    "dropped the row the Sets tab is already showing this class")
+classRadios[8].select(classRadios[8].data)
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
+    "kept it for a class the Sets tab does not list it for")
+records[1].officialClassMask = nil
 
 print("Lucky's Wardrobe extra sets tests passed")

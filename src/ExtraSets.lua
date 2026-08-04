@@ -150,12 +150,24 @@ function ExtraSets.MatchesClass(record, classID)
     return armourType == nil or record.armorType == armourType
 end
 
-function ExtraSets.RecordsForClass(records, classID)
-    if not classID then return records end
+-- Both pages read one class dropdown, so a set Blizzard's Sets tab lists for
+-- the chosen class is a row the player has already seen. A set it lists only
+-- under another class is not: that dropdown is showing this one.
+function ExtraSets.ListedNatively(record, classID)
+    local listedFor = record.officialClassMask or 0
+    if listedFor == 0 then return false end
+    if not classID then return true end
+    return ExtraSets.ClassAllowed(listedFor, classID)
+end
 
+-- What is left for this page to show: the sets the class could wear, less the
+-- ones the Sets tab is already showing them.
+function ExtraSets.RecordsForClass(records, classID)
     local matching = {}
     for _, record in ipairs(records) do
-        if ExtraSets.MatchesClass(record, classID) then matching[#matching + 1] = record end
+        if ExtraSets.MatchesClass(record, classID) and not ExtraSets.ListedNatively(record, classID) then
+            matching[#matching + 1] = record
+        end
     end
     return matching
 end
