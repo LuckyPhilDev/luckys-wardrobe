@@ -4,6 +4,19 @@ LuckysEnsemble.Settings = {}
 
 local settingsPanel
 
+-- Named in each class's own colour, matching the instance list so the two read as
+-- the same thing said twice.
+local function classOptions()
+    local options = {}
+    for index, class in ipairs(LuckysEnsemble.Classes:All()) do
+        options[index] = {
+            key = class.file,
+            label = LuckysEnsemble.Classes:Colour(class, class.name),
+        }
+    end
+    return options
+end
+
 function LuckysEnsemble.Settings:Init(db)
     local S = LuckysEnsemble.Strings
     local addonVersion = C_AddOns.GetAddOnMetadata("Luckys_Ensemble", "Version") or "?"
@@ -69,6 +82,131 @@ function LuckysEnsemble.Settings:Init(db)
             db.showSituationTooltips = checked
             LuckysEnsemble.SituationLabels:Refresh()
         end,
+    })
+
+    -- The instance list and the loot alerts are two sides of one feature and share
+    -- the threshold that decides what counts as close to finishing, so the threshold
+    -- leads and neither side owns it.
+    local setTracker = panel:Group(S.settings.groups.setTracker)
+    local catalystAvailable = LuckysEnsemble.Catalyst:IsAvailable()
+
+    setTracker:Section(S.settings.sections.whatToTrack)
+    setTracker:Slider({
+        label = S.settings.maxMissing.label,
+        desc = S.settings.maxMissing.desc,
+        min = 1,
+        -- A raid set runs to nine pieces once the recoloured cloak, belt and boots
+        -- are counted, so nine is what it takes to reach a set you own none of. A
+        -- ceiling of eight put that set out of reach at every setting.
+        max = 9,
+        value = db.instanceSetsMaxMissing,
+        onChanged = function(value)
+            db.instanceSetsMaxMissing = value
+            LuckysEnsemble.SetCompletion:Refresh()
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.includeCurrentTier.label,
+        desc = S.settings.includeCurrentTier.desc,
+        checked = db.includeCurrentTier,
+        onToggle = function(checked)
+            db.includeCurrentTier = checked
+            LuckysEnsemble.SetCompletion:Refresh()
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.includeOtherClassSets.label,
+        desc = S.settings.includeOtherClassSets.desc,
+        checked = db.includeOtherClassSets,
+        onToggle = function(checked)
+            db.includeOtherClassSets = checked
+            LuckysEnsemble.SetCompletion:Refresh()
+        end,
+    })
+    setTracker:MultiSelect({
+        label = S.settings.setClasses.label,
+        desc = S.settings.setClasses.desc,
+        parent = S.settings.includeOtherClassSets.label,
+        options = classOptions(),
+        isChecked = function(classFile) return not db.hiddenSetClasses[classFile] end,
+        onToggle = function(classFile, checked)
+            if checked then
+                db.hiddenSetClasses[classFile] = nil
+            else
+                db.hiddenSetClasses[classFile] = true
+            end
+            LuckysEnsemble.SetCompletion:Refresh()
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.markCatalysable.label,
+        desc = S.settings.markCatalysable.desc,
+        requires = { addon = "TransmogUpgradeMaster" },
+        disabled = not catalystAvailable,
+        checked = db.markCatalysablePieces,
+        onToggle = function(checked)
+            db.markCatalysablePieces = checked
+            LuckysEnsemble.SetCompletion:Refresh()
+        end,
+    })
+
+    setTracker:Section(S.settings.sections.inInstances)
+    setTracker:Toggle({
+        label = S.settings.showInstanceSets.label,
+        desc = S.settings.showInstanceSets.desc,
+        checked = db.showInstanceSets,
+        onToggle = function(checked)
+            db.showInstanceSets = checked
+        end,
+    })
+    setTracker:Slider({
+        label = S.settings.dwellSeconds.label,
+        desc = S.settings.dwellSeconds.desc,
+        parent = S.settings.showInstanceSets.label,
+        min = 0,
+        max = 15,
+        suffix = "s",
+        value = db.instanceSetsDwellSeconds,
+        onChanged = function(value)
+            db.instanceSetsDwellSeconds = value
+        end,
+    })
+    setTracker:Button({
+        label = S.settings.resetPosition.label,
+        desc = S.settings.resetPosition.desc,
+        onClick = function()
+            LuckysEnsemble.SetCompletion:ResetPosition()
+        end,
+    })
+
+    setTracker:Section(S.settings.sections.whenYouLoot)
+    setTracker:Toggle({
+        label = S.settings.alertSetPiece.label,
+        desc = S.settings.alertSetPiece.desc,
+        checked = db.alertSetPieceLoot,
+        onToggle = function(checked)
+            db.alertSetPieceLoot = checked
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.alertCatalyst.label,
+        desc = S.settings.alertCatalyst.desc,
+        requires = { addon = "TransmogUpgradeMaster" },
+        disabled = not catalystAvailable,
+        checked = db.alertCatalystLoot,
+        onToggle = function(checked)
+            db.alertCatalystLoot = checked
+        end,
+    })
+    setTracker:MultiSelect({
+        label = S.settings.alertWith.label,
+        desc = S.settings.alertWith.desc,
+        options = {
+            { key = "alertWithSound", label = S.settings.alertWith.sound },
+            { key = "alertWithChat", label = S.settings.alertWith.chat },
+        },
+        isChecked = function(key) return db[key] and true or false end,
+        onToggle = function(key, checked) db[key] = checked end,
     })
 
     panel:Finalize()
