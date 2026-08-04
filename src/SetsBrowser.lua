@@ -165,6 +165,12 @@ end
 function SetsBrowser:ReselectIfHidden(setsFrame)
     local selectedSetID = setsFrame:GetSelectedSetID()
     if selectedSetID then
+        -- A set the game does not list here at all is on screen because something
+        -- put it there on purpose, which is what the instance list does when it
+        -- opens another class's set. No filter of ours hid it, so no filter of
+        -- ours should take it away again.
+        if not C_TransmogSets.IsSetVisible(selectedSetID) then return end
+
         -- Matched on either ID: the list holds base sets, but the selected set
         -- may be a variant of one of them.
         local selectedBaseSetID = C_TransmogSets.GetBaseSetID(selectedSetID)
