@@ -473,9 +473,13 @@ EventUtil = {
     end,
 }
 
+-- The class the Sets tab is showing, which both set pages read.
+local setsClassFilter = CLOTH_CLASS
 C_TransmogSets = {
     GetCameraIDs = function() return nil end,
     GetSetInfo = function(setID) return setID == 20 and { name = "Live Name" } or nil end,
+    GetTransmogSetsClassFilter = function() return setsClassFilter end,
+    SetTransmogSetsClassFilter = function(classID) setsClassFilter = classID end,
 }
 C_TransmogCollection = {
     GetSourceInfo = function(sourceID)
@@ -525,6 +529,33 @@ local function visibilityFrame(shown)
     }
 end
 
+-- Blizzard's own class dropdown, the one control both set pages share. It
+-- behaves as the client's does: choosing a class writes the sets filter and
+-- builds the menu again.
+local function nativeClassDropdown()
+    local dropdown = recordAnchors(visibilityFrame(true))
+    function dropdown:SetupMenu(builder) self.menuBuilder = builder end
+    function dropdown:SetClassFilter(classID)
+        C_TransmogSets.SetTransmogSetsClassFilter(classID)
+        self:Refresh()
+    end
+    function dropdown:Refresh()
+        self:SetupMenu(function(_, root)
+            for classID = 1, GetNumClasses() do
+                local info = C_CreatureInfo.GetClassInfo(classID)
+                root:CreateRadio(
+                    info.className,
+                    function(data) return C_TransmogSets.GetTransmogSetsClassFilter() == data.classID end,
+                    function(data) dropdown:SetClassFilter(data.classID) end,
+                    { classID = classID, className = info.className }
+                )
+            end
+        end)
+    end
+    dropdown:Refresh()
+    return dropdown
+end
+
 -- Blizzard's own bar, laid out for two tabs before the addon gets to it.
 local NATIVE_PROGRESS_BAR_WIDTH = 196
 
@@ -546,7 +577,7 @@ wardrobe = {
     SetsCollectionFrame = visibilityFrame(false),
     SearchBox = visibilityFrame(true),
     FilterButton = visibilityFrame(true),
-    ClassDropdown = visibilityFrame(true),
+    ClassDropdown = nativeClassDropdown(),
     progressBar = nativeProgressBar(),
     ContentFrames = {},
     GetName = function(self) return self.name end,
@@ -647,7 +678,8 @@ extraTab.scripts.OnClick()
 assert(wardrobe.selectedCollectionTab == 3 and page.shown, "selected and showed Extra Sets")
 assert(not wardrobe.ItemsCollectionFrame.shown and not wardrobe.SetsCollectionFrame.shown, "hid native pages")
 assert(not wardrobe.SearchBox.shown and not wardrobe.FilterButton.shown, "hid native-only controls")
-assert(not wardrobe.ClassDropdown.shown and not wardrobe.progressBar.shown, "hid the rest of the native controls")
+assert(not wardrobe.progressBar.shown, "hid the rest of the native controls")
+assert(wardrobe.ClassDropdown.shown, "kept the native class dropdown, which this page shares")
 assert(wardrobe.activeFrame == page, "became the active Appearances page")
 assert(playedSound == SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, "used the native tab sound")
 
@@ -920,15 +952,17 @@ assert(scrollBox.dataProvider[1].key == 20, "name sort puts Live Name before Loa
 radioSetters["Sort By"][DEFAULT]()
 
 -- The class dropdown, which is what keeps this page down to a list a character
--- has some use for.
+-- has some use for. It is Blizzard's own control, shared with the Sets tab, so
+-- the two pages can never disagree about which class they are showing.
 
-local classDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
-assert(classDropdown, "created the class dropdown")
-assert(classDropdown.points[1][1] == "TOPRIGHT", "put it in the top right corner")
-assert(classDropdown:GetFrameLevel() > detailsFrame:GetFrameLevel(),
-    "raised it above the model and the set details it sits over")
-assert(classDropdown.selectionTranslator({ data = { file = "CLASS5", name = "Class 5" } }) == "<CLASS5>Class 5",
-    "showed the chosen class in its own colour, as the Sets tab does")
+local classDropdown = wardrobe.ClassDropdown
+assert(not findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end),
+    "built no class dropdown of its own")
+assert(classDropdown.shown, "kept the native dropdown on screen for this page")
+assert(#classDropdown.points == 1, "gave the dropdown a single anchor")
+local classAnchor = classDropdown.points[1]
+assert(classAnchor[1] == "BOTTOMRIGHT" and classAnchor[2] == page and classAnchor[3] == "TOPRIGHT",
+    "hung it above the page, where the Sets tab has it, rather than inside it")
 
 local classRadios = {}
 classDropdown.menuBuilder(nil, {
@@ -937,25 +971,26 @@ classDropdown.menuBuilder(nil, {
     end,
 })
 assert(#classRadios == 13, "listed every class")
-assert(classRadios[1].label == "Class 1" and classRadios[13].label == "Class 13",
-    "listed them in the client's own order")
 assert(classRadios[CLOTH_CLASS].isSelected(classRadios[CLOTH_CLASS].data),
-    "opened on the player's own class")
-assert(#scrollBox.dataProvider == 2, "both fixture sets belong to the player's class")
+    "opened on the class the Sets tab is showing")
+assert(#scrollBox.dataProvider == 2, "both fixture sets belong to that class")
 
 -- Class 8 is another cloth class, so it keeps the set named for nobody and
 -- loses the one named for class 5.
 classRadios[8].select(classRadios[8].data)
+assert(C_TransmogSets.GetTransmogSetsClassFilter() == 8, "wrote the choice to the filter the Sets tab reads")
 assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
     "choosing another class drops the sets named for the old one")
-assert(classRadios[8].isSelected(classRadios[8].data) and not classRadios[CLOTH_CLASS].isSelected(classRadios[CLOTH_CLASS].data),
-    "the dropdown follows the chosen class")
 
 -- Class 1 wears plate, so neither fixture is any use to it.
 classRadios[1].select(classRadios[1].data)
 assert(#scrollBox.dataProvider == 0, "a class that wears neither armour type sees neither set")
 
-classRadios[CLOTH_CLASS].select(classRadios[CLOTH_CLASS].data)
-assert(#scrollBox.dataProvider == 2, "coming back restores the list")
+-- A class chosen on the Sets tab is the class this page opens on.
+wardrobe:SetTab(2)
+classDropdown:SetClassFilter(CLOTH_CLASS)
+wardrobe:SetTab(3)
+page.scripts.OnShow(page)
+assert(#scrollBox.dataProvider == 2, "opened on the class the Sets tab was left showing")
 
 print("Lucky's Wardrobe extra sets tests passed")

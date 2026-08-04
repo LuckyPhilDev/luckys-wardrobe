@@ -13,12 +13,14 @@ local ExtraSets = LuckysWardrobe.ExtraSets
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
--- The width Blizzard gives the same dropdown on the Sets tab.
-local CLASS_DROPDOWN_WIDTH = 150
 -- How long a burst of collection events is allowed to gather before the page
 -- reads the catalogue again. Long enough to collapse a burst, short enough
 -- that collecting something still updates the list while you are looking at it.
 local REBUILD_DELAY_SECONDS = 0.25
+
+-- The offsets Blizzard gives the class dropdown above the Sets page.
+local CLASS_DROPDOWN_X = -9
+local CLASS_DROPDOWN_Y = 4
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
 -- runs underneath it. It moves to the end of the strip and gives up some width
@@ -390,15 +392,16 @@ function ExtraSets.InvalidateEntries()
     cachedEntries = nil
 end
 
-function ExtraSets.ClassFilter()
-    return selectedClassID
-end
-
-function ExtraSets.SetClassFilter(classID)
-    if selectedClassID == classID then return end
+--- Takes the class the Sets tab is showing, so the one dropdown Blizzard draws
+--- above both pages means the same thing on either. Answers whether the page
+--- now has a different class to list.
+function ExtraSets.SyncClassFilter()
+    local classID = C_TransmogSets.GetTransmogSetsClassFilter()
+    if not classID or classID == selectedClassID then return false end
 
     selectedClassID = classID
     ExtraSets.InvalidateEntries()
+    return true
 end
 
 function ExtraSets.Entries()
@@ -440,16 +443,6 @@ function ExtraSets:CreatePage(wardrobe)
     local filterButton = CreateFrame("DropdownButton", nil, page, "WowStyle1FilterDropdownTemplate")
     filterButton:SetSize(93, 22)
     filterButton:SetPoint("TOPLEFT", 166, -8)
-
-    -- The Sets tab's class selector, in the same corner and built the same way.
-    -- It is the page's main narrowing: a set only becomes a row for a character
-    -- who could wear it, so the work of reading one is never done otherwise.
-    local classDropdown = CreateFrame("DropdownButton", nil, page, "WowStyle1DropdownTemplate")
-    classDropdown:SetSize(CLASS_DROPDOWN_WIDTH, 22)
-    classDropdown:SetPoint("TOPRIGHT", -10, -8)
-    classDropdown:SetSelectionTranslator(function(selection)
-        return LuckysWardrobe.Classes:Colour(selection.data, selection.data.name)
-    end)
 
     local progressBar = CreateFrame("StatusBar", nil, page, "CollectionsProgressBarTemplate")
     page.progressBar = progressBar
@@ -498,10 +491,6 @@ function ExtraSets:CreatePage(wardrobe)
     -- and takes the mouse, so anything below it stops receiving hover.
     detailsFrame:SetFrameLevel(model:GetFrameLevel() + 10)
     detailsFrame:Hide()
-
-    -- The class selector hangs over the same corner as the model and the set
-    -- details, so it has to sit above both of them to stay clickable.
-    classDropdown:SetFrameLevel(detailsFrame:GetFrameLevel() + 10)
 
     local nameText = detailsFrame:CreateFontString(nil, "OVERLAY", "Fancy24Font")
     nameText:SetPoint("TOP", 0, -37)
@@ -866,36 +855,6 @@ function ExtraSets:CreatePage(wardrobe)
         refresh()
     end
 
-    -- The Sets tab opens on the player's own class, and so does this.
-    if not ExtraSets.ClassFilter() then
-        ExtraSets.SetClassFilter(select(3, UnitClass("player")))
-    end
-
-    local setUpClassMenu
-
-    local function chooseClass(class)
-        ExtraSets.SetClassFilter(class.classID)
-        rebuildNow()
-        -- Blizzard's own class dropdown builds its menu again when the choice
-        -- changes, which is what redraws the name on the button.
-        setUpClassMenu()
-    end
-
-    setUpClassMenu = function()
-        classDropdown:SetupMenu(function(_, root)
-            for _, class in ipairs(LuckysWardrobe.Classes:InClientOrder()) do
-                root:CreateRadio(
-                    class.name,
-                    function(data) return ExtraSets.ClassFilter() == data.classID end,
-                    chooseClass,
-                    class
-                )
-            end
-        end)
-    end
-
-    setUpClassMenu()
-
     -- Learning one appearance fires the collection event several times over,
     -- and reading every set again costs far more than a frame, so a burst
     -- collapses into a single pass a moment later. The delay is not felt:
@@ -923,6 +882,7 @@ function ExtraSets:CreatePage(wardrobe)
         -- and this is the only work it does every frame: a counter and a
         -- comparison, so that measuring a slow page cannot be what slows it.
         self:SetScript("OnUpdate", function(_, elapsed) LuckysWardrobe.Perf:Frame(elapsed) end)
+        ExtraSets.SyncClassFilter()
         rebuildNow()
     end)
     page:SetScript("OnHide", function(self)
@@ -969,6 +929,15 @@ function ExtraSets:TrackMissing(entry)
     LuckysWardrobe.SetTracking:TrackSources(missing, entry.name)
 end
 
+-- Blizzard hangs the class dropdown above the Sets page rather than inside it,
+-- and SetTab re-anchors it to whichever native page it just chose. This page
+-- occupies the same corner, so the same offsets leave the dropdown exactly
+-- where the Sets tab has it.
+local function layOutClassDropdown(dropdown)
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
+end
+
 local function updateSelectedTab(wardrobe, selectedTabID)
     local selected = selectedTabID == extraTabID
     extraPage:SetShown(selected)
@@ -978,9 +947,14 @@ local function updateSelectedTab(wardrobe, selectedTabID)
         wardrobe.SetsCollectionFrame:Hide()
         wardrobe.SearchBox:Hide()
         wardrobe.FilterButton:Hide()
-        wardrobe.ClassDropdown:Hide()
         wardrobe.progressBar:Hide()
         wardrobe.activeFrame = extraPage
+        layOutClassDropdown(wardrobe.ClassDropdown)
+        wardrobe.ClassDropdown:Show()
+        -- Blizzard refreshes the dropdown from the active page's filter while
+        -- the active page is still the one being left, so it reads the name on
+        -- the button again now that this page is the active one.
+        wardrobe.ClassDropdown:Refresh()
     elseif selectedTabID == NATIVE_ITEMS_TAB_ID or selectedTabID == NATIVE_SETS_TAB_ID then
         wardrobe.SearchBox:Show()
         wardrobe.FilterButton:Show()
@@ -1024,6 +998,12 @@ function ExtraSets:Attach(wardrobe)
     hooksecurefunc(wardrobe, "SetTab", updateSelectedTab)
     hooksecurefunc(wardrobe, "ClickTab", function(self)
         PanelTemplates_ResizeTabsToFit(self, TAB_FIT_WIDTH)
+    end)
+
+    -- One class for both pages: the Sets tab's dropdown is the only class
+    -- control there is, so a choice made in it is a choice made here.
+    hooksecurefunc(wardrobe.ClassDropdown, "SetClassFilter", function()
+        if ExtraSets.SyncClassFilter() and extraPage:IsShown() then extraPage.Refresh() end
     end)
 
     -- The catalogue may still be building when the page first shows; repaint the

@@ -6,7 +6,7 @@ Lucky's Wardrobe is in early development. The first release establishes its sett
 
 ## Features
 
-- **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It opens on your own class and lists only what that class could wear, with the same class selector the Sets tab has. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
+- **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
 - **Settings access**: Open the addon settings with `/wardrobe`.
 
 ## Installation

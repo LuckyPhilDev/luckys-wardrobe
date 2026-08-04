@@ -63,13 +63,6 @@ function Classes:All()
     return alphabetical
 end
 
---- Every playable class in the client's own order, which is how Blizzard's own
---- class dropdowns list them.
-function Classes:InClientOrder()
-    readClasses()
-    return inClientOrder
-end
-
 --- The armour type a class wears, or nil for a class this version has no
 --- answer for, which a caller should read as "no armour restriction".
 function Classes:ArmourType(classID)
