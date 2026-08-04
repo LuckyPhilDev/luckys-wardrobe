@@ -7,11 +7,16 @@
 ## Dependencies: Luckys_Utils
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 
+Bindings.xml
 Strings.lua
 Defaults.lua
+Classes.lua
 SetSources.lua
 SetsBrowser.lua
 SetTracking.lua
+Catalyst.lua
+SetCompletion.lua
+LootAlerts.lua
 Transmog.lua
 SituationLabels.lua
 SituationPresets.lua
