@@ -45,14 +45,26 @@ local function initialize()
 
     SLASH_LUCKYSWARDROBE1 = "/wardrobe"
     SLASH_LUCKYSWARDROBE2 = "/lw"
-    SlashCmdList.LUCKYSWARDROBE = function(input)
-        local command = (input or ""):match("^%s*(%S*)"):lower()
+    SlashCmdList.LUCKYSWARDROBE = function(message)
+        local command, argument = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
+        command = command:lower()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "replay" then
             LuckysWardrobe.SetCompletion:ReplayEntry()
+        elseif command == "extrasets" then
+            -- Set names have spaces, so the query keeps the rest of the line.
+            local subcommand, query = argument:match("^(%S*)%s*(.-)$")
+            subcommand = subcommand:lower()
+            if subcommand == "find" and query ~= "" then
+                LuckysWardrobe.ExtraSetsCatalog:PrintMatches(query)
+            elseif subcommand == "sweep" and query ~= "" then
+                LuckysWardrobe.ExtraSetsCatalog:PrintSweep(query)
+            else
+                LuckysWardrobe.ExtraSetsCatalog:PrintReport(subcommand == "full")
+            end
         else
             LuckysWardrobe.Settings:Open()
         end

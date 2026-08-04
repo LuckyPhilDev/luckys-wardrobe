@@ -25,6 +25,10 @@ Lucky's Wardrobe is in early development. The first release establishes its sett
 |---|---|
 | `/wardrobe` | Open addon settings |
 | `/lw` | Short form of `/wardrobe` |
+| `/wardrobe extrasets` | Report which extra sets this client exposes, and how many candidates were left out and why |
+| `/wardrobe extrasets full` | List every extra set and every candidate left out, with its reason |
+| `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
+| `/wardrobe extrasets sweep <name>` | Search this client for a set name, ignoring which ones the addon lists |
 
 ## Settings
 

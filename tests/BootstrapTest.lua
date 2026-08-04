@@ -83,6 +83,13 @@ LuckysWardrobe.ExtraSets = {
     end,
 }
 
+local reportedVerbose
+LuckysWardrobe.ExtraSetsCatalog = {
+    PrintReport = function(_, verbose)
+        reportedVerbose = verbose
+    end,
+}
+
 LuckysWardrobe.Transmog = {
     Init = function(_, db)
         transmogDB = db
@@ -193,5 +200,15 @@ assert(diagnosed and not opened, "/wardrobe scan reported the scan rather than o
 opened = false
 SlashCmdList.LUCKYSWARDROBE("replay")
 assert(replayed and not opened, "/wardrobe replay redid the entry rather than opening settings")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("extrasets")
+assert(not opened and reportedVerbose == false, "extrasets printed the summary report")
+SlashCmdList.LUCKYSWARDROBE("  ExtraSets   FULL  ")
+assert(reportedVerbose == true, "extrasets full listed everything, whatever the spacing and case")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("something else")
+assert(opened, "an unrecognised argument still opens settings")
 
 print("Lucky's Wardrobe bootstrap test passed")

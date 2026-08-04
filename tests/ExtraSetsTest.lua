@@ -129,6 +129,36 @@ assert(loadingSet.collected == 0 and loadingSet.total == 2, "unavailable pieces 
 assert(not loadingSet.usable, "class-restricted set is not usable for another class")
 assert(ExtraSets.BuildEntries({ records[2] }, stubResolver(3))[1].usable, "matching class is usable")
 
+-- Armour type is what actually gates most sets, and it reaches us as the
+-- client's own per-source validity rather than through the class mask.
+local armourResolver = {
+    sourceState = function(sourceID)
+        local state = sourceStates[sourceID]
+        if not state then return nil end
+        return {
+            appearanceID = state.appearanceID,
+            collected = state.collected,
+            validForPlayer = sourceID ~= 2003,
+        }
+    end,
+    setName = function() return nil end,
+    playerClassID = function() return 1 end,
+}
+assert(not ExtraSets.BuildEntries({ records[1] }, armourResolver)[1].usable,
+    "a set with a piece this character cannot use is not usable")
+
+local wearableResolver = {
+    sourceState = function(sourceID)
+        local state = sourceStates[sourceID]
+        if not state then return nil end
+        return { appearanceID = state.appearanceID, collected = state.collected, validForPlayer = true }
+    end,
+    setName = function() return nil end,
+    playerClassID = function() return 1 end,
+}
+assert(ExtraSets.BuildEntries({ records[1] }, wearableResolver)[1].usable,
+    "a set this character can wear stays usable")
+
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")
 

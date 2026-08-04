@@ -1,4 +1,5 @@
 -- luacheck: globals CreateFrame GetBuildInfo GetNumClasses LuckysWardrobe C_TransmogSets C_TransmogCollection C_Item C_LootJournal
+-- luacheck: ignore 121
 
 LuckysWardrobe = {}
 
@@ -22,11 +23,12 @@ function GetBuildInfo() return "12.0.7", "68887", "Aug 4 2026", 120007 end
 function GetNumClasses() return 2 end
 
 -- Official sets are split across class filters to prove the snapshot unions them.
-local allSetsByClass = { [1] = { 10 }, [2] = { 11 } }
+local allSetsByClass = { [1] = { 10, 12 }, [2] = { 11 } }
 
 local transmogSetInfos = {
     [10] = { name = "Fixture Official Regalia", classMask = 0 },
     [11] = { name = "Fixture Official Vestments", classMask = 0 },
+    [12] = { name = "Fixture Official Repeats", classMask = 0 },
     [20] = { name = "Fixture Hidden Garb", label = "Fixture Quest", classMask = 0, expansionID = 5 },
     [21] = { name = "Fixture Sparse Pair", classMask = 0 },
     [22] = { name = "Fixture Twin Chests", classMask = 0 },
@@ -36,11 +38,20 @@ local transmogSetInfos = {
     [26] = { name = "Fixture Ghost Piece", classMask = 0 },
     [27] = { name = "Fixture Hidden Garb Copy", classMask = 0 },
     [28] = { name = "Fixture Mystery Slot", classMask = 0 },
+    [29] = { name = "Fixture Ensemble Bundle", classMask = 0 },
+    [30] = { name = "Fixture Empty Bundle", classMask = 0 },
+    [31] = { name = "Fixture Partial Overlap", classMask = 0 },
 }
 
+-- 29 stands for a set Blizzard never lists in the journal: whole-set membership
+-- but no primary-flagged appearances. 30 has neither.
+-- 12 lists 1201 twice, which is what makes a naive occurrence tally reach a
+-- candidate's source total without owning every one of its sources.
 local transmogSetSources = {
     [10] = { 1001, 1002, 1003, 1004, 1005 },
     [11] = { 1101, 1102, 1103 },
+    [12] = { 1201, 1201, 1202 },
+    [29] = { 2901, 2902, 2903 },
 }
 
 local primarySources = {
@@ -53,6 +64,8 @@ local primarySources = {
     [26] = { 2601, 2602, 2603 },
     [27] = { 2001, 2002, 2003, 2004, 2005 },
     [28] = { 2801, 2802, 2803 },
+    -- 1201 and 1202 belong to official set 12; 1101 belongs to official set 11.
+    [31] = { 1201, 1202, 1101 },
 }
 
 -- sourceID -> itemID; 2602 has no item on purpose.
@@ -65,6 +78,8 @@ local sourceItems = {
     [2401] = 62401, [2402] = 62402, [2403] = 62403, [2404] = 62404,
     [2601] = 62601, [2603] = 62603,
     [2801] = 62801, [2802] = 62802, [2803] = 62803,
+    [2901] = 62901, [2902] = 62902, [2903] = 62903,
+    [1201] = 71201, [1202] = 71202,
     [5001] = 70001, [5002] = 70002, [5003] = 70003, [5004] = 70004, [5005] = 70005,
     [5101] = 70101, [5102] = 79999, [5103] = 70103,
     [5301] = 70301, [5302] = 70302,
@@ -85,6 +100,8 @@ local items = {
     [62403] = { "INVTYPE_LEGS", 4, 4 }, [62404] = { "INVTYPE_WEAPON", 2, 7 },
     [62601] = { "INVTYPE_HEAD", 4, 1 }, [62603] = { "INVTYPE_LEGS", 4, 1 },
     [62801] = { "INVTYPE_HEAD", 4, 1 }, [62802] = { "INVTYPE_MYSTERY", 4, 1 }, [62803] = { "INVTYPE_LEGS", 4, 1 },
+    [62901] = { "INVTYPE_HEAD", 4, 1 }, [62902] = { "INVTYPE_CHEST", 4, 1 }, [62903] = { "INVTYPE_LEGS", 4, 1 },
+    [71201] = { "INVTYPE_CHEST", 4, 3 }, [71202] = { "INVTYPE_LEGS", 4, 3 },
     [70001] = { "INVTYPE_HEAD", 4, 1 }, [70002] = { "INVTYPE_SHOULDER", 4, 1 },
     [70003] = { "INVTYPE_ROBE", 4, 1 }, [70004] = { "INVTYPE_LEGS", 4, 1 }, [70005] = { "INVTYPE_FEET", 4, 1 },
     [70101] = { "INVTYPE_HEAD", 4, 2 }, [70102] = { "INVTYPE_CHEST", 4, 2 }, [70103] = { "INVTYPE_LEGS", 4, 2 },
@@ -130,7 +147,8 @@ C_TransmogSets = {
     GetAllSets = function()
         local sets = {}
         for _, setID in ipairs(allSetsByClass[classFilter] or {}) do
-            sets[#sets + 1] = { setID = setID }
+            local info = transmogSetInfos[setID]
+            sets[#sets + 1] = { setID = setID, name = info and info.name }
         end
         return sets
     end,
@@ -240,8 +258,16 @@ assert(lateFired, "late subscribers run immediately")
 
 -- Inclusion and exclusion rules.
 
-assert(recordKeys() == "TransmogSet:20, TransmogSet:24, ItemSet:500, ItemSet:505",
+assert(recordKeys() == "TransmogSet:20, TransmogSet:24, TransmogSet:29, TransmogSet:31, ItemSet:500, ItemSet:505",
     "emitted exactly the defensible records, got: " .. recordKeys())
+
+assert(rejectionReason("TransmogSet:31") == nil,
+    "a candidate straddling two official sets is not covered by either")
+
+local bundle = Catalog:GetRecords()[3]
+assert(bundle.name == "Fixture Ensemble Bundle", "a set with no primary appearances still qualifies")
+assert(bundle.slotSources.HEAD == 2901 and bundle.slotSources.CHEST == 2902
+    and bundle.slotSources.LEGS == 2903, "membership fell back to the whole source list")
 
 local hiddenGarb = Catalog:GetRecords()[1]
 assert(hiddenGarb.name == "Fixture Hidden Garb" and hiddenGarb.label == "Fixture Quest", "kept live name and label")
@@ -256,22 +282,155 @@ local armedCount = 0
 for _ in pairs(armed.slotSources) do armedCount = armedCount + 1 end
 assert(armedCount == 3, "weapon pieces are never emitted")
 
-assert(Catalog:GetRecords()[3].armorType == 1, "uniform armour subclass becomes the armour restriction")
-assert(Catalog:GetRecords()[4].armorType == nil, "mixed armour subclasses carry no armour restriction")
+assert(Catalog:GetRecords()[5].armorType == 1, "uniform armour subclass becomes the armour restriction")
+assert(Catalog:GetRecords()[6].armorType == nil, "mixed armour subclasses carry no armour restriction")
 
 assert(rejectionReason("TransmogSet:21"):find("fewer than 3"), "rejected the set with too few armour slots")
-assert(rejectionReason("TransmogSet:22"):find("two primary sources for slot CHEST"), "rejected the slot collision")
-assert(rejectionReason("TransmogSet:23") == "covered by official set 10", "rejected the official subset")
+assert(rejectionReason("TransmogSet:22"):find("two sources for slot CHEST"), "rejected the slot collision")
+assert(rejectionReason("TransmogSet:30") == "no appearance sources",
+    "a set with neither primary appearances nor a source list is rejected, not guessed at")
+assert(rejectionReason("TransmogSet:23") == "covered by an official set: 10", "rejected the official subset")
 assert(rejectionReason("TransmogSet:25") == "no resolvable name", "rejected the nameless set")
 assert(rejectionReason("TransmogSet:26"):find("no item data"), "rejected the source without an item")
-assert(rejectionReason("TransmogSet:27"):find("duplicate source membership of TransmogSet:20"),
+assert(rejectionReason("TransmogSet:27") == "duplicate source membership: TransmogSet:20",
     "rejected the repeated membership")
-assert(rejectionReason("TransmogSet:28"):find("unknown inventory type INVTYPE_MYSTERY"),
+assert(rejectionReason("TransmogSet:28") == "unknown inventory type: INVTYPE_MYSTERY",
     "unknown inventory tokens reject the record instead of guessing")
 assert(rejectionReason("ItemSet:501"):find("does not round%-trip"), "rejected the item mapped to another item's source")
-assert(rejectionReason("ItemSet:502") == "covered by official set 11", "rejected the item-set official overlap")
+assert(rejectionReason("ItemSet:502") == "covered by an official set: 11", "rejected the item-set official overlap")
 assert(rejectionReason("ItemSet:503"):find("fewer than 3"), "jewellery did not count toward the slot minimum")
 assert(rejectionReason("ItemSet:504") == "no resolvable name", "rejected the nameless item set")
+
+-- Session report: what was listed, and why every other candidate was left out.
+
+local summary = Catalog:SummarizeRejections()
+local summaryTotal = 0
+for index, group in ipairs(summary) do
+    summaryTotal = summaryTotal + group.count
+    if index > 1 then
+        assert(summary[index - 1].count >= group.count, "grouped rejections run most common first")
+    end
+end
+local rejectionCount = #Catalog:GetReport().rejections
+assert(summaryTotal == rejectionCount, "every rejection lands in exactly one group")
+assert(#summary == 8, "grouped the eight distinct reasons, got " .. #summary)
+assert(summary[1].category == "ambiguous mapping" and summary[1].count == 2,
+    "equal counts fall back to alphabetical order")
+
+-- The report counts the page's own entries; entry building is covered in
+-- ExtraSetsTest, so here it only has to report usability.
+LuckysWardrobe.ExtraSets = {
+    LiveResolver = function() return "live-resolver" end,
+    BuildEntries = function(builtRecords, resolver)
+        assert(resolver == "live-resolver", "report counted entries from live client data")
+        local entries = {}
+        for index, record in ipairs(builtRecords) do
+            entries[index] = { usable = record.recordID ~= 24 }
+        end
+        return entries
+    end,
+}
+
+LuckysWardrobe.Strings = {
+    addon = { prefix = "Wardrobe:" },
+    extraSets = {
+        report = {
+            notStarted = "not started",
+            building = "building",
+            header = "client %s: %d listed, %d left out",
+            usableLine = "  usable here: %d",
+            groupLine = "  %s: %d",
+            hint = "hint",
+            findHeader = "matching %s:",
+            findNone = "never saw %s",
+            foundListed = "  listed: %s %d: %s (%d pieces)",
+            foundDropped = "  left out: %s %s: %s",
+            foundNative = "  native: TransmogSet %d: %s",
+            sweepHeader = "swept %s:",
+            sweepHit = "  %s %d: %s%s",
+            sweepBeyond = " (beyond)",
+            sweepNone = "no %s below %d / %d",
+            includedHeader = "listed (%d):",
+            recordLine = "  %s %d: %s (%d pieces)",
+            rejectedHeader = "left out (%d):",
+            rejectionLine = "  %s %s: %s",
+            unnamed = "(no name)",
+        },
+    },
+}
+
+local printed = {}
+local realPrint = print
+print = function(line) printed[#printed + 1] = line end
+
+Catalog:PrintReport()
+print = realPrint
+assert(printed[1] == "Wardrobe: client 12.0.7.68887: 6 listed, " .. rejectionCount .. " left out",
+    "reported the build and totals")
+-- Five of the six records carry no class mask; the sixth is another class.
+assert(printed[2] == "Wardrobe:   usable here: 5", "reported the per-character count for like-for-like comparison")
+assert(printed[3]:find("ambiguous mapping: 2", 1, true), "listed the grouped reasons")
+assert(printed[#printed] == "Wardrobe: hint", "pointed at the full listing")
+assert(#printed == 3 + #summary, "summary stays short by default")
+
+printed = {}
+print = function(line) printed[#printed + 1] = line end
+Catalog:PrintReport(true)
+print = realPrint
+local joined = table.concat(printed, "\n")
+assert(joined:find("TransmogSet 20: Fixture Hidden Garb (5 pieces)", 1, true), "listed each set with its piece count")
+assert(joined:find("TransmogSet:21 Fixture Sparse Pair: fewer than 3 wearable armour slots", 1, true),
+    "named each rejected candidate alongside its reason")
+assert(joined:find("ItemSet:501 Fixture Borrowed Look: ambiguous mapping: item 70102 does not round-trip", 1, true),
+    "kept the specific detail alongside the category")
+assert(joined:find("TransmogSet:25 (no name): no resolvable name", 1, true),
+    "candidates with no name say so rather than printing a gap")
+
+-- Looking one candidate up by name, listed or left out.
+
+local listed, dropped = Catalog:FindCandidates("hidden garb")
+assert(#listed == 1 and listed[1].recordID == 20, "found the listed set by name")
+assert(#dropped == 1 and dropped[1].key == "TransmogSet:27", "found the rejected candidate of the same name")
+
+assert(select(2, Catalog:FindCandidates("SPARSE")) [1].key == "TransmogSet:21", "name matching ignores case")
+assert(#Catalog:FindCandidates("nothing here") == 0, "an unscanned name matches nothing")
+
+local _, _, native = Catalog:FindCandidates("official")
+assert(#native == 3 and native[1].setID == 10 and native[3].setID == 12,
+    "sets Blizzard lists natively are findable too, in set ID order")
+
+printed = {}
+print = function(line) printed[#printed + 1] = line end
+Catalog:PrintMatches("hidden garb")
+Catalog:PrintMatches("shimmering nonexistence")
+print = realPrint
+assert(printed[1] == "Wardrobe: matching hidden garb:", "headed the matches with the query")
+assert(printed[2] == "Wardrobe:   listed: TransmogSet 20: Fixture Hidden Garb (5 pieces)", "showed the listed match")
+assert(printed[3] == "Wardrobe:   left out: TransmogSet:27 Fixture Hidden Garb Copy: "
+    .. "duplicate source membership: TransmogSet:20", "showed the rejected match and its reason")
+assert(printed[4] == "Wardrobe: never saw shimmering nonexistence",
+    "a name the scan never saw is reported as such, not as an empty result")
+
+printed = {}
+print = function(line) printed[#printed + 1] = line end
+Catalog:PrintMatches("Official Vestments")
+print = realPrint
+assert(printed[2] == "Wardrobe:   native: TransmogSet 11: Fixture Official Vestments",
+    "a set Blizzard already lists is named as such rather than reported missing")
+
+-- Raw sweep: finds sets by name with no inclusion rules, official or not.
+
+-- 10, 11 and 12 are official, 23 and 502 were rejected as covered by one; the
+-- sweep is blind to all of that and reports every name that matches.
+local swept = Catalog.SweepForName("fixture official", 40, 600)
+assert(#swept == 5 and swept[1].recordID == 10 and swept[4].recordID == 23,
+    "swept transmog sets by name regardless of the inclusion rules")
+assert(swept[5].recordType == "ItemSet" and swept[5].recordID == 502,
+    "transmog sets sweep before item sets, each in ID order")
+assert(Catalog.SweepForName("woven", 40, 600)[1].recordType == "ItemSet", "swept item sets too")
+assert(#Catalog.SweepForName("sparse", 20, 0) == 0, "a set above the swept ceiling is not reported")
+assert(#Catalog.SweepForName("sparse", 40, 0) == 1, "raising the ceiling reaches it")
+assert(#Catalog.SweepForName("nothing here", 40, 600) == 0, "an absent name sweeps up nothing")
 
 -- Determinism: a rebuild over the same world produces identical records.
 

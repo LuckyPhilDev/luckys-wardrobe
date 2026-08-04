@@ -158,8 +158,15 @@ function ExtraSets.BuildEntry(record, key, resolver)
     local collected, total, unavailable = 0, 0, 0
     local loading = false
     local seenAppearanceIDs = {}
+    -- Armour type is what actually keeps a set off a character, and the class
+    -- mask does not encode it, so usability comes from the sources themselves.
+    local judgedPieces, validPieces = 0, 0
     for _, piece in ipairs(pieces) do
         local state = resolver.sourceState(piece.sourceID)
+        if state and state.validForPlayer ~= nil then
+            judgedPieces = judgedPieces + 1
+            if state.validForPlayer then validPieces = validPieces + 1 end
+        end
         if not state then
             piece.state = "unavailable"
             unavailable = unavailable + 1
@@ -192,7 +199,8 @@ function ExtraSets.BuildEntry(record, key, resolver)
         missing = total - collected,
         unavailable = unavailable,
         loading = loading,
-        usable = ExtraSets.ClassAllowed(record.classMask, resolver.playerClassID()),
+        usable = ExtraSets.ClassAllowed(record.classMask, resolver.playerClassID())
+            and (judgedPieces == 0 or validPieces == judgedPieces),
     }
 end
 
@@ -306,6 +314,7 @@ function ExtraSets.LiveResolver()
             return {
                 appearanceID = (appearance and appearance.appearanceID) or sourceInfo.visualID,
                 collected = collected and true or false,
+                validForPlayer = sourceInfo.isValidSourceForPlayer and true or false,
             }
         end,
         setName = function(record)
