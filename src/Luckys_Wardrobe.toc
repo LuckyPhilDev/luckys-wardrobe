@@ -7,7 +7,6 @@
 ## Dependencies: Luckys_Utils
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 
-Bindings.xml
 Strings.lua
 Defaults.lua
 Data\ExtraSetsData.lua
