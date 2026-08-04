@@ -1,4 +1,4 @@
--- luacheck: globals C_LootJournal GetBuildInfo GetNumClasses
+-- luacheck: globals C_LootJournal GetBuildInfo GetNumClasses GetClassInfo
 
 -- Lucky's Wardrobe: runtime discovery of Blizzard-defined sets the Sets API
 -- does not list. The catalogue is derived once per session from documented
@@ -528,8 +528,17 @@ function Catalog:PrintMatches(query)
     for _, rejection in ipairs(dropped) do
         say(S.foundDropped:format(rejection.key, rejection.name, rejection.reason))
     end
+    -- The Sets tab filters to one class at a time and opens on the player's own,
+    -- so saying a set is listed there is misleading on a character that cannot
+    -- see it. Name the class filter it sits behind instead.
     for _, set in ipairs(native) do
-        say(S.foundNative:format(set.setID, set.name))
+        local classID = C_TransmogSets.GetValidClassForSet(set.setID)
+        local className = classID and GetClassInfo(classID)
+        if className then
+            say(S.foundNativeClass:format(className, set.setID, set.name))
+        else
+            say(S.foundNative:format(set.setID, set.name))
+        end
     end
 end
 

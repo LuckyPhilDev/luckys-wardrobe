@@ -61,14 +61,16 @@ local filters = {
     sortDirection = "ascending",
 }
 
+-- Keyed by Blizzard's expansionID, which counts from 0 for Classic. The name
+-- list is a Lua array counting from 1, so every lookup here is index - 1.
 local function setAllExpansions(shown)
-    for index = 1, #expansionNames do filters.expansions[index] = shown end
+    for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
 end
 
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
     for index = 1, #expansionNames do
-        if not filters.expansions[index] then return true end
+        if not filters.expansions[index - 1] then return true end
     end
     return false
 end
@@ -726,9 +728,9 @@ function ExtraSets:CreatePage(wardrobe)
         end)
         expansions:CreateDivider()
         for index, name in ipairs(expansionNames) do
-            local expansionIndex = index
-            expansions:CreateCheckbox(name, function() return filters.expansions[expansionIndex] end, function()
-                filters.expansions[expansionIndex] = not filters.expansions[expansionIndex]
+            local expansionID = index - 1
+            expansions:CreateCheckbox(name, function() return filters.expansions[expansionID] end, function()
+                filters.expansions[expansionID] = not filters.expansions[expansionID]
                 refresh()
             end)
         end

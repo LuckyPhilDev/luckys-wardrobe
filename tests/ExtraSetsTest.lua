@@ -730,7 +730,10 @@ assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "ItemSe
     "hiding Collected leaves only the incomplete set")
 toggles[COLLECTED]()
 
-expansionToggles["Expansion 2"]()
+-- The record carries expansionID 3, so it is the box labelled "Expansion 3"
+-- that hides it. Keying the filter as a 1-based array put every set one
+-- expansion out of step with its own checkbox.
+expansionToggles["Expansion 3"]()
 assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "ItemSet:500",
     "unchecking a set's expansion hides it but keeps unclassifiable sets")
 menuActions.Expansion[UNCHECK_ALL]()

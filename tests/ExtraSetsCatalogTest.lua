@@ -1,4 +1,4 @@
--- luacheck: globals CreateFrame GetBuildInfo GetNumClasses LuckysWardrobe C_TransmogSets C_TransmogCollection C_Item C_LootJournal
+-- luacheck: globals CreateFrame GetBuildInfo GetNumClasses GetClassInfo LuckysWardrobe C_TransmogSets C_TransmogCollection C_Item C_LootJournal
 -- luacheck: ignore 121
 
 LuckysWardrobe = {}
@@ -21,6 +21,7 @@ end
 
 function GetBuildInfo() return "12.0.7", "68887", "Aug 4 2026", 120007 end
 function GetNumClasses() return 2 end
+function GetClassInfo(classID) return "Fixture Class " .. classID end
 
 -- Official sets are split across class filters to prove the snapshot unions them.
 local allSetsByClass = { [1] = { 10, 12 }, [2] = { 11 } }
@@ -154,6 +155,7 @@ C_TransmogSets = {
     end,
     GetSetInfo = function(setID) return transmogSetInfos[setID] end,
     GetAllSourceIDs = function(setID) return transmogSetSources[setID] end,
+    GetValidClassForSet = function(setID) return setID == 11 and 2 or nil end,
     GetSetPrimaryAppearances = function(setID)
         local sources = primarySources[setID]
         if not sources then return nil end
@@ -346,6 +348,7 @@ LuckysWardrobe.Strings = {
             foundListed = "  listed: %s %d: %s (%d pieces)",
             foundDropped = "  left out: %s %s: %s",
             foundNative = "  native: TransmogSet %d: %s",
+            foundNativeClass = "  native under %s: TransmogSet %d: %s",
             sweepHeader = "swept %s:",
             sweepHit = "  %s %d: %s%s",
             sweepBeyond = " (beyond)",
@@ -415,8 +418,8 @@ printed = {}
 print = function(line) printed[#printed + 1] = line end
 Catalog:PrintMatches("Official Vestments")
 print = realPrint
-assert(printed[2] == "Wardrobe:   native: TransmogSet 11: Fixture Official Vestments",
-    "a set Blizzard already lists is named as such rather than reported missing")
+assert(printed[2] == "Wardrobe:   native under Fixture Class 2: TransmogSet 11: Fixture Official Vestments",
+    "a class-restricted set names the filter it sits behind, not just the tab")
 
 -- Raw sweep: finds sets by name with no inclusion rules, official or not.
 

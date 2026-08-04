@@ -169,6 +169,7 @@ LuckysWardrobe.Strings = {
             foundListed = "  listed: %s %d: %s (%d pieces)",
             foundDropped = "  left out: %s %s: %s",
             foundNative = "  already in the Sets tab: TransmogSet %d: %s",
+            foundNativeClass = "  in the Sets tab under the %s class filter: TransmogSet %d: %s",
             sweepHeader = "Sweeping this client for \"%s\" found:",
             sweepHit = "  %s %d: %s%s",
             sweepBeyond = "  <- past the discovery scan range",
