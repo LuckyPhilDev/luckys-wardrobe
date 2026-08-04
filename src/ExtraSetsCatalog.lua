@@ -122,12 +122,14 @@ local function buildRecord(setID, set, armorType)
     end
 
     report.unresolvedPieces = report.unresolvedPieces + unresolved
-    -- Where the client knows the set it is the authority on who may wear it and
-    -- which expansion it belongs to; the snapshot only fills the gaps.
+    -- Where the client knows the set it is the authority: it names it in the
+    -- player's own language and says who may wear it and which expansion it
+    -- belongs to. The snapshot only fills the gaps. None of this changes while
+    -- a session runs, so it is read here rather than every time the page does.
     local info = C_TransmogSets.GetSetInfo(setID)
     records[#records + 1] = {
         setID = setID,
-        name = set.name,
+        name = (info and info.name ~= "" and info.name) or set.name,
         armorType = armorType,
         classMask = info and info.classMask or set.classMask,
         expansionID = info and info.expansionID,
@@ -168,7 +170,7 @@ local function finalize()
     readyCallbacks = {}
 end
 
-local function step()
+local function stepWork()
     for _ = 1, SETS_PER_STEP do
         local group = state.work[state.groupIndex]
         if not group then return finalize() end
@@ -182,6 +184,14 @@ local function step()
             buildRecord(setID, LuckysWardrobe.ExtraSetsData.sets[group.key][setID], group.armorType)
         end
     end
+end
+
+-- The build is the one thing here that runs on every frame for a while, so how
+-- much of a frame a step takes is worth knowing on any client, not just a fast one.
+local function step()
+    LuckysWardrobe.Perf:Begin("catalogue step")
+    stepWork()
+    LuckysWardrobe.Perf:End("catalogue step")
 end
 
 function Catalog:StartBuild()

@@ -60,6 +60,13 @@ local function initialize()
             subcommand = subcommand:lower()
             if subcommand == "find" and query ~= "" then
                 LuckysWardrobe.ExtraSetsCatalog:PrintMatches(query)
+            elseif subcommand == "perf" then
+                if query:lower() == "reset" then
+                    LuckysWardrobe.Perf:Reset()
+                    print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.perf.reset)
+                else
+                    LuckysWardrobe.Perf:PrintReport()
+                end
             else
                 LuckysWardrobe.ExtraSetsCatalog:PrintReport(subcommand == "full")
             end

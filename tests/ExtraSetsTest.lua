@@ -30,6 +30,14 @@ C_ClassColor = {
 dofile("src/Strings.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/Classes.lua")
+-- The page measures its own work, so the real stopwatch runs here too, wound
+-- by hand rather than by the clock the client would provide.
+dofile("src/Perf.lua")
+local clock = 0
+LuckysWardrobe.Perf.Clock = function()
+    clock = clock + 1
+    return clock
+end
 dofile("src/ExtraSets.lua")
 
 local ExtraSets = LuckysWardrobe.ExtraSets
@@ -61,10 +69,12 @@ local function pieces(...)
     return list
 end
 
+-- The catalogue resolves a set's name once, so a record arrives here already
+-- carrying whatever the client or the snapshot called it.
 local function validRecord(overrides)
     local record = {
         setID = 20,
-        name = "Test Garb",
+        name = "Live Name",
         armorType = CLOTH,
         classMask = 0,
         pieces = pieces({ "HEAD", 2001 }, { "CHEST", 2003 }, { "LEGS", 2004 }),
@@ -140,7 +150,6 @@ local sourceStates = {
 local function stubResolver(classID)
     return {
         sourceState = function(sourceID) return sourceStates[sourceID] end,
-        setName = function(record) return record.setID == 20 and "Live Name" or nil end,
         playerClassID = function() return classID end,
     }
 end
@@ -157,7 +166,11 @@ local records = {
         classMask = 2 ^ (CLOTH_CLASS - 1),
         pieces = pieces({ "HEAD", 3001 }, { "CHEST", 3002 }, { "LEGS", 3999 }),
     },
-    validRecord({ setID = 21, pieces = pieces({ "HEAD", 4001 }, { "CHEST", 4002 }, { "LEGS", 4003 }) }),
+    validRecord({
+        setID = 21,
+        name = "Test Garb",
+        pieces = pieces({ "HEAD", 4001 }, { "CHEST", 4002 }, { "LEGS", 4003 }),
+    }),
     { setID = "twenty-two" },
     validRecord(),
 }
@@ -168,11 +181,10 @@ assert(#devLogs == 2, "reported both rejected records")
 
 local garb = entries[1]
 assert(garb.key == 20 and garb.armorType == CLOTH, "keyed entries by set ID and kept the armour type")
-assert(garb.name == "Live Name", "preferred the live runtime name")
+assert(garb.name == "Live Name", "took the name the catalogue resolved")
 assert(garb.collected == 1 and garb.total == 2, "counted shared appearances once")
 assert(garb.missing == 1, "derived the missing count")
 assert(garb.unavailable == 0 and not garb.loading, "fully resolvable set has no caveats")
-assert(garb.usable, "unrestricted set is usable")
 assert(garb.pieces[1].slot == "HEAD" and garb.pieces[1].state == "collected", "pieces keep slot order and state")
 assert(garb.pieces[2].state == "missing" and garb.pieces[3].state == "missing", "uncollected pieces are missing")
 
@@ -182,38 +194,24 @@ assert(loadingSet.loading, "unresolved appearance data marks the entry loading")
 assert(loadingSet.unavailable == 1, "unknown sources are counted unavailable")
 assert(loadingSet.pieces[3].state == "unavailable", "the invalid source is labelled, not hidden")
 assert(loadingSet.collected == 0 and loadingSet.total == 2, "unavailable pieces stay out of the totals")
-assert(not loadingSet.usable, "class-restricted set is not usable for another class")
-assert(ExtraSets.BuildEntries({ records[2] }, stubResolver(CLOTH_CLASS))[1].usable, "matching class is usable")
 
--- Armour type is what actually gates most sets, and it reaches us as the
--- client's own per-source validity rather than through the class mask.
-local armourResolver = {
-    sourceState = function(sourceID)
-        local state = sourceStates[sourceID]
-        if not state then return nil end
-        return {
-            appearanceID = state.appearanceID,
-            collected = state.collected,
-            validForPlayer = sourceID ~= 2003,
-        }
-    end,
-    setName = function() return nil end,
-    playerClassID = function() return 1 end,
-}
-assert(not ExtraSets.BuildEntries({ records[1] }, armourResolver)[1].usable,
-    "a set with a piece this character cannot use is not usable")
+-- Whether a character can wear a set is worked out for the one on screen, not
+-- for every row: it costs the client a table for every piece it is asked about.
 
-local wearableResolver = {
-    sourceState = function(sourceID)
-        local state = sourceStates[sourceID]
-        if not state then return nil end
-        return { appearanceID = state.appearanceID, collected = state.collected, validForPlayer = true }
-    end,
-    setName = function() return nil end,
-    playerClassID = function() return 1 end,
-}
-assert(ExtraSets.BuildEntries({ records[1] }, wearableResolver)[1].usable,
-    "a set this character can wear stays usable")
+local function validity(unwearableSourceID)
+    return function(sourceID)
+        if not sourceStates[sourceID] then return nil end
+        return sourceID ~= unwearableSourceID
+    end
+end
+
+assert(not ExtraSets.Wearable(loadingSet, 1, validity()), "a set named for another class is not wearable")
+assert(ExtraSets.Wearable(loadingSet, CLOTH_CLASS, validity()), "the class it is named for can wear it")
+assert(ExtraSets.Wearable(garb, 1, validity()), "an unrestricted set is wearable")
+assert(not ExtraSets.Wearable(garb, 1, validity(2003)),
+    "a set with a piece this character cannot use is not wearable")
+assert(ExtraSets.Wearable(garb, 1, function() return nil end),
+    "a set the client will not judge is left wearable rather than called otherwise")
 
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")
@@ -394,7 +392,10 @@ function Mixin(target, mixin)
     return target
 end
 
-WardrobeSetsDetailsModelMixin = {}
+local modelUpdates = 0
+WardrobeSetsDetailsModelMixin = {
+    OnUpdate = function() modelUpdates = modelUpdates + 1 end,
+}
 CreateDataProvider = function(list) return list end
 CreateScrollBoxListLinearView = function()
     capturedView = {
@@ -674,9 +675,11 @@ catalogReady = true
 catalogRecords = { records[1], records[2] }
 catalogReadyCallback()
 assert(#scrollBox.dataProvider == 2, "catalogue completion repainted the open page")
-for _, event in ipairs({ "TRANSMOG_COLLECTION_ITEM_UPDATE", "TRANSMOG_COLLECTION_UPDATED" }) do
-    assert(page.events[event], "registered " .. event .. " while shown")
-end
+assert(page.events.TRANSMOG_COLLECTION_UPDATED, "listened for the collection changing while shown")
+-- Asking the client about a source is what makes it load that item's data,
+-- which is what fires TRANSMOG_COLLECTION_ITEM_UPDATE. Answering that event by
+-- reading every set again is a page that feeds itself.
+assert(not page.events.TRANSMOG_COLLECTION_ITEM_UPDATE, "never answers the event its own reading causes")
 assert(#scrollBox.dataProvider == 2, "refresh populated the list from the catalogue")
 
 local progressBar = findFrame(function(frame) return frame.template == "CollectionsProgressBarTemplate" end)
@@ -699,6 +702,27 @@ for _ = 1, 5 do page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED") end
 assert(builds == 0, "nothing is rebuilt while the events are still arriving")
 runTimers()
 assert(builds == 1, "five events in one frame rebuilt the entries once")
+
+-- The page measures itself, which is how a report of dropped frames gets an
+-- answer rather than a guess.
+
+local measured = table.concat(LuckysWardrobe.Perf:Report(), "\n")
+assert(measured:find("page refresh: %d"), "timed its refreshes")
+assert(measured:find("entries built: %d"), "timed the entry rebuilds separately from the refresh")
+assert(measured:find("list filled: %d"), "timed handing the list to the scroll box")
+assert(measured:find("set displayed: %d"), "timed showing the selected set")
+assert(measured:find("event TRANSMOG_COLLECTION_UPDATED: %d"), "counted the events it answers")
+assert(type(page.scripts.OnUpdate) == "function", "watched frames while the page is on screen")
+
+-- The model's own script is the one thing here that runs every frame by
+-- design, so it is measured rather than assumed innocent.
+local dressUpModel = findFrame(function(frame) return frame.frameType == "DressUpModel" end)
+dressUpModel.scripts.OnUpdate(dressUpModel, 0.016)
+assert(modelUpdates == 1, "still ran Blizzard's own model script")
+page.scripts.OnUpdate(page, 0.05)
+measured = table.concat(LuckysWardrobe.Perf:Report(), "\n")
+assert(measured:find("model updated: 1"), "timed the model script")
+assert(measured:find("frames watched: 1"), "sampled the frame")
 
 -- Searching and filtering reuse what the last rebuild produced.
 
@@ -726,6 +750,7 @@ assert(emptyText, "left inset exists for the empty message")
 
 page.scripts.OnHide(page)
 assert(next(page.events) == nil, "unregistered every event on hide")
+assert(page.scripts.OnUpdate == nil, "stopped watching frames once the page left the screen")
 
 -- Row rendering and tracking.
 

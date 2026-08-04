@@ -15,6 +15,10 @@ local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
 -- The width Blizzard gives the same dropdown on the Sets tab.
 local CLASS_DROPDOWN_WIDTH = 150
+-- How long a burst of collection events is allowed to gather before the page
+-- reads the catalogue again. Long enough to collapse a burst, short enough
+-- that collecting something still updates the list while you are looking at it.
+local REBUILD_DELAY_SECONDS = 0.25
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
 -- runs underneath it. It moves to the end of the strip and gives up some width
@@ -148,8 +152,6 @@ end
 -- resolver.sourceState(sourceID) returns nil when the source does not exist on
 -- this client, or { appearanceID, collected } where collected == nil means the
 -- appearance data has not loaded yet.
--- resolver.setName(record) may return a live name for the Blizzard record.
--- resolver.playerClassID() returns the current class ID, or nil outside the client.
 function ExtraSets.BuildEntries(records, resolver)
     local entries = {}
     local seenSetIDs = {}
@@ -181,15 +183,8 @@ function ExtraSets.BuildEntry(record, resolver)
     local unavailable = record.unresolvedPieces or 0
     local loading = false
     local seenAppearanceIDs = {}
-    -- Armour type is what actually keeps a set off a character, and the class
-    -- mask does not encode it, so usability comes from the sources themselves.
-    local judgedPieces, validPieces = 0, 0
     for _, piece in ipairs(pieces) do
         local state = resolver.sourceState(piece.sourceID)
-        if state and state.validForPlayer ~= nil then
-            judgedPieces = judgedPieces + 1
-            if state.validForPlayer then validPieces = validPieces + 1 end
-        end
         if not state then
             piece.state = "unavailable"
             unavailable = unavailable + 1
@@ -212,19 +207,37 @@ function ExtraSets.BuildEntry(record, resolver)
     return {
         key = record.setID,
         setID = record.setID,
-        name = resolver.setName(record) or record.name,
+        name = record.name,
         label = record.label or "",
         expansionID = record.expansionID,
         armorType = record.armorType,
+        classMask = record.classMask,
         pieces = pieces,
         collected = collected,
         total = total,
         missing = total - collected,
         unavailable = unavailable,
         loading = loading,
-        usable = ExtraSets.ClassAllowed(record.classMask, resolver.playerClassID())
-            and (judgedPieces == 0 or validPieces == judgedPieces),
     }
+end
+
+-- Whether this character could wear the set, which is what the details panel
+-- says when they could not. Armour type is what keeps most sets off a
+-- character and the class mask does not encode it, so the answer comes from
+-- the sources themselves. Worked out for the set on screen rather than for
+-- every set in the list, because only the one on screen ever says so.
+function ExtraSets.Wearable(entry, classID, sourceValidity)
+    if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return false end
+
+    local judged, valid = 0, 0
+    for _, piece in ipairs(entry.pieces) do
+        local isValid = sourceValidity(piece.sourceID)
+        if isValid ~= nil then
+            judged = judged + 1
+            if isValid then valid = valid + 1 end
+        end
+    end
+    return judged == 0 or valid == judged
 end
 
 function ExtraSets.IsComplete(entry)
@@ -325,37 +338,35 @@ end
 
 function ExtraSets.LiveResolver()
     return {
+        -- Asked of every piece of every set on this page, so it asks the client
+        -- once where it can. Appearance info counts any source of the same look
+        -- as collected, which is what the Sets tab shows, and answering means
+        -- the source exists. The client declines for looks outside the player's
+        -- wardrobe context, such as another armour type, and only then is the
+        -- source itself worth the second question.
         sourceState = function(sourceID)
-            local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
-            if not sourceInfo then return nil end
-
-            -- Appearance info counts any source of the same look as collected,
-            -- which is what the Sets tab shows, but the client declines to
-            -- answer for looks outside the player's wardrobe context such as
-            -- another armour type or class. The source carries its own
-            -- collected flag in every case, so fall back to that rather than
-            -- leaving the piece unresolved.
             local appearance = C_TransmogCollection.GetAppearanceInfoBySource(sourceID)
-            local collected
             if appearance then
-                collected = appearance.appearanceIsCollected
-            else
-                collected = sourceInfo.isCollected
+                return {
+                    appearanceID = appearance.appearanceID,
+                    collected = appearance.appearanceIsCollected and true or false,
+                }
             end
 
+            local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+            if not sourceInfo then return nil end
             return {
-                appearanceID = (appearance and appearance.appearanceID) or sourceInfo.visualID,
-                collected = collected and true or false,
-                validForPlayer = sourceInfo.isValidSourceForPlayer and true or false,
+                appearanceID = sourceInfo.visualID,
+                collected = sourceInfo.isCollected and true or false,
             }
         end,
-        -- The client names the sets it knows in the player's own language; the
-        -- bundled English name is the fallback for the ones it does not list.
-        setName = function(record)
-            local setInfo = C_TransmogSets.GetSetInfo(record.setID)
-            local name = setInfo and setInfo.name
-            if name and name ~= "" then return name end
-            return nil
+        -- Whether this character could wear a piece at all, which is armour
+        -- type more often than class. Asked only of the set on screen: it costs
+        -- a table for every piece, and nothing in the list is built from it.
+        sourceValidity = function(sourceID)
+            local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+            if not sourceInfo then return nil end
+            return sourceInfo.isValidSourceForPlayer and true or false
         end,
         playerClassID = function()
             local _, _, classID = UnitClass("player")
@@ -392,10 +403,12 @@ end
 
 function ExtraSets.Entries()
     if not cachedEntries then
+        LuckysWardrobe.Perf:Begin("entries built")
         cachedEntries = ExtraSets.BuildEntries(
             ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
             ExtraSets.LiveResolver()
         )
+        LuckysWardrobe.Perf:End("entries built")
     end
     return cachedEntries
 end
@@ -463,7 +476,14 @@ function ExtraSets:CreatePage(wardrobe)
     model:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 3, -3)
     model:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -4, 3)
     model:SetScript("OnShow", model.OnShow)
-    model:SetScript("OnUpdate", model.OnUpdate)
+    -- Blizzard's own model script, run through the stopwatch: it is the only
+    -- thing on this page that runs every frame by design, so it has to be
+    -- ruled in or out before anything else is blamed.
+    model:SetScript("OnUpdate", function(self, elapsed)
+        LuckysWardrobe.Perf:Begin("model updated")
+        self.OnUpdate(self, elapsed)
+        LuckysWardrobe.Perf:End("model updated")
+    end)
     model:SetScript("OnMouseDown", model.OnMouseDown)
     model:SetScript("OnMouseUp", model.OnMouseUp)
     model:SetScript("OnMouseWheel", model.OnMouseWheel)
@@ -597,6 +617,7 @@ function ExtraSets:CreatePage(wardrobe)
     local dressedKey
 
     local function displayEntry(entry)
+        LuckysWardrobe.Perf:Begin("set displayed")
         selectedEntry = entry
         local shown = entry ~= nil
         model:SetShown(shown)
@@ -604,21 +625,26 @@ function ExtraSets:CreatePage(wardrobe)
         detailsText:SetShown(not shown)
         if not shown then
             dressedKey = nil
+            LuckysWardrobe.Perf:End("set displayed")
             return
         end
 
         local redress = dressedKey ~= entry.key
         dressedKey = entry.key
+        if redress then LuckysWardrobe.Perf:Count("model dressed") end
+
+        local resolver = ExtraSets.LiveResolver()
+        local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
 
         nameText:SetText(entry.name)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         if entry.unavailable > 0 then
             noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
-        elseif not entry.usable then
+        elseif not wearable then
             noticeText:SetText(S.notUsable)
         end
-        noticeText:SetShown(entry.unavailable > 0 or not entry.usable)
+        noticeText:SetShown(entry.unavailable > 0 or not wearable)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
@@ -646,6 +672,7 @@ function ExtraSets:CreatePage(wardrobe)
         end
 
         if redress then refreshCamera() end
+        LuckysWardrobe.Perf:End("set displayed")
     end
 
     local function refreshVisibleSelection()
@@ -719,6 +746,7 @@ function ExtraSets:CreatePage(wardrobe)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
     local function refresh()
+        LuckysWardrobe.Perf:Begin("page refresh")
         local allEntries = ExtraSets.Entries()
         local narrowed = ExtraSets.ApplyFilters(allEntries, filters)
         local entries = ExtraSets.SortEntries(
@@ -739,7 +767,10 @@ function ExtraSets:CreatePage(wardrobe)
         end
         selectedEntry = selectedEntry or entries[1]
 
+        LuckysWardrobe.Perf:Begin("list filled")
         scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
+        LuckysWardrobe.Perf:End("list filled")
+
         if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then
             emptyText:SetText(S.building)
         elseif #allEntries == 0 then
@@ -759,6 +790,7 @@ function ExtraSets:CreatePage(wardrobe)
         progressBar:SetValue(completed)
         progressBar.text:SetFormattedText(S.progress, completed, #narrowed)
         displayEntry(selectedEntry)
+        LuckysWardrobe.Perf:End("page refresh")
     end
 
     filterButton:SetIsDefaultCallback(function()
@@ -864,15 +896,16 @@ function ExtraSets:CreatePage(wardrobe)
 
     setUpClassMenu()
 
-    -- Learning one appearance can fire these events several times over, and
-    -- rebuilding thousands of entries for each would be felt, so a burst
-    -- collapses into a single pass on the next frame.
+    -- Learning one appearance fires the collection event several times over,
+    -- and reading every set again costs far more than a frame, so a burst
+    -- collapses into a single pass a moment later. The delay is not felt:
+    -- nothing on screen changes until the pass runs either way.
     local rebuildQueued = false
     local function queueRebuild()
         if rebuildQueued then return end
 
         rebuildQueued = true
-        C_Timer.After(0, function()
+        C_Timer.After(REBUILD_DELAY_SECONDS, function()
             rebuildQueued = false
             -- A page that has since closed rebuilds when it opens again.
             if page:IsShown() then rebuildNow() end
@@ -881,21 +914,38 @@ function ExtraSets:CreatePage(wardrobe)
 
     searchBox:HookScript("OnTextChanged", refresh)
     page:SetScript("OnShow", function(self)
-        self:RegisterEvent("TRANSMOG_COLLECTION_ITEM_UPDATE")
+        -- TRANSMOG_COLLECTION_UPDATED is the one that means the collection
+        -- changed. TRANSMOG_COLLECTION_ITEM_UPDATE means the client finished
+        -- loading an item's data, which asking about a source is what causes:
+        -- answering it here made the page feed itself, hundreds of times over.
         self:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
+        -- Watching frames only matters while the page is the thing on screen,
+        -- and this is the only work it does every frame: a counter and a
+        -- comparison, so that measuring a slow page cannot be what slows it.
+        self:SetScript("OnUpdate", function(_, elapsed) LuckysWardrobe.Perf:Frame(elapsed) end)
         rebuildNow()
     end)
     page:SetScript("OnHide", function(self)
-        self:UnregisterEvent("TRANSMOG_COLLECTION_ITEM_UPDATE")
         self:UnregisterEvent("TRANSMOG_COLLECTION_UPDATED")
+        self:SetScript("OnUpdate", nil)
         GameTooltip:Hide()
     end)
-    page:SetScript("OnEvent", queueRebuild)
+    page:SetScript("OnEvent", function(_, event)
+        LuckysWardrobe.Perf:Count("event " .. event)
+        queueRebuild()
+    end)
     page.Refresh = rebuildNow
     page.RefreshCameras = refreshCamera
     page.OnSearchUpdate = function() end
+    -- Blizzard retries this every frame until it answers true, so a version of
+    -- it that never does, or that makes the client change the model again,
+    -- would cost a full redress on every frame. The counter says which.
     page.OnUnitModelChangedEvent = function()
-        if not IsUnitModelReadyForUI("player") then return false end
+        LuckysWardrobe.Perf:Count("model change handled")
+        if not IsUnitModelReadyForUI("player") then
+            LuckysWardrobe.Perf:Count("model change deferred")
+            return false
+        end
 
         model:RefreshUnit()
         model.cameraID = nil

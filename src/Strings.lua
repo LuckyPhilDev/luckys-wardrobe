@@ -179,6 +179,15 @@ LuckysWardrobe.Strings = {
             andMore = "  ...and %d more",
         },
     },
+    perf = {
+        header = "Work measured this session:",
+        nothing = "Nothing has been measured yet. Open the Extra Sets tab first.",
+        reset = "Cleared the measurements.",
+        timedLine = "%s: %d, %.0f ms total, %.1f ms each, worst %.1f, last %.1f",
+        countedLine = "%s: %d",
+        framesLine = "frames watched: %d, %.1f ms of measured work each, %d over %d ms",
+        worstFrameLine = "worst frame: %.0f ms, %.0f ms of it measured work",
+    },
     recolorGroups = {
         header = "Recolor families from %d appearance(s): %d family(ies), %d cluster(s) left out.",
         shortCoverage = "Only read %d of %d appearances this client holds (%d pass the current filters), so families are incomplete.",

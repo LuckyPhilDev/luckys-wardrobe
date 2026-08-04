@@ -65,7 +65,9 @@ LuckysWardrobe.ExtraSetsData = {
         cloth = {
             -- Deliberately out of slot order: records leave the catalogue in
             -- display order however the snapshot listed them.
-            [20] = { name = "Fixture Hidden Garb", classMask = 0, pieces = { 62004, 62003, 62001, 62002 } },
+            -- The client knows this set under a different name, which is the
+            -- one a player reads, in their own language.
+            [20] = { name = "Fixture Hidden Garb (snapshot)", classMask = 0, pieces = { 62004, 62003, 62001, 62002 } },
             [21] = { name = "Fixture Chest And Robe", classMask = 0, pieces = { 62102, 62103, 62101 } },
             [22] = { name = "Fixture Ghost Set", classMask = 0, pieces = { 69001, 69002 } },
             [23] = { name = "Fixture Partly Missing", classMask = 128, pieces = { 62301, 62302, 69003 } },
@@ -111,6 +113,14 @@ C_Item = {
 }
 
 dofile("src/Strings.lua")
+-- The build measures how much of a frame each step takes, so the real stopwatch
+-- runs here, wound by hand rather than by the clock the client would provide.
+dofile("src/Perf.lua")
+local clock = 0
+LuckysWardrobe.Perf.Clock = function()
+    clock = clock + 1
+    return clock
+end
 dofile("src/ExtraSetsCatalog.lua")
 local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
@@ -189,9 +199,11 @@ assert(pieceKeys(garb) == "HEAD=2001@62001,SHOULDER=2002@62002,CHEST=2003@62003,
 assert(garb.unresolvedPieces == 0, "a fully resolved set has nothing missing")
 
 -- Where the client knows a set it is the authority; the snapshot fills the rest.
+assert(garb.name == "Fixture Hidden Garb", "took the name from the client, not the snapshot")
 assert(garb.classMask == 8 and garb.expansionID == 5 and garb.label == "Fixture Quest",
     "took the class mask, expansion, and label from the client")
 local partly = recordFor(23)
+assert(partly.name == "Fixture Partly Missing", "kept the bundled name for a set the client does not list")
 assert(partly.classMask == 128 and partly.expansionID == nil,
     "fell back to the bundled class mask for a set the client does not list")
 

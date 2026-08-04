@@ -90,6 +90,12 @@ LuckysWardrobe.ExtraSetsCatalog = {
     end,
 }
 
+local measurementsPrinted, measurementsReset
+LuckysWardrobe.Perf = {
+    PrintReport = function() measurementsPrinted = true end,
+    Reset = function() measurementsReset = true end,
+}
+
 LuckysWardrobe.Transmog = {
     Init = function(_, db)
         transmogDB = db
@@ -206,6 +212,12 @@ SlashCmdList.LUCKYSWARDROBE("extrasets")
 assert(not opened and reportedVerbose == false, "extrasets printed the summary report")
 SlashCmdList.LUCKYSWARDROBE("  ExtraSets   FULL  ")
 assert(reportedVerbose == true, "extrasets full listed everything, whatever the spacing and case")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("extrasets perf")
+assert(not opened and measurementsPrinted, "extrasets perf printed what the page has measured")
+SlashCmdList.LUCKYSWARDROBE("extrasets perf reset")
+assert(measurementsReset, "extrasets perf reset cleared the measurements")
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("something else")

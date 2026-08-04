@@ -9,6 +9,7 @@
 
 Strings.lua
 Defaults.lua
+Perf.lua
 Data\ExtraSetsData.lua
 Data\ClothSets.lua
 Data\LeatherSets.lua
