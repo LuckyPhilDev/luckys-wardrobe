@@ -13,7 +13,8 @@ local ExtraSets = LuckysWardrobe.ExtraSets
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
-local ITEM_CLASS_ARMOR = 4
+-- The width Blizzard gives the same dropdown on the Sets tab.
+local CLASS_DROPDOWN_WIDTH = 150
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
 -- runs underneath it. It moves to the end of the strip and gives up some width
@@ -56,11 +57,12 @@ local expansionNames = {
 }
 
 -- Session-only view state behind the filter button, matching the Sets tab menu.
+-- The class is not in here: it narrows the catalogue before entries are built,
+-- rather than hiding rows that have already been worked out.
 local filters = {
     collected = true,
     uncollected = true,
     expansions = {},
-    armorTypes = {},
     sortMode = "default",
     sortDirection = "ascending",
 }
@@ -71,25 +73,15 @@ local function setAllExpansions(shown)
     for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
 end
 
-local function setAllArmorTypes(shown)
-    for _, armour in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
-        filters.armorTypes[armour.armorType] = shown
-    end
-end
-
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
     for index = 1, #expansionNames do
         if not filters.expansions[index - 1] then return true end
     end
-    for _, shown in pairs(filters.armorTypes) do
-        if not shown then return true end
-    end
     return false
 end
 
 setAllExpansions(true)
-setAllArmorTypes(true)
 
 local attachedWardrobe
 local extraPage
@@ -129,6 +121,28 @@ function ExtraSets.ClassAllowed(classMask, classID)
     if classMask == 0 or not classID then return true end
     local classBit = 2 ^ (classID - 1)
     return math.floor(classMask / classBit) % 2 == 1
+end
+
+-- What one class has any use for: the sets named for it, plus the sets named
+-- for nobody in the armour that class wears. A set belonging to another class,
+-- or to nobody in armour this class cannot transmogrify, is not a set this
+-- character will ever wear, so it never becomes a row.
+function ExtraSets.MatchesClass(record, classID)
+    if not classID then return true end
+    if record.classMask ~= 0 then return ExtraSets.ClassAllowed(record.classMask, classID) end
+
+    local armourType = LuckysWardrobe.Classes:ArmourType(classID)
+    return armourType == nil or record.armorType == armourType
+end
+
+function ExtraSets.RecordsForClass(records, classID)
+    if not classID then return records end
+
+    local matching = {}
+    for _, record in ipairs(records) do
+        if ExtraSets.MatchesClass(record, classID) then matching[#matching + 1] = record end
+    end
+    return matching
 end
 
 -- resolver.sourceState(sourceID) returns nil when the source does not exist on
@@ -217,10 +231,10 @@ function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
 
--- Collected/Not Collected, armour type, and expansion narrowing, mirroring the
--- Sets tab filter menu. Only sets the client itself knows carry an expansion,
--- so the rest stay visible while any expansion is still checked rather than
--- vanishing behind a box that does not describe them.
+-- Collected/Not Collected and expansion narrowing, mirroring the Sets tab
+-- filter menu. Only sets the client itself knows carry an expansion, so the
+-- rest stay visible while any expansion is still checked rather than vanishing
+-- behind a box that does not describe them.
 function ExtraSets.ApplyFilters(entries, filterState)
     local anyExpansion = false
     for _, shown in pairs(filterState.expansions) do
@@ -237,9 +251,6 @@ function ExtraSets.ApplyFilters(entries, filterState)
             shown = filterState.collected
         else
             shown = filterState.uncollected
-        end
-        if shown and entry.armorType ~= nil and filterState.armorTypes[entry.armorType] ~= nil then
-            shown = filterState.armorTypes[entry.armorType]
         end
         if shown then
             if entry.expansionID ~= nil and filterState.expansions[entry.expansionID] ~= nil then
@@ -359,16 +370,32 @@ end
 
 -- Thousands of sets, each asking the client about every one of its pieces, is
 -- far too much work to redo for a keystroke in the search box. Entries are
--- built once and kept until something the client owns actually changes.
+-- built once for the chosen class and kept until something the client owns
+-- actually changes.
 local cachedEntries
+local selectedClassID
 
 function ExtraSets.InvalidateEntries()
     cachedEntries = nil
 end
 
+function ExtraSets.ClassFilter()
+    return selectedClassID
+end
+
+function ExtraSets.SetClassFilter(classID)
+    if selectedClassID == classID then return end
+
+    selectedClassID = classID
+    ExtraSets.InvalidateEntries()
+end
+
 function ExtraSets.Entries()
     if not cachedEntries then
-        cachedEntries = ExtraSets.BuildEntries(ExtraSets.Records(), ExtraSets.LiveResolver())
+        cachedEntries = ExtraSets.BuildEntries(
+            ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
+            ExtraSets.LiveResolver()
+        )
     end
     return cachedEntries
 end
@@ -400,6 +427,16 @@ function ExtraSets:CreatePage(wardrobe)
     local filterButton = CreateFrame("DropdownButton", nil, page, "WowStyle1FilterDropdownTemplate")
     filterButton:SetSize(93, 22)
     filterButton:SetPoint("TOPLEFT", 166, -8)
+
+    -- The Sets tab's class selector, in the same corner and built the same way.
+    -- It is the page's main narrowing: a set only becomes a row for a character
+    -- who could wear it, so the work of reading one is never done otherwise.
+    local classDropdown = CreateFrame("DropdownButton", nil, page, "WowStyle1DropdownTemplate")
+    classDropdown:SetSize(CLASS_DROPDOWN_WIDTH, 22)
+    classDropdown:SetPoint("TOPRIGHT", -10, -8)
+    classDropdown:SetSelectionTranslator(function(selection)
+        return LuckysWardrobe.Classes:Colour(selection.data, selection.data.name)
+    end)
 
     local progressBar = CreateFrame("StatusBar", nil, page, "CollectionsProgressBarTemplate")
     page.progressBar = progressBar
@@ -441,6 +478,10 @@ function ExtraSets:CreatePage(wardrobe)
     -- and takes the mouse, so anything below it stops receiving hover.
     detailsFrame:SetFrameLevel(model:GetFrameLevel() + 10)
     detailsFrame:Hide()
+
+    -- The class selector hangs over the same corner as the model and the set
+    -- details, so it has to sit above both of them to stay clickable.
+    classDropdown:SetFrameLevel(detailsFrame:GetFrameLevel() + 10)
 
     local nameText = detailsFrame:CreateFontString(nil, "OVERLAY", "Fancy24Font")
     nameText:SetPoint("TOP", 0, -37)
@@ -550,13 +591,24 @@ function ExtraSets:CreatePage(wardrobe)
         return itemFrame
     end
 
+    -- Dressing the model is the most expensive thing this page does, and the
+    -- pieces of a set never change while a session runs. Only a different set,
+    -- or a model that has been rebuilt underneath us, is worth redressing for.
+    local dressedKey
+
     local function displayEntry(entry)
         selectedEntry = entry
         local shown = entry ~= nil
         model:SetShown(shown)
         detailsFrame:SetShown(shown)
         detailsText:SetShown(not shown)
-        if not shown then return end
+        if not shown then
+            dressedKey = nil
+            return
+        end
+
+        local redress = dressedKey ~= entry.key
+        dressedKey = entry.key
 
         nameText:SetText(entry.name)
         labelText:SetText(entry.label)
@@ -567,7 +619,7 @@ function ExtraSets:CreatePage(wardrobe)
             noticeText:SetText(S.notUsable)
         end
         noticeText:SetShown(entry.unavailable > 0 or not entry.usable)
-        model:Undress()
+        if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
         local spacing = 37
@@ -588,12 +640,12 @@ function ExtraSets:CreatePage(wardrobe)
             itemFrame:SetPoint("TOP", detailsFrame, "TOP", xOffset + (index - 1) * spacing, -98)
             itemFrame:Show()
 
-            if piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
+            if redress and piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
                 model:TryOn(piece.sourceID)
             end
         end
 
-        refreshCamera()
+        if redress then refreshCamera() end
     end
 
     local function refreshVisibleSelection()
@@ -717,7 +769,6 @@ function ExtraSets:CreatePage(wardrobe)
         filters.collected = true
         filters.uncollected = true
         setAllExpansions(true)
-        setAllArmorTypes(true)
         refresh()
     end)
 
@@ -754,18 +805,6 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        -- A character can only wear one armour type, and the bundled data covers
-        -- all four, so this is the narrowing that matters most on this page.
-        local armour = root:CreateButton(S.armorTypeMenu)
-        for _, armourType in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
-            local armorType = armourType.armorType
-            local label = C_Item.GetItemSubClassInfo(ITEM_CLASS_ARMOR, armorType) or S.armorTypes[armourType.key]
-            armour:CreateCheckbox(label, function() return filters.armorTypes[armorType] end, function()
-                filters.armorTypes[armorType] = not filters.armorTypes[armorType]
-                refresh()
-            end)
-        end
-
         local expansions = root:CreateButton("Expansion")
         expansions:CreateButton(CHECK_ALL, function()
             setAllExpansions(true)
@@ -794,6 +833,36 @@ function ExtraSets:CreatePage(wardrobe)
         ExtraSets.InvalidateEntries()
         refresh()
     end
+
+    -- The Sets tab opens on the player's own class, and so does this.
+    if not ExtraSets.ClassFilter() then
+        ExtraSets.SetClassFilter(select(3, UnitClass("player")))
+    end
+
+    local setUpClassMenu
+
+    local function chooseClass(class)
+        ExtraSets.SetClassFilter(class.classID)
+        rebuildNow()
+        -- Blizzard's own class dropdown builds its menu again when the choice
+        -- changes, which is what redraws the name on the button.
+        setUpClassMenu()
+    end
+
+    setUpClassMenu = function()
+        classDropdown:SetupMenu(function(_, root)
+            for _, class in ipairs(LuckysWardrobe.Classes:InClientOrder()) do
+                root:CreateRadio(
+                    class.name,
+                    function(data) return ExtraSets.ClassFilter() == data.classID end,
+                    chooseClass,
+                    class
+                )
+            end
+        end)
+    end
+
+    setUpClassMenu()
 
     -- Learning one appearance can fire these events several times over, and
     -- rebuilding thousands of entries for each would be felt, so a burst
@@ -831,6 +900,8 @@ function ExtraSets:CreatePage(wardrobe)
         model:RefreshUnit()
         model.cameraID = nil
         model:UpdatePanAndZoomModelType()
+        -- A fresh model wears nothing, whatever it was showing before.
+        dressedKey = nil
         displayEntry(selectedEntry)
         return true
     end
@@ -925,7 +996,6 @@ function ExtraSets:Init()
     filters.sortMode = "default"
     filters.sortDirection = "ascending"
     setAllExpansions(true)
-    setAllArmorTypes(true)
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         LuckysWardrobe.ExtraSetsCatalog:StartBuild()
         ExtraSets:Attach(WardrobeCollectionFrame)

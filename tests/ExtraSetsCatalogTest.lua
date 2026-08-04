@@ -114,10 +114,10 @@ dofile("src/Strings.lua")
 dofile("src/ExtraSetsCatalog.lua")
 local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
--- The report asks the page how many sets this character can wear, so the page
--- stands in for itself here.
-local usableEntries = { { usable = true }, { usable = false } }
-LuckysWardrobe.ExtraSets = { Entries = function() return usableEntries end }
+-- The report asks the page how many sets this character's class sees, so the
+-- page stands in for itself here.
+local shownEntries = { {}, {} }
+LuckysWardrobe.ExtraSets = { Entries = function() return shownEntries end }
 
 local function runBuild()
     for _ = 1, 100 do
@@ -255,7 +255,7 @@ print = realPrint
 local reportText = table.concat(printed, "\n")
 assert(reportText:find("2026%-08%-04"), "named the snapshot the sets came from")
 assert(reportText:find("6 of 7 set%(s%) listed"), "counted what was listed against what was bundled")
-assert(reportText:find("usable by this character: 1"), "counted the sets this character can wear")
+assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
 assert(reportText:find("also in Blizzard's own Sets tab: 1"), "counted the overlap")
 assert(reportText:find("no appearance for: 2"), "counted the pieces this client could not resolve")
 

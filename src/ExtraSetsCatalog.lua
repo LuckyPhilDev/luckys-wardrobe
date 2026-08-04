@@ -264,15 +264,10 @@ function Catalog:PrintReport(verbose)
     local total = #records + #report.rejections
     say(S.header:format(report.snapshot, report.build, #records, total))
 
-    -- The catalogue spans every class and armour type, so a per-character number
-    -- is the one to compare against any list built for the logged-in character.
+    -- The catalogue spans every class, while the tab shows one class at a time.
     -- Counting the page's own entries keeps the report and the page from ever
-    -- disagreeing.
-    local usable = 0
-    for _, entry in ipairs(LuckysWardrobe.ExtraSets.Entries()) do
-        if entry.usable then usable = usable + 1 end
-    end
-    say(S.usableLine:format(usable))
+    -- disagreeing about how much of it this character sees.
+    say(S.shownLine:format(#LuckysWardrobe.ExtraSets.Entries()))
     say(S.officialLine:format(report.alsoOfficial))
     if report.unresolvedPieces > 0 then
         say(S.unresolvedLine:format(report.unresolvedPieces))

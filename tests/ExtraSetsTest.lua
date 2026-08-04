@@ -1,4 +1,4 @@
--- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
 
 LuckysWardrobe = {}
 
@@ -13,14 +13,30 @@ UNCHECK_ALL = "Uncheck All"
 MenuResponse = { Refresh = 1 }
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
+-- Classes are real: the page asks them what armour a class wears and how to
+-- colour its name.
+GetNumClasses = function() return 13 end
+C_CreatureInfo = {
+    GetClassInfo = function(classID)
+        return { classFile = "CLASS" .. classID, className = "Class " .. classID }
+    end,
+}
+C_ClassColor = {
+    GetClassColor = function(classFile)
+        return { WrapTextInColorCode = function(_, text) return "<" .. classFile .. ">" .. text end }
+    end,
+}
+
 dofile("src/Strings.lua")
--- The real armour-type index, without the several thousand sets hanging off it:
--- the page reads its filter vocabulary straight from this table.
 dofile("src/Data/ExtraSetsData.lua")
+dofile("src/Classes.lua")
 dofile("src/ExtraSets.lua")
 
 local ExtraSets = LuckysWardrobe.ExtraSets
 local CLOTH, LEATHER = 1, 2
+-- Class 5 is the Priest slot in the client's own order, so it wears cloth;
+-- class 4 is the Rogue slot and wears leather.
+local CLOTH_CLASS, LEATHER_CLASS = 5, 4
 
 -- Record building has its own test (ExtraSetsCatalogTest.lua); here the
 -- catalogue module is stubbed so the page logic can be driven directly.
@@ -86,6 +102,31 @@ assert(ExtraSets.ClassAllowed(4, 3), "mask bit matches its class")
 assert(not ExtraSets.ClassAllowed(4, 1), "mask excludes other classes")
 assert(ExtraSets.ClassAllowed(4, nil), "no class information means usable")
 
+-- Which sets a class has any use for: its own, plus everyone's in its armour.
+
+local clothBit = 2 ^ (CLOTH_CLASS - 1)
+local lockedCloth = validRecord({ classMask = clothBit, armorType = CLOTH })
+local lockedLeather = validRecord({ classMask = 2 ^ (LEATHER_CLASS - 1), armorType = LEATHER })
+local anyoneCloth = validRecord({ classMask = 0, armorType = CLOTH })
+local anyoneLeather = validRecord({ classMask = 0, armorType = LEATHER })
+
+assert(ExtraSets.MatchesClass(lockedCloth, CLOTH_CLASS), "a set named for the class is theirs")
+assert(not ExtraSets.MatchesClass(lockedLeather, CLOTH_CLASS), "a set named for another class is not")
+assert(ExtraSets.MatchesClass(anyoneCloth, CLOTH_CLASS), "a set for anyone in their armour is theirs")
+assert(not ExtraSets.MatchesClass(anyoneLeather, CLOTH_CLASS),
+    "a set for anyone in armour they cannot wear is not")
+assert(ExtraSets.MatchesClass(anyoneLeather, LEATHER_CLASS), "the same set belongs to the leather class")
+-- A class-locked set stays with its class whatever armour it happens to be:
+-- some old sets are named for a class that outgrew that armour type.
+assert(ExtraSets.MatchesClass(validRecord({ classMask = clothBit, armorType = LEATHER }), CLOTH_CLASS),
+    "armour never overrules a set named for the class")
+assert(ExtraSets.MatchesClass(anyoneLeather, nil), "no class chosen means no class narrowing")
+
+local forCloth = ExtraSets.RecordsForClass(
+    { lockedCloth, lockedLeather, anyoneCloth, anyoneLeather }, CLOTH_CLASS)
+assert(#forCloth == 2 and forCloth[1] == lockedCloth and forCloth[2] == anyoneCloth,
+    "narrowed the catalogue to the sets that class could wear")
+
 -- Entry building against a stub resolver.
 
 local sourceStates = {
@@ -110,8 +151,10 @@ local records = {
         setID = 500,
         name = "Loading Set",
         label = "Fixture",
+        -- Named for the cloth class but made of leather, which some old sets
+        -- are: the name on the set wins over the armour it happens to be.
         armorType = LEATHER,
-        classMask = 4,
+        classMask = 2 ^ (CLOTH_CLASS - 1),
         pieces = pieces({ "HEAD", 3001 }, { "CHEST", 3002 }, { "LEGS", 3999 }),
     },
     validRecord({ setID = 21, pieces = pieces({ "HEAD", 4001 }, { "CHEST", 4002 }, { "LEGS", 4003 }) }),
@@ -140,7 +183,7 @@ assert(loadingSet.unavailable == 1, "unknown sources are counted unavailable")
 assert(loadingSet.pieces[3].state == "unavailable", "the invalid source is labelled, not hidden")
 assert(loadingSet.collected == 0 and loadingSet.total == 2, "unavailable pieces stay out of the totals")
 assert(not loadingSet.usable, "class-restricted set is not usable for another class")
-assert(ExtraSets.BuildEntries({ records[2] }, stubResolver(3))[1].usable, "matching class is usable")
+assert(ExtraSets.BuildEntries({ records[2] }, stubResolver(CLOTH_CLASS))[1].usable, "matching class is usable")
 
 -- Armour type is what actually gates most sets, and it reaches us as the
 -- client's own per-source validity rather than through the class mask.
@@ -221,12 +264,7 @@ local completeEntry = { loading = false, total = 2, collected = 2, expansionID =
 local partialEntry = { loading = false, total = 2, collected = 1, expansionID = 2, armorType = CLOTH }
 local unknownEntry = { loading = false, total = 3, collected = 0, armorType = LEATHER }
 local filterEntries = { completeEntry, partialEntry, unknownEntry }
-local filterState = {
-    collected = true,
-    uncollected = true,
-    expansions = { true, true },
-    armorTypes = { [CLOTH] = true, [LEATHER] = true },
-}
+local filterState = { collected = true, uncollected = true, expansions = { true, true } }
 
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 3, "default filters keep everything")
 filterState.collected = false
@@ -244,10 +282,6 @@ assert(#narrowedExpansions == 1 and narrowedExpansions[1] == unknownEntry,
 filterState.expansions = { false, false }
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 0, "unchecking every expansion empties the list")
 filterState.expansions = { true, true }
-filterState.armorTypes[CLOTH] = false
-local leatherOnly = ExtraSets.ApplyFilters(filterEntries, filterState)
-assert(#leatherOnly == 1 and leatherOnly[1] == unknownEntry, "unchecking an armour type hides its sets")
-filterState.armorTypes[CLOTH] = true
 
 -- UI harness: enough of the client to run CreatePage and Attach for real.
 
@@ -326,6 +360,7 @@ function CreateFrame(frameType, name, parent, template)
     function frame:SetMinMaxValues(minValue, maxValue) self.min, self.max = minValue, maxValue end
     function frame:SetValue(value) self.value = value end
     function frame:SetupMenu(builder) self.menuBuilder = builder end
+    function frame:SetSelectionTranslator(translator) self.selectionTranslator = translator end
     function frame:SetIsDefaultCallback(callback) self.isDefaultCheck = callback end
     function frame:SetDefaultCallback(callback) self.defaultReset = callback end
     function frame:SetDataProvider(provider) self.dataProvider = provider end
@@ -400,7 +435,7 @@ function PlaySound(soundID) playedSound = soundID end
 local shiftDown = false
 function IsShiftKeyDown() return shiftDown end
 function IsUnitModelReadyForUI() return true end
-function UnitClass() return "Test", "TEST", 1 end
+function UnitClass() return "Class 5", "CLASS5", CLOTH_CLASS end
 function Model_ApplyUICamera() end
 function GetUICameraInfo() return 0, 0, 0, 0 end
 function PanelTemplates_SetNumTabs(frame, count) frame.numTabs = count end
@@ -800,13 +835,11 @@ assert(scrollBox.dataProvider[1].expansionID == 3, "entries carry their expansio
 local toggles = {}
 local radioSetters = {}
 local expansionToggles = {}
-local armorToggles = {}
 local menuActions = {}
 local function submenu(label)
     return {
         CreateCheckbox = function(_, boxLabel, _isChecked, toggle)
             if label == "Expansion" then expansionToggles[boxLabel] = toggle end
-            if label == LuckysWardrobe.Strings.extraSets.armorTypeMenu then armorToggles[boxLabel] = toggle end
         end,
         CreateRadio = function(_, radioLabel, _isSelected, setSelected)
             radioSetters[label] = radioSetters[label] or {}
@@ -852,15 +885,6 @@ filterButton.defaultReset()
 assert(#scrollBox.dataProvider == 2, "resetting filters restores the list")
 assert(filterButton.isDefaultCheck(), "reset filters read as the default state")
 
--- Armour type is the page's stand-in for the class dropdown the native tab has.
-assert(armorToggles["Armour 1"] and armorToggles["Armour 4"], "offered a checkbox per armour type")
-armorToggles["Armour 1"]()
-assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
-    "unchecking cloth hides the cloth set")
-assert(not filterButton.isDefaultCheck(), "a narrowed armour filter is no longer the default")
-filterButton.defaultReset()
-assert(#scrollBox.dataProvider == 2, "resetting filters restores every armour type")
-
 radioSetters["Sort By"].Completion()
 assert(scrollBox.dataProvider[1].key == 20, "completion sort puts the complete set first")
 radioSetters["Sort Direction"].Descending()
@@ -868,5 +892,45 @@ assert(scrollBox.dataProvider[1].key == 500, "descending inverts the completion 
 radioSetters["Sort Direction"].Ascending()
 radioSetters["Sort By"].Name()
 assert(scrollBox.dataProvider[1].key == 20, "name sort puts Live Name before Loading Set")
+radioSetters["Sort By"][DEFAULT]()
+
+-- The class dropdown, which is what keeps this page down to a list a character
+-- has some use for.
+
+local classDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
+assert(classDropdown, "created the class dropdown")
+assert(classDropdown.points[1][1] == "TOPRIGHT", "put it in the top right corner")
+assert(classDropdown:GetFrameLevel() > detailsFrame:GetFrameLevel(),
+    "raised it above the model and the set details it sits over")
+assert(classDropdown.selectionTranslator({ data = { file = "CLASS5", name = "Class 5" } }) == "<CLASS5>Class 5",
+    "showed the chosen class in its own colour, as the Sets tab does")
+
+local classRadios = {}
+classDropdown.menuBuilder(nil, {
+    CreateRadio = function(_, label, isSelected, setSelected, data)
+        classRadios[#classRadios + 1] = { label = label, isSelected = isSelected, select = setSelected, data = data }
+    end,
+})
+assert(#classRadios == 13, "listed every class")
+assert(classRadios[1].label == "Class 1" and classRadios[13].label == "Class 13",
+    "listed them in the client's own order")
+assert(classRadios[CLOTH_CLASS].isSelected(classRadios[CLOTH_CLASS].data),
+    "opened on the player's own class")
+assert(#scrollBox.dataProvider == 2, "both fixture sets belong to the player's class")
+
+-- Class 8 is another cloth class, so it keeps the set named for nobody and
+-- loses the one named for class 5.
+classRadios[8].select(classRadios[8].data)
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
+    "choosing another class drops the sets named for the old one")
+assert(classRadios[8].isSelected(classRadios[8].data) and not classRadios[CLOTH_CLASS].isSelected(classRadios[CLOTH_CLASS].data),
+    "the dropdown follows the chosen class")
+
+-- Class 1 wears plate, so neither fixture is any use to it.
+classRadios[1].select(classRadios[1].data)
+assert(#scrollBox.dataProvider == 0, "a class that wears neither armour type sees neither set")
+
+classRadios[CLOTH_CLASS].select(classRadios[CLOTH_CLASS].data)
+assert(#scrollBox.dataProvider == 2, "coming back restores the list")
 
 print("Lucky's Wardrobe extra sets tests passed")
