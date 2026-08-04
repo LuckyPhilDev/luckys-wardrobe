@@ -17,6 +17,7 @@ SetTracking.lua
 Catalyst.lua
 SetCompletion.lua
 LootAlerts.lua
+Randomiser.lua
 Transmog.lua
 SituationLabels.lua
 SituationPresets.lua

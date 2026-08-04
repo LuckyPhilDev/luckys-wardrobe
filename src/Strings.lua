@@ -99,6 +99,10 @@ LuckysEnsemble.Strings = {
             utils = "Lucky's Utils",
         },
     },
+    randomiser = {
+        tooltipTitle = "Roll a Random Outfit",
+        tooltipText = "Hold to spin every armour slot through appearances you own, then let go and watch it slow to a stop. Weapons are left alone, and nothing is bought until you press Apply.",
+    },
     situationLabels = {
         scanTitle = "Reading Outfit Situations",
         scanMessage = "Each outfit is being opened to read its situation values. Please wait, using the wardrobe now will interrupt the scan.",

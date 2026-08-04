@@ -1,6 +1,7 @@
 -- luacheck: globals C_Timer CreateFrame TransmogFrame hooksecurefunc
 
--- Lucky's Ensemble: Keep the active transmog tab during outfit refreshes.
+-- Lucky's Ensemble: Keep the active transmog tab during outfit refreshes, and
+-- host the appearance randomiser's session on the same transmogrifier events.
 LuckysEnsemble = LuckysEnsemble or {}
 LuckysEnsemble.Transmog = {}
 
@@ -29,6 +30,13 @@ local function installHooks()
     hooked = true
 end
 
+-- Blizzard_Transmog loads on demand, so its frames are not there the instant
+-- the transmogrifier opens.
+local function setUpFrames()
+    installHooks()
+    LuckysEnsemble.Randomiser:OnTransmogOpen()
+end
+
 function LuckysEnsemble.Transmog:Init(database)
     db = database
 
@@ -39,9 +47,10 @@ function LuckysEnsemble.Transmog:Init(database)
         userTab = nil
         if event == "TRANSMOGRIFY_OPEN" then
             if watcher then watcher:Show() end
-            C_Timer.After(0.1, installHooks)
-        elseif watcher then
-            watcher:Hide()
+            C_Timer.After(0.1, setUpFrames)
+        else
+            if watcher then watcher:Hide() end
+            LuckysEnsemble.Randomiser:OnTransmogClose()
         end
     end)
 end
