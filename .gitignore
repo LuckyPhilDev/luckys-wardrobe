@@ -1,6 +1,9 @@
 .release/
 .docs/
-.reference/
+reference/
 *.zip
 
 .claude/
+
+
+tools/

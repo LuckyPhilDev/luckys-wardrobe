@@ -1,9 +1,10 @@
 -- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
--- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing Blizzard-defined
--- sets the runtime Sets API does not surface. Records come from the session
--- catalogue discovered by ExtraSetsCatalog.lua; everything derived (names,
--- icons, collected state) is read live from Blizzard APIs and never persisted.
+-- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
+-- sets Blizzard defines, most of which its own Sets tab never shows. Records
+-- come from the session catalogue ExtraSetsCatalog.lua builds out of the
+-- bundled snapshot; everything derived (names, icons, collected state) is read
+-- live from Blizzard APIs and never persisted.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.ExtraSets = {}
 
@@ -12,6 +13,7 @@ local ExtraSets = LuckysWardrobe.ExtraSets
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
+local ITEM_CLASS_ARMOR = 4
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
 -- runs underneath it. It moves to the end of the strip and gives up some width
@@ -20,17 +22,10 @@ local PROGRESS_BAR_WIDTH = 150
 local PROGRESS_BAR_TAB_GAP = 10
 local PROGRESS_BAR_TAB_DROP = -11
 local PROGRESS_BAR_BORDER_MARGIN = 9
-local RECORD_TYPES = { TransmogSet = true, ItemSet = true }
 
--- Locale-free slot keys, in display order. The catalogue emits these same tokens.
-local SLOT_ORDER = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
-local SLOT_INDEX = {}
-for index, slot in ipairs(SLOT_ORDER) do SLOT_INDEX[slot] = index end
-
--- Blizzard's localized slot-name globals, for the tooltip's slot line.
+-- Blizzard's localized slot-name globals, for the tooltip's slot line. A slot
+-- with no entry here is one the page could not label, so records are held to
+-- the slots named below.
 local SLOT_TOOLTIP_GLOBALS = {
     HEAD = "HEADSLOT",
     SHOULDER = "SHOULDERSLOT",
@@ -65,6 +60,7 @@ local filters = {
     collected = true,
     uncollected = true,
     expansions = {},
+    armorTypes = {},
     sortMode = "default",
     sortDirection = "ascending",
 }
@@ -75,15 +71,25 @@ local function setAllExpansions(shown)
     for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
 end
 
+local function setAllArmorTypes(shown)
+    for _, armour in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
+        filters.armorTypes[armour.armorType] = shown
+    end
+end
+
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
     for index = 1, #expansionNames do
         if not filters.expansions[index - 1] then return true end
     end
+    for _, shown in pairs(filters.armorTypes) do
+        if not shown then return true end
+    end
     return false
 end
 
 setAllExpansions(true)
+setAllArmorTypes(true)
 
 local attachedWardrobe
 local extraPage
@@ -95,31 +101,27 @@ local extraTabID
 
 function ExtraSets.ValidateRecord(record)
     if type(record) ~= "table" then return nil, "record must be a table" end
-    if not RECORD_TYPES[record.recordType] then return nil, "unknown recordType" end
-    if type(record.recordID) ~= "number" or record.recordID <= 0 or record.recordID % 1 ~= 0 then
-        return nil, "recordID must be a positive integer"
+    if type(record.setID) ~= "number" or record.setID <= 0 or record.setID % 1 ~= 0 then
+        return nil, "setID must be a positive integer"
     end
     if type(record.name) ~= "string" or record.name == "" then return nil, "name is required" end
     if record.label ~= nil and type(record.label) ~= "string" then return nil, "label must be a string" end
     if record.expansionID ~= nil and type(record.expansionID) ~= "number" then
         return nil, "expansionID must be a number"
     end
+    if type(record.armorType) ~= "number" then return nil, "armorType is required" end
     if type(record.classMask) ~= "number" or record.classMask < 0 then return nil, "classMask is required" end
-    if type(record.build) ~= "string" or record.build == "" then return nil, "build is required" end
-    if type(record.slotSources) ~= "table" then return nil, "slotSources are required" end
+    if type(record.pieces) ~= "table" or #record.pieces == 0 then return nil, "pieces are required" end
 
     local seenSourceIDs = {}
-    local pieceCount = 0
-    for slot, sourceID in pairs(record.slotSources) do
-        if not SLOT_INDEX[slot] then return nil, "unknown slot: " .. tostring(slot) end
-        if type(sourceID) ~= "number" or sourceID <= 0 or sourceID % 1 ~= 0 then
+    for _, piece in ipairs(record.pieces) do
+        if not SLOT_TOOLTIP_GLOBALS[piece.slot] then return nil, "unknown slot: " .. tostring(piece.slot) end
+        if type(piece.sourceID) ~= "number" or piece.sourceID <= 0 or piece.sourceID % 1 ~= 0 then
             return nil, "sourceID must be a positive integer"
         end
-        if seenSourceIDs[sourceID] then return nil, "duplicate sourceID: " .. sourceID end
-        seenSourceIDs[sourceID] = true
-        pieceCount = pieceCount + 1
+        if seenSourceIDs[piece.sourceID] then return nil, "duplicate sourceID: " .. piece.sourceID end
+        seenSourceIDs[piece.sourceID] = true
     end
-    if pieceCount == 0 then return nil, "slotSources are empty" end
     return true
 end
 
@@ -136,36 +138,33 @@ end
 -- resolver.playerClassID() returns the current class ID, or nil outside the client.
 function ExtraSets.BuildEntries(records, resolver)
     local entries = {}
-    local seenKeys = {}
+    local seenSetIDs = {}
 
     for _, record in ipairs(records) do
         local valid, problem = ExtraSets.ValidateRecord(record)
         if not valid then
             LuckysWardrobe.DevLog("Extra Sets record rejected: " .. tostring(problem))
+        elseif seenSetIDs[record.setID] then
+            LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate set " .. record.setID)
         else
-            local key = record.recordType .. ":" .. record.recordID
-            if seenKeys[key] then
-                LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate " .. key)
-            else
-                seenKeys[key] = true
-                entries[#entries + 1] = ExtraSets.BuildEntry(record, key, resolver)
-            end
+            seenSetIDs[record.setID] = true
+            entries[#entries + 1] = ExtraSets.BuildEntry(record, resolver)
         end
     end
 
     return entries
 end
 
-function ExtraSets.BuildEntry(record, key, resolver)
+function ExtraSets.BuildEntry(record, resolver)
     local pieces = {}
-    for slot, sourceID in pairs(record.slotSources) do
-        pieces[#pieces + 1] = { slot = slot, sourceID = sourceID }
+    for index, piece in ipairs(record.pieces) do
+        pieces[index] = { slot = piece.slot, sourceID = piece.sourceID, itemID = piece.itemID }
     end
-    table.sort(pieces, function(left, right)
-        return SLOT_INDEX[left.slot] < SLOT_INDEX[right.slot]
-    end)
 
-    local collected, total, unavailable = 0, 0, 0
+    -- Pieces the catalogue could not resolve at all never became sources, so
+    -- they are counted here rather than shown as rows the tooltip cannot fill.
+    local collected, total = 0, 0
+    local unavailable = record.unresolvedPieces or 0
     local loading = false
     local seenAppearanceIDs = {}
     -- Armour type is what actually keeps a set off a character, and the class
@@ -197,12 +196,12 @@ function ExtraSets.BuildEntry(record, key, resolver)
     end
 
     return {
-        key = key,
-        recordType = record.recordType,
-        recordID = record.recordID,
+        key = record.setID,
+        setID = record.setID,
         name = resolver.setName(record) or record.name,
         label = record.label or "",
         expansionID = record.expansionID,
+        armorType = record.armorType,
         pieces = pieces,
         collected = collected,
         total = total,
@@ -218,10 +217,10 @@ function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
 
--- Collected/Not Collected and expansion narrowing, mirroring the Sets tab
--- filter menu. Entries without expansion data (ItemSet records) cannot be
--- classified, so they stay visible while any expansion is still checked
--- rather than vanishing behind a box that does not describe them.
+-- Collected/Not Collected, armour type, and expansion narrowing, mirroring the
+-- Sets tab filter menu. Only sets the client itself knows carry an expansion,
+-- so the rest stay visible while any expansion is still checked rather than
+-- vanishing behind a box that does not describe them.
 function ExtraSets.ApplyFilters(entries, filterState)
     local anyExpansion = false
     for _, shown in pairs(filterState.expansions) do
@@ -238,6 +237,9 @@ function ExtraSets.ApplyFilters(entries, filterState)
             shown = filterState.collected
         else
             shown = filterState.uncollected
+        end
+        if shown and entry.armorType ~= nil and filterState.armorTypes[entry.armorType] ~= nil then
+            shown = filterState.armorTypes[entry.armorType]
         end
         if shown then
             if entry.expansionID ~= nil and filterState.expansions[entry.expansionID] ~= nil then
@@ -263,12 +265,13 @@ function ExtraSets.FilterEntries(entries, query)
     return filtered
 end
 
--- "default" keeps catalogue order. "completion" puts the fewest missing pieces
--- first; sets with nothing resolvable sort last because there is nothing left
--- to finish there. Descending inverts either order.
+-- "default" keeps catalogue order: armour type, then set ID, which puts a set's
+-- recolours next to each other. "name" is alphabetical. "completion" puts the
+-- fewest missing pieces first; sets with nothing resolvable sort last because
+-- there is nothing left to finish there. Descending inverts any of them.
 function ExtraSets.SortEntries(entries, mode, direction)
     local descending = direction == "descending"
-    if mode ~= "completion" then
+    if mode ~= "completion" and mode ~= "name" then
         if not descending then return entries end
         local reversed = {}
         for index = #entries, 1, -1 do reversed[#reversed + 1] = entries[index] end
@@ -281,14 +284,22 @@ function ExtraSets.SortEntries(entries, mode, direction)
     end
     table.sort(decorated, function(left, right)
         local before
-        local leftMissing = left.entry.total > 0 and left.entry.missing or math.huge
-        local rightMissing = right.entry.total > 0 and right.entry.missing or math.huge
-        if leftMissing ~= rightMissing then
-            before = leftMissing < rightMissing
-        elseif left.entry.total ~= right.entry.total then
-            before = left.entry.total > right.entry.total
+        if mode == "name" then
+            if left.entry.name ~= right.entry.name then
+                before = left.entry.name < right.entry.name
+            else
+                before = left.order < right.order
+            end
         else
-            before = left.order < right.order
+            local leftMissing = left.entry.total > 0 and left.entry.missing or math.huge
+            local rightMissing = right.entry.total > 0 and right.entry.missing or math.huge
+            if leftMissing ~= rightMissing then
+                before = leftMissing < rightMissing
+            elseif left.entry.total ~= right.entry.total then
+                before = left.entry.total > right.entry.total
+            else
+                before = left.order < right.order
+            end
         end
         if descending then return not before end
         return before
@@ -327,12 +338,11 @@ function ExtraSets.LiveResolver()
                 validForPlayer = sourceInfo.isValidSourceForPlayer and true or false,
             }
         end,
+        -- The client names the sets it knows in the player's own language; the
+        -- bundled English name is the fallback for the ones it does not list.
         setName = function(record)
-            if record.recordType == "TransmogSet" then
-                local setInfo = C_TransmogSets.GetSetInfo(record.recordID)
-                return setInfo and setInfo.name
-            end
-            local name = C_Item.GetItemSetInfo(record.recordID)
+            local setInfo = C_TransmogSets.GetSetInfo(record.setID)
+            local name = setInfo and setInfo.name
             if name and name ~= "" then return name end
             return nil
         end,
@@ -345,6 +355,22 @@ end
 
 function ExtraSets.Records()
     return LuckysWardrobe.ExtraSetsCatalog:GetRecords()
+end
+
+-- Thousands of sets, each asking the client about every one of its pieces, is
+-- far too much work to redo for a keystroke in the search box. Entries are
+-- built once and kept until something the client owns actually changes.
+local cachedEntries
+
+function ExtraSets.InvalidateEntries()
+    cachedEntries = nil
+end
+
+function ExtraSets.Entries()
+    if not cachedEntries then
+        cachedEntries = ExtraSets.BuildEntries(ExtraSets.Records(), ExtraSets.LiveResolver())
+    end
+    return cachedEntries
 end
 
 -- Page UI. Mirrors the native Sets layout: list on the left, dressing-room
@@ -641,7 +667,7 @@ function ExtraSets:CreatePage(wardrobe)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
     local function refresh()
-        local allEntries = ExtraSets.BuildEntries(ExtraSets.Records(), ExtraSets.LiveResolver())
+        local allEntries = ExtraSets.Entries()
         local narrowed = ExtraSets.ApplyFilters(allEntries, filters)
         local entries = ExtraSets.SortEntries(
             ExtraSets.FilterEntries(narrowed, searchBox:GetText()),
@@ -691,6 +717,7 @@ function ExtraSets:CreatePage(wardrobe)
         filters.collected = true
         filters.uncollected = true
         setAllExpansions(true)
+        setAllArmorTypes(true)
         refresh()
     end)
 
@@ -706,7 +733,11 @@ function ExtraSets:CreatePage(wardrobe)
         root:CreateDivider()
 
         local sort = root:CreateButton("Sort By")
-        for _, option in ipairs({ { key = "default", label = DEFAULT }, { key = "completion", label = "Completion" } }) do
+        for _, option in ipairs({
+            { key = "default", label = DEFAULT },
+            { key = "name", label = "Name" },
+            { key = "completion", label = "Completion" },
+        }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return filters.sortMode == mode.key end, function()
                 filters.sortMode = mode.key
@@ -719,6 +750,18 @@ function ExtraSets:CreatePage(wardrobe)
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return filters.sortDirection == sortDirection.key end, function()
                 filters.sortDirection = sortDirection.key
+                refresh()
+            end)
+        end
+
+        -- A character can only wear one armour type, and the bundled data covers
+        -- all four, so this is the narrowing that matters most on this page.
+        local armour = root:CreateButton(S.armorTypeMenu)
+        for _, armourType in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
+            local armorType = armourType.armorType
+            local label = C_Item.GetItemSubClassInfo(ITEM_CLASS_ARMOR, armorType) or S.armorTypes[armourType.key]
+            armour:CreateCheckbox(label, function() return filters.armorTypes[armorType] end, function()
+                filters.armorTypes[armorType] = not filters.armorTypes[armorType]
                 refresh()
             end)
         end
@@ -744,23 +787,42 @@ function ExtraSets:CreatePage(wardrobe)
         end
     end)
 
+    -- Collecting an appearance changes what these sets have collected, so the
+    -- cached entries go and the page builds them again. Searching and filtering
+    -- reuse what is already there.
+    local function rebuildNow()
+        ExtraSets.InvalidateEntries()
+        refresh()
+    end
+
+    -- Learning one appearance can fire these events several times over, and
+    -- rebuilding thousands of entries for each would be felt, so a burst
+    -- collapses into a single pass on the next frame.
+    local rebuildQueued = false
+    local function queueRebuild()
+        if rebuildQueued then return end
+
+        rebuildQueued = true
+        C_Timer.After(0, function()
+            rebuildQueued = false
+            -- A page that has since closed rebuilds when it opens again.
+            if page:IsShown() then rebuildNow() end
+        end)
+    end
+
     searchBox:HookScript("OnTextChanged", refresh)
     page:SetScript("OnShow", function(self)
-        self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
-        self:RegisterEvent("ITEM_DATA_LOAD_RESULT")
         self:RegisterEvent("TRANSMOG_COLLECTION_ITEM_UPDATE")
         self:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
-        refresh()
+        rebuildNow()
     end)
     page:SetScript("OnHide", function(self)
-        self:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
-        self:UnregisterEvent("ITEM_DATA_LOAD_RESULT")
         self:UnregisterEvent("TRANSMOG_COLLECTION_ITEM_UPDATE")
         self:UnregisterEvent("TRANSMOG_COLLECTION_UPDATED")
         GameTooltip:Hide()
     end)
-    page:SetScript("OnEvent", refresh)
-    page.Refresh = refresh
+    page:SetScript("OnEvent", queueRebuild)
+    page.Refresh = rebuildNow
     page.RefreshCameras = refreshCamera
     page.OnSearchUpdate = function() end
     page.OnUnitModelChangedEvent = function()
@@ -843,9 +905,10 @@ function ExtraSets:Attach(wardrobe)
         PanelTemplates_ResizeTabsToFit(self, TAB_FIT_WIDTH)
     end)
 
-    -- Discovery may still be running when the page first shows; repaint the
-    -- moment the catalogue lands.
+    -- The catalogue may still be building when the page first shows; repaint the
+    -- moment it lands.
     LuckysWardrobe.ExtraSetsCatalog:OnReady(function()
+        ExtraSets.InvalidateEntries()
         if extraPage:IsShown() then extraPage.Refresh() end
     end)
 
@@ -862,6 +925,7 @@ function ExtraSets:Init()
     filters.sortMode = "default"
     filters.sortDirection = "ascending"
     setAllExpansions(true)
+    setAllArmorTypes(true)
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         LuckysWardrobe.ExtraSetsCatalog:StartBuild()
         ExtraSets:Attach(WardrobeCollectionFrame)

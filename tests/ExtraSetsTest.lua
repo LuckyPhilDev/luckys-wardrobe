@@ -1,4 +1,4 @@
--- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc C_TransmogSets C_TransmogCollection C_Item
+-- luacheck: globals CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc C_TransmogSets C_TransmogCollection C_Item C_Timer
 
 LuckysWardrobe = {}
 
@@ -14,12 +14,16 @@ MenuResponse = { Refresh = 1 }
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
 dofile("src/Strings.lua")
+-- The real armour-type index, without the several thousand sets hanging off it:
+-- the page reads its filter vocabulary straight from this table.
+dofile("src/Data/ExtraSetsData.lua")
 dofile("src/ExtraSets.lua")
 
 local ExtraSets = LuckysWardrobe.ExtraSets
+local CLOTH, LEATHER = 1, 2
 
--- Discovery has its own test (ExtraSetsCatalogTest.lua); here the catalogue
--- module is stubbed so the page logic can be driven directly.
+-- Record building has its own test (ExtraSetsCatalogTest.lua); here the
+-- catalogue module is stubbed so the page logic can be driven directly.
 local catalogRecords = {}
 local catalogReady = true
 local catalogBuildStarted = false
@@ -33,36 +37,46 @@ LuckysWardrobe.ExtraSetsCatalog = {
 
 -- Schema validation.
 
+local function pieces(...)
+    local list = {}
+    for index, piece in ipairs({ ... }) do
+        list[index] = { slot = piece[1], sourceID = piece[2], itemID = piece[3] }
+    end
+    return list
+end
+
 local function validRecord(overrides)
     local record = {
-        recordType = "TransmogSet",
-        recordID = 20,
+        setID = 20,
         name = "Test Garb",
+        armorType = CLOTH,
         classMask = 0,
-        build = "12.0.7.68887",
-        slotSources = { HEAD = 2001, CHEST = 2003, LEGS = 2004 },
+        pieces = pieces({ "HEAD", 2001 }, { "CHEST", 2003 }, { "LEGS", 2004 }),
     }
     for key, value in pairs(overrides or {}) do record[key] = value end
     return record
 end
 
 assert(ExtraSets.ValidateRecord(validRecord()), "accepted a well-formed record")
-assert(not ExtraSets.ValidateRecord(validRecord({ recordType = "Guess" })), "rejected unknown record types")
-assert(not ExtraSets.ValidateRecord(validRecord({ recordID = 1.5 })), "rejected fractional record IDs")
+assert(not ExtraSets.ValidateRecord(validRecord({ setID = 1.5 })), "rejected fractional set IDs")
 assert(not ExtraSets.ValidateRecord(validRecord({ name = "" })), "rejected empty names")
-local noBuild = validRecord()
-noBuild.build = nil
-assert(not ExtraSets.ValidateRecord(noBuild), "rejected records without a build")
+local noArmorType = validRecord()
+noArmorType.armorType = nil
+assert(not ExtraSets.ValidateRecord(noArmorType), "rejected records without an armour type")
 local noMask = validRecord()
 noMask.classMask = nil
 assert(not ExtraSets.ValidateRecord(noMask), "rejected records without a class mask")
 assert(ExtraSets.ValidateRecord(validRecord({ expansionID = 5 })), "accepted an optional expansion")
 assert(not ExtraSets.ValidateRecord(validRecord({ expansionID = "five" })), "rejected non-numeric expansions")
-assert(not ExtraSets.ValidateRecord(validRecord({ slotSources = {} })), "rejected records without pieces")
-assert(not ExtraSets.ValidateRecord(validRecord({ slotSources = { ELBOW = 1 } })), "rejected unknown slots")
+assert(not ExtraSets.ValidateRecord(validRecord({ pieces = {} })), "rejected records without pieces")
+assert(not ExtraSets.ValidateRecord(validRecord({ pieces = pieces({ "ELBOW", 1 }) })), "rejected unknown slots")
 assert(
-    not ExtraSets.ValidateRecord(validRecord({ slotSources = { HEAD = 7, CHEST = 7 } })),
-    "rejected duplicate sources across slots"
+    not ExtraSets.ValidateRecord(validRecord({ pieces = pieces({ "HEAD", 7 }, { "CHEST", 7 }) })),
+    "rejected the same source twice in one set"
+)
+assert(
+    ExtraSets.ValidateRecord(validRecord({ pieces = pieces({ "CHEST", 7 }, { "CHEST", 8 }) })),
+    "accepted two pieces in one slot, as a set with a chest and a robe has"
 )
 
 -- Class mask maths.
@@ -85,7 +99,7 @@ local sourceStates = {
 local function stubResolver(classID)
     return {
         sourceState = function(sourceID) return sourceStates[sourceID] end,
-        setName = function(record) return record.recordID == 20 and "Live Name" or nil end,
+        setName = function(record) return record.setID == 20 and "Live Name" or nil end,
         playerClassID = function() return classID end,
     }
 end
@@ -93,16 +107,15 @@ end
 local records = {
     validRecord(),
     {
-        recordType = "ItemSet",
-        recordID = 500,
+        setID = 500,
         name = "Loading Set",
         label = "Fixture",
+        armorType = LEATHER,
         classMask = 4,
-        build = "12.0.7.68887",
-        slotSources = { HEAD = 3001, CHEST = 3002, LEGS = 3999 },
+        pieces = pieces({ "HEAD", 3001 }, { "CHEST", 3002 }, { "LEGS", 3999 }),
     },
-    validRecord({ recordID = 21, slotSources = { HEAD = 4001, CHEST = 4002, LEGS = 4003 } }),
-    { recordType = "Guess", recordID = 1 },
+    validRecord({ setID = 21, pieces = pieces({ "HEAD", 4001 }, { "CHEST", 4002 }, { "LEGS", 4003 }) }),
+    { setID = "twenty-two" },
     validRecord(),
 }
 
@@ -111,7 +124,7 @@ assert(#entries == 3, "kept valid unique records only")
 assert(#devLogs == 2, "reported both rejected records")
 
 local garb = entries[1]
-assert(garb.key == "TransmogSet:20", "keyed entries by Blizzard record type and ID")
+assert(garb.key == 20 and garb.armorType == CLOTH, "keyed entries by set ID and kept the armour type")
 assert(garb.name == "Live Name", "preferred the live runtime name")
 assert(garb.collected == 1 and garb.total == 2, "counted shared appearances once")
 assert(garb.missing == 1, "derived the missing count")
@@ -162,6 +175,12 @@ assert(ExtraSets.BuildEntries({ records[1] }, wearableResolver)[1].usable,
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")
 
+-- Pieces the catalogue never turned into a source are still part of the set.
+local partlyBundled = validRecord({ setID = 22, unresolvedPieces = 2 })
+local partlyBundledEntry = ExtraSets.BuildEntries({ partlyBundled }, stubResolver(1))[1]
+assert(partlyBundledEntry.unavailable == 2, "pieces this client has no appearance for are counted, not dropped")
+assert(partlyBundledEntry.total == 2, "unresolved pieces stay out of the collectable total")
+
 -- Search.
 
 assert(#ExtraSets.FilterEntries(entries, "") == 3, "blank query keeps everything")
@@ -172,30 +191,42 @@ assert(#ExtraSets.FilterEntries(entries, "nothing") == 0, "unmatched query empti
 -- Sorting.
 
 local sorted = ExtraSets.SortEntries(entries, "completion", "ascending")
-assert(sorted[1].key == "TransmogSet:20", "closest-to-complete leads")
-assert(sorted[2].key == "ItemSet:500", "more missing pieces follow")
-assert(sorted[3].key == "TransmogSet:21", "sets with nothing resolvable sort last")
+assert(sorted[1].key == 20, "closest-to-complete leads")
+assert(sorted[2].key == 500, "more missing pieces follow")
+assert(sorted[3].key == 21, "sets with nothing resolvable sort last")
 assert(ExtraSets.SortEntries(entries, "default", "ascending") == entries, "default order is untouched")
-assert(entries[1].key == "TransmogSet:20", "sorting never mutates the source list")
+assert(entries[1].key == 20, "sorting never mutates the source list")
 
 local defaultDescending = ExtraSets.SortEntries(entries, "default", "descending")
 assert(defaultDescending[1].key == entries[3].key and defaultDescending[3].key == entries[1].key,
     "descending reverses the default order")
 local completionDescending = ExtraSets.SortEntries(entries, "completion", "descending")
-assert(completionDescending[1].key == "TransmogSet:21" and completionDescending[3].key == "TransmogSet:20",
+assert(completionDescending[1].key == 21 and completionDescending[3].key == 20,
     "descending reverses the completion order")
 
--- Collected and expansion filters.
+-- Thousands of sets make alphabetical order worth having, so it is its own mode.
+local byName = ExtraSets.SortEntries(entries, "name", "ascending")
+assert(byName[1].name == "Live Name" and byName[2].name == "Loading Set",
+    "name order is alphabetical, whatever the catalogue order was")
+assert(ExtraSets.SortEntries(entries, "name", "descending")[1].name == "Test Garb",
+    "descending inverts the name order")
+
+-- Collected, armour type, and expansion filters.
 
 assert(ExtraSets.IsComplete({ loading = false, total = 2, collected = 2 }), "a full set counts as complete")
 assert(not ExtraSets.IsComplete({ loading = true, total = 2, collected = 2 }), "loading sets are not complete yet")
 assert(not ExtraSets.IsComplete({ loading = false, total = 0, collected = 0 }), "empty sets are never complete")
 
-local completeEntry = { loading = false, total = 2, collected = 2, expansionID = 2 }
-local partialEntry = { loading = false, total = 2, collected = 1, expansionID = 2 }
-local unknownEntry = { loading = false, total = 3, collected = 0 }
+local completeEntry = { loading = false, total = 2, collected = 2, expansionID = 2, armorType = CLOTH }
+local partialEntry = { loading = false, total = 2, collected = 1, expansionID = 2, armorType = CLOTH }
+local unknownEntry = { loading = false, total = 3, collected = 0, armorType = LEATHER }
 local filterEntries = { completeEntry, partialEntry, unknownEntry }
-local filterState = { collected = true, uncollected = true, expansions = { true, true } }
+local filterState = {
+    collected = true,
+    uncollected = true,
+    expansions = { true, true },
+    armorTypes = { [CLOTH] = true, [LEATHER] = true },
+}
 
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 3, "default filters keep everything")
 filterState.collected = false
@@ -212,6 +243,11 @@ assert(#narrowedExpansions == 1 and narrowedExpansions[1] == unknownEntry,
     "expansion narrowing hides matching sets but keeps unclassifiable ones")
 filterState.expansions = { false, false }
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 0, "unchecking every expansion empties the list")
+filterState.expansions = { true, true }
+filterState.armorTypes[CLOTH] = false
+local leatherOnly = ExtraSets.ApplyFilters(filterEntries, filterState)
+assert(#leatherOnly == 1 and leatherOnly[1] == unknownEntry, "unchecking an armour type hides its sets")
+filterState.armorTypes[CLOTH] = true
 
 -- UI harness: enough of the client to run CreatePage and Attach for real.
 
@@ -380,6 +416,19 @@ function hooksecurefunc(owner, method, hook)
     end
 end
 
+-- Timers are held rather than run, so a test can fire a burst of events and see
+-- how much work the page actually does when the frame ends.
+local pendingTimers = {}
+C_Timer = {
+    After = function(_, callback) pendingTimers[#pendingTimers + 1] = callback end,
+}
+
+local function runTimers()
+    local due = pendingTimers
+    pendingTimers = {}
+    for _, callback in ipairs(due) do callback() end
+end
+
 local addonLoadedCallback
 EventUtil = {
     ContinueOnAddOnLoaded = function(addonName, callback)
@@ -420,7 +469,10 @@ C_TransmogCollection = {
     GetSourceIcon = function() return 1111 end,
     GetAppearanceSourceInfo = function() return nil end,
 }
-C_Item = { GetItemSetInfo = function() return nil end }
+C_Item = {
+    GetItemSetInfo = function() return nil end,
+    GetItemSubClassInfo = function(_, subClassID) return "Armour " .. subClassID end,
+}
 
 local trackedSources, trackedName
 LuckysWardrobe.SetTracking = {
@@ -505,8 +557,8 @@ assert(liveResolver.sourceState(7003).collected == true,
 assert(liveResolver.sourceState(7999) == nil, "sources the client does not know stay unavailable")
 
 local outsideRecord = validRecord({
-    recordID = 70,
-    slotSources = { HEAD = 7001, CHEST = 7002, LEGS = 7003 },
+    setID = 70,
+    pieces = pieces({ "HEAD", 7001 }, { "CHEST", 7002 }, { "LEGS", 7003 }),
 })
 local outsideEntry = ExtraSets.BuildEntries({ outsideRecord }, liveResolver)[1]
 assert(not outsideEntry.loading, "a set of looks outside the wardrobe context still resolves")
@@ -533,6 +585,13 @@ assert(wardrobe.ContentFrames[1] == page, "joined the native content lifecycle")
 assert(page.searchType == wardrobe.SetsCollectionFrame.searchType, "kept the native search-event contract")
 assert(resizeWidth ~= nil, "made room for the third tab")
 assert(capturedView.template == "WardrobeSetsScrollFrameButtonTemplate", "reused the native sets row template")
+
+-- The page answers collection events on the next frame, so every test that
+-- fires one lets that frame end.
+local function collectionUpdated()
+    page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+    runTimers()
+end
 
 -- The third tab reaches into where Blizzard parked the progress bar, so both
 -- the native bar and the addon's own copy move past the end of the tab strip.
@@ -567,23 +626,20 @@ assert(wardrobe.SetTab ~= originalSetTab, "hooked rather than replaced SetTab")
 ExtraSets:Attach(wardrobe)
 assert(wardrobe.numTabs == 3, "attach is idempotent")
 
--- Discovery lifecycle: building state first, then a repaint when the
+-- Catalogue lifecycle: building state first, then a repaint when the
 -- catalogue lands while the page is open.
 
 local scrollBox = findFrame(function(frame) return frame.template == "WowScrollBoxList" end)
 catalogReady = false
 wardrobe:SetTab(3)
 page.scripts.OnShow(page)
-assert(#scrollBox.dataProvider == 0, "no rows while discovery is running")
+assert(#scrollBox.dataProvider == 0, "no rows while the catalogue is still building")
 
 catalogReady = true
 catalogRecords = { records[1], records[2] }
 catalogReadyCallback()
 assert(#scrollBox.dataProvider == 2, "catalogue completion repainted the open page")
-for _, event in ipairs({
-    "GET_ITEM_INFO_RECEIVED", "ITEM_DATA_LOAD_RESULT",
-    "TRANSMOG_COLLECTION_ITEM_UPDATE", "TRANSMOG_COLLECTION_UPDATED",
-}) do
+for _, event in ipairs({ "TRANSMOG_COLLECTION_ITEM_UPDATE", "TRANSMOG_COLLECTION_UPDATED" }) do
     assert(page.events[event], "registered " .. event .. " while shown")
 end
 assert(#scrollBox.dataProvider == 2, "refresh populated the list from the catalogue")
@@ -593,23 +649,39 @@ assert(progressBar.value == 0 and progressBar.max == 2, "no set is complete yet"
 
 sourceStates[2003].collected = true
 sourceStates[2004].collected = true
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 assert(progressBar.value == 1, "collection events recompute completion live")
 
--- Search narrows the list through the page's own search box.
+-- A burst of events costs one pass over the catalogue, not one per event.
+
+local builds = 0
+local buildEntries = ExtraSets.BuildEntries
+ExtraSets.BuildEntries = function(...)
+    builds = builds + 1
+    return buildEntries(...)
+end
+for _ = 1, 5 do page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED") end
+assert(builds == 0, "nothing is rebuilt while the events are still arriving")
+runTimers()
+assert(builds == 1, "five events in one frame rebuilt the entries once")
+
+-- Searching and filtering reuse what the last rebuild produced.
 
 local searchBox = findFrame(function(frame) return frame.template == "SearchBoxTemplate" end)
+builds = 0
 searchBox.text = "Loading"
 searchBox.scripts.OnTextChanged()
-assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "ItemSet:500", "search filtered the list")
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500, "search filtered the list")
 searchBox.text = ""
 searchBox.scripts.OnTextChanged()
 assert(#scrollBox.dataProvider == 2, "clearing the search restores the list")
+assert(builds == 0, "typing in the search box never rebuilds the entries")
+ExtraSets.BuildEntries = buildEntries
 
 -- Empty catalogue fallback.
 
 catalogRecords = {}
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 assert(#scrollBox.dataProvider == 0, "empty catalogue produces an empty list")
 local emptyText
 for _, frame in ipairs(createdFrames) do
@@ -650,7 +722,7 @@ shiftDown = false
 
 sourceStates[2003].collected = false
 sourceStates[2004].collected = false
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 shiftDown = true
 capturedView.initializer(button, scrollBox.dataProvider[1])
 button.scripts.OnClick(button, "LeftButton")
@@ -695,7 +767,7 @@ collectedPiece.scripts.OnLeave(collectedPiece)
 assert(not tooltip.shown, "leaving a piece hides the tooltip")
 
 catalogRecords = { records[2] }
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 local unavailablePiece
 for _, frame in ipairs(pieceButtons) do
     if frame.piece and frame.piece.state == "unavailable" then unavailablePiece = frame end
@@ -708,7 +780,7 @@ assert(tooltip.lines[1] == LuckysWardrobe.Strings.extraSets.pieceUnavailable,
 assert(tooltip.shown, "unavailable pieces still show a tooltip")
 
 catalogRecords = { records[1] }
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 
 -- Filter menu, mirroring the Sets tab.
 
@@ -721,18 +793,20 @@ records[1].expansionID = 3
 sourceStates[2003].collected = true
 sourceStates[2004].collected = true
 catalogRecords = { records[1], records[2] }
-page.scripts.OnEvent(page, "TRANSMOG_COLLECTION_UPDATED")
+collectionUpdated()
 assert(#scrollBox.dataProvider == 2, "both sets are on screen before filtering")
 assert(scrollBox.dataProvider[1].expansionID == 3, "entries carry their expansion")
 
 local toggles = {}
 local radioSetters = {}
 local expansionToggles = {}
+local armorToggles = {}
 local menuActions = {}
 local function submenu(label)
     return {
         CreateCheckbox = function(_, boxLabel, _isChecked, toggle)
             if label == "Expansion" then expansionToggles[boxLabel] = toggle end
+            if label == LuckysWardrobe.Strings.extraSets.armorTypeMenu then armorToggles[boxLabel] = toggle end
         end,
         CreateRadio = function(_, radioLabel, _isSelected, setSelected)
             radioSetters[label] = radioSetters[label] or {}
@@ -754,14 +828,14 @@ filterButton.menuBuilder(nil, menuRoot)
 assert(toggles[COLLECTED] and toggles[NOT_COLLECTED], "offered the collected checkboxes")
 
 toggles[NOT_COLLECTED]()
-assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "TransmogSet:20",
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
     "hiding Not Collected leaves only the complete set")
 assert(progressBar.value == 1 and progressBar.max == 1, "the progress bar counts only what filters leave")
 assert(not filterButton.isDefaultCheck(), "narrowed filters are no longer the default")
 toggles[NOT_COLLECTED]()
 
 toggles[COLLECTED]()
-assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "ItemSet:500",
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
     "hiding Collected leaves only the incomplete set")
 toggles[COLLECTED]()
 
@@ -769,7 +843,7 @@ toggles[COLLECTED]()
 -- that hides it. Keying the filter as a 1-based array put every set one
 -- expansion out of step with its own checkbox.
 expansionToggles["Expansion 3"]()
-assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == "ItemSet:500",
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
     "unchecking a set's expansion hides it but keeps unclassifiable sets")
 menuActions.Expansion[UNCHECK_ALL]()
 assert(#scrollBox.dataProvider == 0, "unchecking every expansion empties the list")
@@ -778,9 +852,21 @@ filterButton.defaultReset()
 assert(#scrollBox.dataProvider == 2, "resetting filters restores the list")
 assert(filterButton.isDefaultCheck(), "reset filters read as the default state")
 
+-- Armour type is the page's stand-in for the class dropdown the native tab has.
+assert(armorToggles["Armour 1"] and armorToggles["Armour 4"], "offered a checkbox per armour type")
+armorToggles["Armour 1"]()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
+    "unchecking cloth hides the cloth set")
+assert(not filterButton.isDefaultCheck(), "a narrowed armour filter is no longer the default")
+filterButton.defaultReset()
+assert(#scrollBox.dataProvider == 2, "resetting filters restores every armour type")
+
 radioSetters["Sort By"].Completion()
-assert(scrollBox.dataProvider[1].key == "TransmogSet:20", "completion sort puts the complete set first")
+assert(scrollBox.dataProvider[1].key == 20, "completion sort puts the complete set first")
 radioSetters["Sort Direction"].Descending()
-assert(scrollBox.dataProvider[1].key == "ItemSet:500", "descending inverts the completion order")
+assert(scrollBox.dataProvider[1].key == 500, "descending inverts the completion order")
+radioSetters["Sort Direction"].Ascending()
+radioSetters["Sort By"].Name()
+assert(scrollBox.dataProvider[1].key == 20, "name sort puts Live Name before Loading Set")
 
 print("Lucky's Wardrobe extra sets tests passed")

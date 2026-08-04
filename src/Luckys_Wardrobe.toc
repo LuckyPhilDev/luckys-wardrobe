@@ -10,6 +10,11 @@
 Bindings.xml
 Strings.lua
 Defaults.lua
+Data\ExtraSetsData.lua
+Data\ClothSets.lua
+Data\LeatherSets.lua
+Data\MailSets.lua
+Data\PlateSets.lua
 Classes.lua
 SetSources.lua
 SetsBrowser.lua

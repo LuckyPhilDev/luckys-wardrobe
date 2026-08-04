@@ -6,6 +6,7 @@ Lucky's Wardrobe is in early development. The first release establishes its sett
 
 ## Features
 
+- **Extra Sets tab**: A third tab in Collections, Appearances listing thousands of armour sets Blizzard defines but never shows in the Sets tab. Search them, narrow by armour type, expansion, or what you have collected, preview any of them on your character, and shift-click to track the pieces you are missing.
 - **Settings access**: Open the addon settings with `/wardrobe`.
 
 ## Installation
@@ -25,10 +26,9 @@ Lucky's Wardrobe is in early development. The first release establishes its sett
 |---|---|
 | `/wardrobe` | Open addon settings |
 | `/lw` | Short form of `/wardrobe` |
-| `/wardrobe extrasets` | Report which extra sets this client exposes, and how many candidates were left out and why |
-| `/wardrobe extrasets full` | List every extra set and every candidate left out, with its reason |
+| `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |
+| `/wardrobe extrasets full` | List the extra sets and the ones left out, with the reason for each |
 | `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
-| `/wardrobe extrasets sweep <name>` | Search this client for a set name, ignoring which ones the addon lists |
 | `/wardrobe recolors` | Report how many recolor families this client's appearances form |
 | `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
 | `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |

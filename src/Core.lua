@@ -60,8 +60,6 @@ local function initialize()
             subcommand = subcommand:lower()
             if subcommand == "find" and query ~= "" then
                 LuckysWardrobe.ExtraSetsCatalog:PrintMatches(query)
-            elseif subcommand == "sweep" and query ~= "" then
-                LuckysWardrobe.ExtraSetsCatalog:PrintSweep(query)
             else
                 LuckysWardrobe.ExtraSetsCatalog:PrintReport(subcommand == "full")
             end
