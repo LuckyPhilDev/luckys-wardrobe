@@ -232,13 +232,17 @@ function ExtraSets.BuildEntry(record, resolver)
     }
 end
 
--- Whether this character could wear the set, which is what the details panel
--- says when they could not. Armour type is what keeps most sets off a
--- character and the class mask does not encode it, so the answer comes from
--- the sources themselves. Worked out for the set on screen rather than for
--- every set in the list, because only the one on screen ever says so.
-function ExtraSets.Wearable(entry, classID, sourceValidity)
-    if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return false end
+-- Why this character could not wear the set, or nil when they could, which is
+-- what the details panel says when they could not. Armour type is what keeps
+-- most sets off a character and the class mask does not encode it, so the
+-- refusal comes from the sources themselves and only then is it worth asking
+-- what the character wears. Anything the client turns down for a reason of its
+-- own, a race or faction lock among them, answers "other": there is nothing
+-- more to tell the player than that it turned it down. Worked out for the set
+-- on screen rather than for every set in the list, because only the one on
+-- screen ever says so.
+function ExtraSets.UnwearableReason(entry, classID, sourceValidity)
+    if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return "class" end
 
     local judged, valid = 0, 0
     for _, piece in ipairs(entry.pieces) do
@@ -248,7 +252,28 @@ function ExtraSets.Wearable(entry, classID, sourceValidity)
             if isValid then valid = valid + 1 end
         end
     end
-    return judged == 0 or valid == judged
+    if judged == 0 or valid == judged then return nil end
+
+    local wornArmour = LuckysWardrobe.Classes:ArmourType(classID)
+    if wornArmour and entry.armorType and entry.armorType ~= wornArmour then return "armour" end
+    return "other"
+end
+
+-- The line the details panel shows for a set out of reach, naming the reason
+-- where there is one to name. A set whose mask holds no class this client has,
+-- or an armour type it has no name for, falls back to saying only that the set
+-- is out of reach rather than to a sentence with a hole in it.
+function ExtraSets.UnwearableNotice(entry, reason, classID)
+    local S = LuckysWardrobe.Strings.extraSets
+    if reason == "class" then
+        local classes = LuckysWardrobe.Classes:FromMask(entry.classMask)
+        if #classes > 0 then return S.notUsableClass:format(LuckysWardrobe.Classes:Names(classes)) end
+    elseif reason == "armour" then
+        local setArmour = S.armourTypes[entry.armorType]
+        local wornArmour = S.armourTypes[LuckysWardrobe.Classes:ArmourType(classID)]
+        if setArmour and wornArmour then return S.notUsableArmour:format(setArmour, wornArmour) end
+    end
+    return S.notUsable
 end
 
 function ExtraSets.IsComplete(entry)
@@ -672,13 +697,14 @@ function ExtraSets:CreatePage(wardrobe)
 
     local function showNotice(entry)
         local resolver = ExtraSets.LiveResolver()
-        local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
+        local classID = resolver.playerClassID()
+        local unwearable = ExtraSets.UnwearableReason(entry, classID, resolver.sourceValidity)
         if entry.unavailable > 0 then
             noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
-        elseif not wearable then
-            noticeText:SetText(S.notUsable)
+        elseif unwearable then
+            noticeText:SetText(ExtraSets.UnwearableNotice(entry, unwearable, classID))
         end
-        noticeText:SetShown(entry.unavailable > 0 or not wearable)
+        noticeText:SetShown(entry.unavailable > 0 or unwearable ~= nil)
     end
 
     -- Asking for a set's items is what starts them loading, and the answers

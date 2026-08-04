@@ -163,6 +163,11 @@ LuckysWardrobe.Strings = {
         pieceUnavailableShort = "Pieces unavailable",
         unavailableNotice = "%d piece(s) in this set are not available on this client build.",
         notUsable = "This set is not one your character can wear.",
+        notUsableClass = "This set is not one your character can wear. It belongs to %s.",
+        notUsableArmour = "This set is not one your character can wear. It is a %s set, and your character wears %s.",
+        -- Indexed by the client's own armour subclass ID, as the sets themselves
+        -- are, and written to read inside a sentence rather than as a heading.
+        armourTypes = { "cloth", "leather", "mail", "plate" },
         trackHint = "Shift-click to track this appearance.",
         report = {
             notStarted = "The Extra Sets catalogue has not been built yet. Open Collections, Appearances first.",

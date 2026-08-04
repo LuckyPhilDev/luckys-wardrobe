@@ -205,13 +205,39 @@ local function validity(unwearableSourceID)
     end
 end
 
-assert(not ExtraSets.Wearable(loadingSet, 1, validity()), "a set named for another class is not wearable")
-assert(ExtraSets.Wearable(loadingSet, CLOTH_CLASS, validity()), "the class it is named for can wear it")
-assert(ExtraSets.Wearable(garb, 1, validity()), "an unrestricted set is wearable")
-assert(not ExtraSets.Wearable(garb, 1, validity(2003)),
-    "a set with a piece this character cannot use is not wearable")
-assert(ExtraSets.Wearable(garb, 1, function() return nil end),
+assert(ExtraSets.UnwearableReason(loadingSet, 1, validity()) == "class",
+    "a set named for another class is out of reach over the name on it")
+assert(ExtraSets.UnwearableReason(loadingSet, CLOTH_CLASS, validity()) == nil,
+    "the class it is named for can wear it")
+assert(ExtraSets.UnwearableReason(garb, 1, validity()) == nil, "an unrestricted set is wearable")
+-- Class 1 wears plate and the set is cloth, so armour is what the client is
+-- refusing over even though the set is named for nobody.
+assert(ExtraSets.UnwearableReason(garb, 1, validity(2003)) == "armour",
+    "a set in armour the character does not wear is out of reach over that")
+assert(ExtraSets.UnwearableReason(garb, CLOTH_CLASS, validity(2003)) == "other",
+    "a set in the character's own armour is refused for a reason only the client knows")
+assert(ExtraSets.UnwearableReason(garb, 1, function() return nil end) == nil,
     "a set the client will not judge is left wearable rather than called otherwise")
+
+-- What the details panel says once it has a reason.
+
+local S = LuckysWardrobe.Strings.extraSets
+
+assert(ExtraSets.UnwearableNotice(loadingSet, "class", 1)
+    == "This set is not one your character can wear. It belongs to <CLASS5>Class 5.",
+    "named the class the set was made for")
+assert(ExtraSets.UnwearableNotice(garb, "armour", 1)
+    == "This set is not one your character can wear. It is a cloth set, and your character wears plate.",
+    "named the armour the set is and the armour the character wears")
+assert(ExtraSets.UnwearableNotice(garb, "other", 1) == S.notUsable,
+    "a refusal with nothing to explain says only that the set is out of reach")
+
+local unknownClassEntry = ExtraSets.BuildEntry(validRecord({ classMask = 2 ^ (20 - 1) }), stubResolver(1))
+assert(ExtraSets.UnwearableNotice(unknownClassEntry, "class", 1) == S.notUsable,
+    "a set named for a class this client has never heard of names nobody")
+local unarmouredEntry = ExtraSets.BuildEntry(validRecord({ armorType = 0 }), stubResolver(1))
+assert(ExtraSets.UnwearableNotice(unarmouredEntry, "armour", 1) == S.notUsable,
+    "a set in no armour type at all names no armour")
 
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")
