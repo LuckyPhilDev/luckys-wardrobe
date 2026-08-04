@@ -13,6 +13,9 @@ local function initialize()
     LuckysEnsemble.Settings:Init(LuckysEnsembleDB)
     LuckysEnsemble.SetsBrowser:Init()
     LuckysEnsemble.SetTracking:Init(LuckysEnsembleDB)
+    LuckysEnsemble.SetCompletion:Init(LuckysEnsembleDB)
+    LuckysEnsemble.LootAlerts:Init(LuckysEnsembleDB)
+    LuckysEnsemble.Catalyst:Init()
     LuckysEnsemble.Transmog:Init(LuckysEnsembleDB)
     LuckysEnsemble.SituationLabels:Init(LuckysEnsembleDB)
     LuckysEnsemble.SituationPresets:Init(LuckysEnsembleDB)
@@ -25,11 +28,14 @@ local function initialize()
         onClick = function(_, mouseButton)
             if mouseButton == "RightButton" then
                 LuckysEnsemble.Settings:Open()
+            elseif IsShiftKeyDown() then
+                LuckysEnsemble.SetCompletion:Toggle()
             end
         end,
         tooltip = function(tooltip)
             tooltip:AddLine(LuckysEnsemble.Strings.addon.title)
             tooltip:AddLine(" ")
+            tooltip:AddLine("Shift-click: Sets you can finish here", 0.91, 0.86, 0.78)
             tooltip:AddLine("Right-click: Open settings", 0.91, 0.86, 0.78)
             tooltip:AddLine("Drag: Move button", 0.54, 0.49, 0.42)
         end,
@@ -37,8 +43,17 @@ local function initialize()
     LuckysEnsemble.DevLog(LuckysEnsemble.Strings.addon.initialized)
 
     SLASH_LUCKYSENSEMBLE1 = "/ensemble"
-    SlashCmdList.LUCKYSENSEMBLE = function()
-        LuckysEnsemble.Settings:Open()
+    SlashCmdList.LUCKYSENSEMBLE = function(input)
+        local command = (input or ""):match("^%s*(%S*)"):lower()
+        if command == "sets" then
+            LuckysEnsemble.SetCompletion:Toggle()
+        elseif command == "scan" then
+            LuckysEnsemble.SetCompletion:Diagnose()
+        elseif command == "replay" then
+            LuckysEnsemble.SetCompletion:ReplayEntry()
+        else
+            LuckysEnsemble.Settings:Open()
+        end
     end
 end
 
