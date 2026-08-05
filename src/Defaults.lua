@@ -3,6 +3,7 @@ LuckysWardrobe = LuckysWardrobe or {}
 
 LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
+    welcomeShown = false,
     keepTransmogTab = false,
     hideUnwearableSets = true,
     showSetNames = true,

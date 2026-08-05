@@ -11,6 +11,7 @@ local function initialize()
     end)
 
     LuckysWardrobe.AddonConflicts:Init()
+    LuckysWardrobe.Welcome:Init(LuckysWardrobeDB)
     LuckysWardrobe.Settings:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetsBrowser:Init()
     LuckysWardrobe.ExtraSetsCatalog:Init()
@@ -60,6 +61,8 @@ local function initialize()
         command = command:lower()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
+        elseif command == "welcome" then
+            LuckysWardrobe.Welcome:Show()
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "replay" then
