@@ -68,11 +68,14 @@ Lucky's Better Wardrobe is the addon Lucky's Wardrobe replaced, and the update l
 | `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |
 | `/wardrobe extrasets full` | List the extra sets and the ones left out, with the reason for each |
 | `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
+| `/wardrobe extrasets looks <name>` | Compare the looks behind a set with the ones the Sets tab holds, for checking why a set was folded away |
+| `/wardrobe extrasets pieces` | Report the set selected in the Extra Sets tab piece by piece, for working out why it reads as unwearable |
 | `/wardrobe extrasets perf` | Report how long the tab's work takes and how it lands on your frame rate |
 | `/wardrobe extrasets perf reset` | Clear those measurements and start again |
 | `/wardrobe recolors` | Report how many recolor families this client's appearances form |
 | `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
 | `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |
+| `/wardrobe recolors probe` | Report how many appearances in each slot the client can name yet, for when a report comes back short |
 
 A keybinding for the set list is available under **Sets You Can Finish Here** in the game's Key Bindings screen.
 
