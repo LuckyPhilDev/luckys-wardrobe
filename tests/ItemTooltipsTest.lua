@@ -107,17 +107,37 @@ _G.TooltipDataProcessor = {
     end,
 }
 
-local function Tooltip()
-    local tooltip = { lines = {} }
+-- Tooltips keep their lines and hand them out again for the next thing hovered, so
+-- the font a line is left in is the font the next tooltip to use it draws with.
+_G.GameTooltipText = "normal"
+_G.GameTooltipTextSmall = "small"
+
+local function FontString()
+    local fontString = { font = _G.GameTooltipText }
+    function fontString:SetFontObject(font) self.font = font end
+    return fontString
+end
+
+local function Tooltip(name)
+    local tooltip = { lines = {}, scripts = {} }
+    function tooltip:GetName() return name end
+    function tooltip:NumLines() return #self.lines end
+    function tooltip:HookScript(script, handler) self.scripts[script] = handler end
     function tooltip:AddLine(text, r, g, b)
         self.lines[#self.lines + 1] = { text = text, colour = { r, g, b } }
+        local lineName = name .. "TextLeft" .. #self.lines
+        _G[lineName] = _G[lineName] or FontString()
+    end
+    function tooltip:Clear()
+        self.lines = {}
+        if self.scripts.OnTooltipCleared then self.scripts.OnTooltipCleared(self) end
     end
     return tooltip
 end
 
-_G.GameTooltip = Tooltip()
-_G.ItemRefTooltip = Tooltip()
-local ShoppingTooltip = Tooltip()
+_G.GameTooltip = Tooltip("GameTooltip")
+_G.ItemRefTooltip = Tooltip("ItemRefTooltip")
+local ShoppingTooltip = Tooltip("ShoppingTooltip1")
 
 local displayedLink
 _G.TooltipUtil = {
@@ -225,6 +245,16 @@ assert(#ItemRefTooltip.lines == 1, "a linked item said nothing")
 
 addLine(ShoppingTooltip)
 assert(#ShoppingTooltip.lines == 0, "a comparison tooltip repeated the line")
+
+-- The line is a footnote, so it is drawn in the small tooltip font, and the line is
+-- handed back in the font it was found in: the next tooltip to use it is not ours to
+-- shrink.
+assert(_G.GameTooltipTextLeft1.font == "small", "the line was left at the item's own text size")
+GameTooltip:Clear()
+assert(_G.GameTooltipTextLeft1.font == "normal", "a shrunk line was left shrunk for the next tooltip")
+
+GameTooltip:Clear()
+assert(_G.GameTooltipTextLeft1.font == "normal", "clearing twice should leave the line alone")
 
 -- A tooltip with no link to offer still has the item ID the data carries.
 displayedLink = nil

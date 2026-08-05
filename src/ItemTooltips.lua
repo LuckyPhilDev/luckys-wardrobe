@@ -128,6 +128,30 @@ function ItemTooltips:Line(itemInfo)
     }
 end
 
+-- The line is a footnote on someone else's tooltip rather than one of the item's
+-- own stats, so it is set in the game's small tooltip font. A font sticks to the
+-- line it was put on and not to the text, and tooltips reuse their lines, so the
+-- one shrunk is put back the moment the tooltip is cleared. The next tooltip to
+-- use that line is not ours to shrink.
+local shrunk = {}
+
+local function shrink(tooltip)
+    local name = tooltip:GetName()
+    local line = name and _G[name .. "TextLeft" .. tooltip:NumLines()]
+    if not line then return end
+
+    line:SetFontObject(GameTooltipTextSmall)
+    shrunk[tooltip] = line
+end
+
+local function restoreFont(tooltip)
+    local line = shrunk[tooltip]
+    if line then
+        line:SetFontObject(GameTooltipText)
+        shrunk[tooltip] = nil
+    end
+end
+
 local function addLine(tooltip, data)
     -- The tooltips someone reads an item on. The shopping tooltips alongside them
     -- are there to be compared against what is worn, and the same line repeated
@@ -142,6 +166,7 @@ local function addLine(tooltip, data)
     local line = ItemTooltips:Line(itemLink or (data and data.id))
     if line then
         tooltip:AddLine(line.text, line.colour[1], line.colour[2], line.colour[3])
+        shrink(tooltip)
     end
 end
 
@@ -152,6 +177,10 @@ function ItemTooltips:Init(database)
     local events = CreateFrame("Frame")
     events:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
     events:SetScript("OnEvent", forgetProgress)
+
+    for _, tooltip in ipairs({ GameTooltip, ItemRefTooltip }) do
+        tooltip:HookScript("OnTooltipCleared", restoreFont)
+    end
 
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, addLine)
 end
