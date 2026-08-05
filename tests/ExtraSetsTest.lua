@@ -219,6 +219,15 @@ assert(ExtraSets.UnwearableReason(garb, CLOTH_CLASS, validity(2003)) == "other",
 assert(ExtraSets.UnwearableReason(garb, 1, function() return nil end) == nil,
     "a set the client will not judge is left wearable rather than called otherwise")
 
+-- Browsing another class's sets. The client only answers about the character
+-- being played, so it is not asked, and what is left is the record itself.
+assert(ExtraSets.UnwearableReason(garb, 1, nil) == nil,
+    "with no source check to make, an unrestricted set says nothing")
+assert(ExtraSets.UnwearableReason(garb, CLOTH_CLASS, nil) == nil,
+    "a set the chosen class can wear says nothing either")
+assert(ExtraSets.UnwearableReason(loadingSet, 1, nil) == "class",
+    "the name on a set still answers for a class that is only being browsed")
+
 -- What the details panel says once it has a reason.
 
 local S = LuckysWardrobe.Strings.extraSets
@@ -259,7 +268,7 @@ local function detailResolver(unwearableSourceID)
     }
 end
 
-local diagnosis, diagnosedReason = ExtraSets.PieceDiagnosis(garb, CLOTH_CLASS, detailResolver(2003))
+local diagnosis, diagnosedReason = ExtraSets.PieceDiagnosis(garb, CLOTH_CLASS, detailResolver(2003), true)
 assert(#diagnosis == 3, "one row per piece of the set")
 assert(diagnosedReason == "other", "reported the same reason the details panel shows")
 assert(diagnosis[1].slot == "HEAD" and diagnosis[1].state == "collected", "rows carry the piece as the page has it")
@@ -270,7 +279,7 @@ assert(diagnosis[2].itemID == 92003, "a record carrying no item ID falls back to
 
 -- A piece the client will not answer for at all has to read differently from
 -- one it refuses, or the dump cannot tell a cold cache from a real refusal.
-local unanswered = ExtraSets.PieceDiagnosis(loadingSet, CLOTH_CLASS, detailResolver())
+local unanswered = ExtraSets.PieceDiagnosis(loadingSet, CLOTH_CLASS, detailResolver(), true)
 assert(unanswered[3].valid == nil and unanswered[3].itemLoaded == false,
     "a source this client has no data for is unanswered, not refused")
 assert(unanswered[3].itemID == nil, "an unresolvable piece reports no item")

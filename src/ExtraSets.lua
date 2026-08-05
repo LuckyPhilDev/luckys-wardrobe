@@ -232,17 +232,24 @@ function ExtraSets.BuildEntry(record, resolver)
     }
 end
 
--- Why this character could not wear the set, or nil when they could, which is
--- what the details panel says when they could not. Armour type is what keeps
+-- Why the chosen class could not wear the set, or nil when it could, which is
+-- what the details panel says when it could not. Armour type is what keeps
 -- most sets off a character and the class mask does not encode it, so the
 -- refusal comes from the sources themselves and only then is it worth asking
--- what the character wears. Anything the client turns down for a reason of its
+-- what the class wears. Anything the client turns down for a reason of its
 -- own, a race or faction lock among them, answers "other": there is nothing
 -- more to tell the player than that it turned it down. Worked out for the set
 -- on screen rather than for every set in the list, because only the one on
 -- screen ever says so.
+--
+-- sourceValidity is the client's answer about the character being played, so it
+-- is passed only while the chosen class is that character's own. Browsing
+-- another class's sets is left with what the record itself says, which is the
+-- honest limit: nothing here can ask the client how a class nobody is playing
+-- would fare.
 function ExtraSets.UnwearableReason(entry, classID, sourceValidity)
     if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return "class" end
+    if not sourceValidity then return nil end
 
     local judged, valid = 0, 0
     for _, piece in ipairs(entry.pieces) do
@@ -280,8 +287,11 @@ end
 -- alongside the reason the set as a whole was called out of reach. A refusal
 -- the set-level notice can only call "other" is one piece answering no, and
 -- this is what says which piece and, where the client offers one, in what
--- words. Dev dump only: the page never asks this of a set it is not showing.
-function ExtraSets.PieceDiagnosis(entry, classID, resolver)
+-- words. The rows are the client's answers about the character being played
+-- whoever the reason speaks for, so ownClass decides only whether the reason
+-- was allowed to weigh them. Dev dump only: the page never asks this of a set
+-- it is not showing.
+function ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
     local rows = {}
     for index, piece in ipairs(entry.pieces) do
         local detail = resolver.sourceDetail(piece.sourceID)
@@ -296,7 +306,7 @@ function ExtraSets.PieceDiagnosis(entry, classID, resolver)
             useError = detail and detail.useError,
         }
     end
-    return rows, ExtraSets.UnwearableReason(entry, classID, resolver.sourceValidity)
+    return rows, ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
 end
 
 function ExtraSets.IsComplete(entry)
@@ -483,6 +493,11 @@ function ExtraSets.SyncClassFilter()
     selectedClassID = classID
     ExtraSets.InvalidateEntries()
     return true
+end
+
+--- The class the page is listing, which every answer about a set is about.
+function ExtraSets.SelectedClassID()
+    return selectedClassID
 end
 
 function ExtraSets.Entries()
@@ -736,10 +751,17 @@ function ExtraSets:CreatePage(wardrobe)
         return wrap and longNameText or nameText
     end
 
+    -- The page lists one class at a time, so the class on the dropdown is the
+    -- one the notice speaks for. The client will only answer about the
+    -- character being played, so its per-source verdict is asked for while that
+    -- character's own class is the one on show and left alone otherwise: a set
+    -- the player cannot use says nothing about the class they are browsing.
     local function showNotice(entry)
         local resolver = ExtraSets.LiveResolver()
-        local classID = resolver.playerClassID()
-        local unwearable = ExtraSets.UnwearableReason(entry, classID, resolver.sourceValidity)
+        local classID = ExtraSets.SelectedClassID() or resolver.playerClassID()
+        local ownClass = classID == resolver.playerClassID()
+        local unwearable =
+            ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
         if entry.unavailable > 0 then
             noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
         elseif unwearable then
@@ -1115,9 +1137,13 @@ function ExtraSets:PrintPieceReport()
         return
     end
 
+    -- The verdict is read for the class on the dropdown, as the panel reads it,
+    -- while the per-piece rows below stay the client's raw answers about the
+    -- character being played. The two disagreeing is worth seeing, not hiding.
     local resolver = ExtraSets.LiveResolver()
-    local classID = resolver.playerClassID()
-    local rows, reason = ExtraSets.PieceDiagnosis(entry, classID, resolver)
+    local classID = ExtraSets.SelectedClassID() or resolver.playerClassID()
+    local ownClass = classID == resolver.playerClassID()
+    local rows, reason = ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
     say(S.piecesHeader:format(entry.setID, entry.name, reason or S.piecesWearable))
     for _, row in ipairs(rows) do
         say(S.pieceLine:format(
