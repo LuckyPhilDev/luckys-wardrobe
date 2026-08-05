@@ -1455,18 +1455,30 @@ local function layOutClassDropdown(dropdown)
     dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
 end
 
+-- Which control the bar shares its row with changes with the tab: the set pages
+-- give the top right corner to the class dropdown and drop their search box to
+-- the row below, while the Items tab keeps its search box up there and parks
+-- the class dropdown beside the slot column on the far left.
+local function cornerControl()
+    if attachedWardrobe.selectedCollectionTab == NATIVE_ITEMS_TAB_ID then
+        return attachedWardrobe.SearchBox
+    end
+
+    return attachedWardrobe.ClassDropdown
+end
+
 -- Centring the bar in the gap means measuring both of its edges, which no
 -- single anchor can do, so the centre is worked out from where the two frames
 -- landed. Neither has a position until the wardrobe has been shown; until then
 -- the bar sits just past the last tab, and every tab change measures again.
 local function progressBarCentreOffset()
     local stripEdge = extraTab:GetRight()
-    local dropdownEdge = attachedWardrobe.ClassDropdown:GetLeft()
-    if not (stripEdge and dropdownEdge) then
+    local cornerEdge = cornerControl():GetLeft()
+    if not (stripEdge and cornerEdge) then
         return PROGRESS_BAR_TAB_GAP + PROGRESS_BAR_WIDTH / 2
     end
 
-    return (dropdownEdge - stripEdge) / 2
+    return (cornerEdge - stripEdge) / 2
 end
 
 -- The border art is a fixed texture, so it has to be narrowed alongside the bar

@@ -766,6 +766,8 @@ local function visibilityFrame(shown)
         shown = shown,
         Show = function(self) self.shown = true end,
         Hide = function(self) self.shown = false end,
+        -- Unset until a test says where the client laid the frame out.
+        GetLeft = function(self) return self.left end,
     }
 end
 
@@ -774,7 +776,6 @@ end
 -- builds the menu again.
 local function nativeClassDropdown()
     local dropdown = recordAnchors(visibilityFrame(true))
-    function dropdown:GetLeft() return self.left end
     function dropdown:SetupMenu(builder) self.menuBuilder = builder end
     function dropdown:SetClassFilter(classID)
         C_TransmogSets.SetTransmogSetsClassFilter(classID)
@@ -825,8 +826,16 @@ wardrobe = {
 }
 wardrobe.SetsCollectionFrame.searchType = 2
 
+-- Where the client leaves the two controls that share the tab row. The Items
+-- tab keeps its search box in the top right corner and parks the class dropdown
+-- beside the slot column on the far left; the set pages swap them over.
+local ITEMS_CLASS_DROPDOWN_LEFT = 120
+local SETS_CLASS_DROPDOWN_LEFT = 700
+local ITEMS_SEARCH_BOX_LEFT = 660
+
 function wardrobe:SetTab(tabID)
     self.selectedCollectionTab = tabID
+    self.ClassDropdown.left = tabID == 1 and ITEMS_CLASS_DROPDOWN_LEFT or SETS_CLASS_DROPDOWN_LEFT
     if tabID == 1 then
         self.ItemsCollectionFrame:Show()
         self.SetsCollectionFrame:Hide()
@@ -932,13 +941,12 @@ for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
     assert(bar.border.width > bar.width, "kept the border art framing the narrowed bar")
 end
 
--- Tab switching. Both frames the bar sits between have landed on screen by the
+-- Tab switching. Everything the bar sits between has landed on screen by the
 -- time a tab is clicked, so the gap can be measured from here on.
 
 local TAB_STRIP_RIGHT = 400
-local CLASS_DROPDOWN_LEFT = 700
 extraTab.right = TAB_STRIP_RIGHT
-wardrobe.ClassDropdown.left = CLASS_DROPDOWN_LEFT
+wardrobe.SearchBox.left = ITEMS_SEARCH_BOX_LEFT
 
 extraTab.scripts.OnClick()
 assert(wardrobe.selectedCollectionTab == 3 and page.shown, "selected and showed Extra Sets")
@@ -953,9 +961,9 @@ assert(playedSound == SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, "used the native 
 -- itself in it rather than hug the end of the strip.
 for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
     local _, _, _, x = bar:GetPoint()
-    assert(x == (CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT) / 2,
+    assert(x == (SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT) / 2,
         "centred the bar in the gap between the tab strip and the class dropdown")
-    assert(x + bar.width / 2 < CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT, "left the class dropdown clear")
+    assert(x + bar.width / 2 < SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT, "left the class dropdown clear")
 end
 
 wardrobe:SetTab(4)
@@ -965,6 +973,16 @@ wardrobe:SetTab(2)
 assert(not page.shown and wardrobe.SetsCollectionFrame.shown, "restored the native Sets page")
 assert(wardrobe.SearchBox.shown and wardrobe.FilterButton.shown and wardrobe.ClassDropdown.shown, "restored native controls")
 assert(wardrobe.SetTab ~= originalSetTab, "hooked rather than replaced SetTab")
+
+-- The Items tab hands the corner to its search box and sends the class dropdown
+-- to the far left, where measuring it would put the bar under the tab strip.
+wardrobe:SetTab(1)
+for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
+    local _, _, _, x = bar:GetPoint()
+    assert(x == (ITEMS_SEARCH_BOX_LEFT - TAB_STRIP_RIGHT) / 2,
+        "centred the bar against whichever control shares its row")
+    assert(x - bar.width / 2 > 0, "kept the whole bar past the end of the tab strip")
+end
 
 ExtraSets:Attach(wardrobe)
 assert(wardrobe.numTabs == 3, "attach is idempotent")
