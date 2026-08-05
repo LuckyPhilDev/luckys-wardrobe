@@ -52,15 +52,30 @@ C_TransmogSets = {
     end,
 }
 
+-- Source IDs live in the 100s and visual IDs in the 1000s, and each lookup only
+-- answers for its own ID space, so code that mixes up the two spaces finds
+-- nothing instead of echoed-back plausible data. The set's appearanceID values
+-- above sit in the source table because GetSetPrimaryAppearances really returns
+-- itemModifiedAppearanceIDs; Blizzard's own sets UI passes them straight to
+-- GetSourceInfo.
+local sourceInfoByID = {
+    [101] = { visualID = 1001, playerCanCollect = false },
+    [201] = { visualID = 1001, playerCanCollect = true },
+    [102] = { visualID = 1002, playerCanCollect = true },
+    [103] = { visualID = 1003, playerCanCollect = true },
+}
+local sourcesByVisualID = {
+    [1001] = { 101, 201 },
+    [1002] = { 102 },
+    [1003] = { 103 },
+}
+
 C_TransmogCollection = {
     GetSourceInfo = function(sourceID)
-        return {
-            visualID = sourceID == 101 and 1001 or sourceID,
-            playerCanCollect = sourceID ~= 101,
-        }
+        return sourceInfoByID[sourceID]
     end,
     GetAllAppearanceSources = function(visualID)
-        return visualID == 1001 and { 101, 201 } or { visualID }
+        return sourcesByVisualID[visualID]
     end,
 }
 
@@ -69,6 +84,7 @@ C_ContentTracking = {
         return sourceID == 103
     end,
     StartTracking = function(_, sourceID)
+        assert(sourceInfoByID[sourceID], "StartTracking got an ID outside the source ID space")
         table.insert(tracked, sourceID)
     end,
 }
@@ -116,5 +132,11 @@ db.trackSetsOnShiftClick = false
 setRow:OnClick("LeftButton")
 assert(#tracked == 1, "respected disabled setting")
 assert(stockClicks == 3, "restored stock Shift-left-click when disabled")
+
+tracked = {}
+LuckysWardrobe.SetTracking:TrackSources({ 102, 103, 201 }, "Extra Set")
+assert(#tracked == 2 and tracked[1] == 102 and tracked[2] == 201,
+    "tracked the exact sources given, skipping the already-tracked one")
+assert(#errors == 0, "did not report an error for trackable sources")
 
 print("Lucky's Wardrobe set tracking test passed")
