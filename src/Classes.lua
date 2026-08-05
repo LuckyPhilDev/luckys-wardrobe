@@ -6,10 +6,10 @@ LuckysWardrobe.Classes = {}
 
 local Classes = LuckysWardrobe.Classes
 
--- A set names its classes as a bitmask, one bit per class ID. Read with plain
--- arithmetic rather than the bit library so the same code runs under the tests,
--- which have no such library to stub.
-local function maskHasClass(classMask, classID)
+--- Whether a set's class bitmask names a class, one bit per class ID.
+-- Read with plain arithmetic rather than the bit library so the same code runs
+-- under the tests, which have no such library to stub.
+function Classes:MaskHasClass(classMask, classID)
     local flag = 2 ^ (classID - 1)
     return classMask % (flag + flag) >= flag
 end
@@ -77,7 +77,7 @@ function Classes:FromMask(classMask)
 
     local classes = {}
     for _, class in ipairs(self:All()) do
-        if maskHasClass(classMask, class.classID) then
+        if self:MaskHasClass(classMask, class.classID) then
             classes[#classes + 1] = class
         end
     end

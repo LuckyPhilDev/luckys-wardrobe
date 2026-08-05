@@ -4,6 +4,7 @@ LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     keepTransmogTab = false,
+    hideUnwearableSets = true,
     trackSetsOnShiftClick = true,
     markTrackedAppearances = true,
     wowheadLinkOnCtrlClick = true,

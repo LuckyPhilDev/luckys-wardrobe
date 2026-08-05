@@ -107,6 +107,10 @@ LuckysWardrobe.Strings = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
+        hideUnwearableSets = {
+            label = "Hide Sets You Cannot Wear",
+            desc = "The Sets tab at the transmog NPC offers a set for every class, so most of what it shows is armour this character can never put on. Turn this off to browse them all again.",
+        },
         showSituationValues = {
             label = "Show Situation Values",
             desc = "Shows the selected situation values on outfit entries instead of just the category names.",

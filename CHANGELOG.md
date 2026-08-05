@@ -9,6 +9,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Sets you can finish here**: walk into a dungeon or raid to see which sets you are close to completing drop pieces there, which pieces you still need, and where each one comes from. Opens on its own, or on a keybinding or `/wardrobe sets`.
 - **Loot alerts**: a sound or a chat message when you loot a piece of a set you are close to finishing.
 - **Catalyst marks**: pieces you could catalyse from something already in your bags are marked in the set list. Requires Transmog Upgrade Master.
+- **Only the sets you can wear**: the Sets tab at the transmog NPC no longer offers a set for every class, so what is left is armour you could actually apply. Turn it off in settings to browse them all again.
 - **Extra Sets at the transmogrifier**: the transmog NPC gets an Extra Sets tab beside Sets, showing the hidden sets your class can wear as the same preview cards. Click a set to apply every piece you have collected, with the closest to complete on the first pages.
 - **Sort and filter the Sets tab**: sort by completion, and narrow the list by expansion or by source, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. Favourites stay at the top, and the count reflects what the filters actually left on screen.
 - **Track a whole set at once**: shift-click a set in the Sets collection to track every appearance you are still missing from it.
