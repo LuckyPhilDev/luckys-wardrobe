@@ -4,17 +4,19 @@
 -- little models says which set each one is without hovering them one by one.
 -- The Sets and Custom Sets tabs are named through Blizzard's own card mixins;
 -- the Extra Sets tab names its cards as it draws them.
+--
+-- The look is Narcissus's, which names the custom sets it lists the same way:
+-- outlined text across the top of the card, tinted like the card's border so a
+-- set short of complete reads as one at a glance.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.TransmogSetNames = {}
 
 local TransmogSetNames = LuckysWardrobe.TransmogSetNames
 
--- The plate keeps clear of the card's edge, where the border art sits.
-local PLATE_INSET = 6
-local TEXT_PADDING = 4
--- A long set name reads fine over two lines. A third would climb up the model.
-local MAX_LINES = 2
-local PLATE_ALPHA = 0.6
+local NAME_PADDING = 8
+local NAME_LINE_SPACING = 2
+local COLLECTED_COLOUR = { r = 0.827, g = 0.776, b = 0.620 }
+local INCOMPLETE_COLOUR = { r = 0.612, g = 0.627, b = 0.690 }
 -- Above the card's own dimming and its transmogrified glow, so the name stays
 -- readable whatever state the card is in.
 local NAME_LEVEL_OFFSET = 5
@@ -29,19 +31,11 @@ local function nameLabel(card)
     overlay:SetAllPoints()
     overlay:SetFrameLevel(card:GetFrameLevel() + NAME_LEVEL_OFFSET)
 
-    local text = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    local textInset = PLATE_INSET + TEXT_PADDING
-    text:SetPoint("BOTTOMLEFT", textInset, textInset)
-    text:SetPoint("BOTTOMRIGHT", -textInset, textInset)
+    local text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline")
+    text:SetPoint("TOPLEFT", NAME_PADDING, -NAME_PADDING)
+    text:SetPoint("TOPRIGHT", -NAME_PADDING, -NAME_PADDING)
     text:SetJustifyH("CENTER")
-    text:SetMaxLines(MAX_LINES)
-
-    -- The plate takes its size from the text, so a name that wraps sits on a
-    -- taller plate rather than spilling off a fixed one.
-    local plate = overlay:CreateTexture(nil, "BACKGROUND")
-    plate:SetColorTexture(0, 0, 0, PLATE_ALPHA)
-    plate:SetPoint("TOPLEFT", text, "TOPLEFT", -TEXT_PADDING, TEXT_PADDING)
-    plate:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", TEXT_PADDING, -TEXT_PADDING)
+    text:SetSpacing(NAME_LINE_SPACING)
 
     overlay.Text = text
     card.luckysSetName = overlay
@@ -51,9 +45,11 @@ end
 
 -- Names one card. The name is kept on the card even while the setting is off,
 -- so turning it back on has every card on screen answer at once.
-function TransmogSetNames:Apply(card, name)
+function TransmogSetNames:Apply(card, name, collected)
     local overlay = nameLabel(card)
     overlay.Text:SetText(name or "")
+    local colour = collected and COLLECTED_COLOUR or INCOMPLETE_COLOUR
+    overlay.Text:SetTextColor(colour.r, colour.g, colour.b)
     overlay:SetShown(db.showSetNames and (name or "") ~= "")
 end
 
@@ -64,30 +60,33 @@ function TransmogSetNames:Refresh()
     end
 end
 
-local function nativeSetName(card)
+local function nameNativeSet(card)
     local elementData = card.elementData
-    if not elementData or not elementData.set then return nil end
+    if not elementData or not elementData.set then
+        TransmogSetNames:Apply(card, nil, false)
+        return
+    end
 
     local setInfo = C_TransmogSets.GetSetInfo(elementData.set.setID)
-    return setInfo and setInfo.name
+    TransmogSetNames:Apply(card, setInfo and setInfo.name, elementData.set.collected)
 end
 
-local function customSetName(card)
+local function nameCustomSet(card)
     local elementData = card.elementData
-    if not elementData then return nil end
+    if not elementData then
+        TransmogSetNames:Apply(card, nil, false)
+        return
+    end
 
-    return (C_TransmogCollection.GetCustomSetInfo(elementData.customSetID))
+    TransmogSetNames:Apply(card,
+        (C_TransmogCollection.GetCustomSetInfo(elementData.customSetID)), elementData.isCollected)
 end
 
 -- Cards copy their methods from the mixin when the pool creates them, so the
 -- hooks must land before Blizzard_Transmog builds its first card.
 local function installCardHooks()
-    hooksecurefunc(TransmogSetModelMixin, "UpdateSet", function(card)
-        TransmogSetNames:Apply(card, nativeSetName(card))
-    end)
-    hooksecurefunc(TransmogCustomSetModelMixin, "UpdateSet", function(card)
-        TransmogSetNames:Apply(card, customSetName(card))
-    end)
+    hooksecurefunc(TransmogSetModelMixin, "UpdateSet", nameNativeSet)
+    hooksecurefunc(TransmogCustomSetModelMixin, "UpdateSet", nameCustomSet)
 end
 
 function TransmogSetNames:Init(database)

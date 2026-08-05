@@ -7,19 +7,13 @@ local function newRegion(kind)
     function region:SetPoint(point, ...) self.points[point] = { ... } end
     function region:SetAllPoints() self.allPoints = true end
     function region:SetJustifyH(justify) self.justifyH = justify end
-    function region:SetMaxLines(lines) self.maxLines = lines end
-    function region:SetColorTexture(r, g, b, a) self.colour = { r, g, b, a } end
+    function region:SetSpacing(spacing) self.spacing = spacing end
+    function region:SetTextColor(r, g, b) self.colour = { r, g, b } end
     function region:SetText(value) self.text = value or "" end
     function region:GetText() return self.text end
     function region:SetShown(shown) self.shown = shown and true or false end
     function region:SetFrameLevel(level) self.level = level end
     function region:GetFrameLevel() return self.level or 1 end
-    function region:CreateTexture(_, layer)
-        local texture = newRegion("texture")
-        texture.layer = layer
-        self.texture = texture
-        return texture
-    end
     function region:CreateFontString(_, layer, template)
         local fontString = newRegion("fontstring")
         fontString.layer = layer
@@ -55,6 +49,14 @@ function hooksecurefunc(target, method, callback)
     end
 end
 
+-- Narcissus's own colours, which this borrows so the two read as one idea.
+local COLLECTED_COLOUR = { 0.827, 0.776, 0.620 }
+local INCOMPLETE_COLOUR = { 0.612, 0.627, 0.690 }
+
+local function isColour(region, colour)
+    return region.colour[1] == colour[1] and region.colour[2] == colour[2] and region.colour[3] == colour[3]
+end
+
 local setNames = { [7] = "Judgement Armor" }
 C_TransmogSets = {
     GetSetInfo = function(setID)
@@ -85,7 +87,7 @@ LuckysWardrobe.TransmogSetNames:Init(db)
 
 -- Blizzard's Sets tab.
 
-local setCard = newCard({ set = { setID = 7 } })
+local setCard = newCard({ set = { setID = 7, collected = true } })
 TransmogSetModelMixin.UpdateSet(setCard)
 
 assert(nativeUpdates == 1, "left Blizzard's own card update running")
@@ -99,39 +101,37 @@ assert(overlay.level > CARD_LEVEL, "put the name above the card's own art")
 local text = overlay.fontString
 assert(text.text == "Judgement Armor", "read the name from the set")
 assert(overlay.shown, "showed the name")
+assert(text.layer == "OVERLAY", "drew the name over the card")
+assert(text.template == "GameFontNormalOutline", "outlined the name, so it reads over the model behind it")
 assert(text.justifyH == "CENTER", "centred the name")
-assert(text.maxLines == 2, "held the name to two lines")
+assert(text.spacing == 2, "spaced the lines of a name that wraps")
+assert(isColour(text, COLLECTED_COLOUR), "tinted a complete set's name like its border")
 
-local left, right, top = text.points.BOTTOMLEFT, text.points.BOTTOMRIGHT, text.points.TOP
-assert(left and right and not top, "sat the name against the bottom of the card")
-assert(left[1] > 0 and left[2] > 0, "inset the name from the card's bottom left corner")
-assert(right[1] < 0 and right[2] > 0, "inset the name from the card's bottom right corner")
-
-local plate = overlay.texture
-assert(plate, "gave the name a plate to sit on")
-assert(plate.layer == "BACKGROUND" and text.layer == "OVERLAY", "drew the plate behind the name")
-assert(plate.colour[4] > 0 and plate.colour[4] < 1, "made the plate translucent")
-assert(plate.points.TOPLEFT[1] == text and plate.points.BOTTOMRIGHT[1] == text,
-    "sized the plate from the name, so a name that wraps still sits on it")
+local left, right, bottom = text.points.TOPLEFT, text.points.TOPRIGHT, text.points.BOTTOM
+assert(left and right and not bottom, "sat the name across the top of the card")
+assert(left[1] > 0 and left[2] < 0, "inset the name from the card's top left corner")
+assert(right[1] < 0 and right[2] < 0, "inset the name from the card's top right corner")
 
 -- Blizzard's Custom Sets tab.
 
-local customCard = newCard({ customSetID = 3 })
+local customCard = newCard({ customSetID = 3, isCollected = false })
 TransmogCustomSetModelMixin.UpdateSet(customCard)
 
 assert(customUpdates == 1, "left Blizzard's own custom card update running")
 assert(customCard.luckysSetName.fontString.text == "Raid Night Best", "read the name the player gave the custom set")
 assert(customCard.luckysSetName.shown, "showed the custom set's name")
+assert(isColour(customCard.luckysSetName.fontString, INCOMPLETE_COLOUR),
+    "tinted a set short of complete like its own border")
 
 -- The Extra Sets tab, which names its cards as it draws them.
 
 local extraCard = newCard()
-LuckysWardrobe.TransmogSetNames:Apply(extraCard, "Ironfeather Battlesuit")
+LuckysWardrobe.TransmogSetNames:Apply(extraCard, "Ironfeather Battlesuit", true)
 assert(extraCard.luckysSetName.fontString.text == "Ironfeather Battlesuit", "named the extra set's card")
 assert(extraCard.luckysSetName.shown, "showed the extra set's name")
+assert(isColour(extraCard.luckysSetName.fontString, COLLECTED_COLOUR), "tinted the extra set's name too")
 
--- A set this client cannot name is left as Blizzard drew it rather than given
--- an empty plate.
+-- A set this client cannot name is left as Blizzard drew it.
 
 local namelessCard = newCard({ set = { setID = 404 } })
 TransmogSetModelMixin.UpdateSet(namelessCard)

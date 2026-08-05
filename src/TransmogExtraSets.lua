@@ -395,7 +395,7 @@ local function updateCard(card)
     -- Favourites are Blizzard's own bookkeeping and these sets are not in it.
     card.Favorite.Icon:Hide()
 
-    LuckysWardrobe.TransmogSetNames:Apply(card, entry.name)
+    LuckysWardrobe.TransmogSetNames:Apply(card, entry.name, complete)
 end
 
 -- The native card tooltip, told from the entry: name coloured by the pieces'
