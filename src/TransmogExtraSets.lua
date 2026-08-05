@@ -209,6 +209,16 @@ function TransmogExtraSets.RejudgeEntries()
     cachedEntries = nil
 end
 
+-- Whether any row is still waiting on the client to name one of its pieces.
+-- Such a row counted that piece as neither collected nor missing, so what it
+-- says is provisional: it has to be built again rather than only judged again.
+local function rowsWaiting()
+    for _, entry in ipairs(cachedRows or {}) do
+        if entry.loading then return true end
+    end
+    return false
+end
+
 function TransmogExtraSets.Entries()
     if not cachedEntries then
         LuckysWardrobe.Perf:Begin("transmog entries built")
@@ -264,6 +274,27 @@ end
 -- Told after each round of answers lands, so the page can read the verdicts
 -- again. Set once the page exists; the rounds run whether it does or not.
 local afterItemsLoaded
+
+-- Told when the collection has changed under the rows, so the page can build
+-- itself again. Set once the page exists, as the rows are dropped either way.
+local afterCollectionChanged
+
+-- Building the rows is the most expensive thing this tab does, a good tenth of
+-- a second, and the collection changing is what makes them wrong. The page used
+-- to throw them away every time it opened, because it only listened for that
+-- while it was on screen and so could not know whether anything had happened
+-- while it was away. Listening for the whole session answers that: a tab opened
+-- again on a collection nothing has happened to opens on the rows it was left
+-- with, and pays nothing for them.
+local function watchCollection()
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
+    watcher:SetScript("OnEvent", function(_, event)
+        LuckysWardrobe.Perf:Count("event " .. event)
+        TransmogExtraSets.InvalidateEntries()
+        if afterCollectionChanged then afterCollectionChanged() end
+    end)
+end
 
 -- A set the client has not judged stays on the page, because a cold cache is
 -- not a refusal. So a page built before the answers are in lists sets that
@@ -639,7 +670,19 @@ function TransmogExtraSets:CreatePage(wardrobe)
     -- page again can leave them alone.
     local paintedSignature
 
+    local function paint(visible)
+        LuckysWardrobe.Perf:Begin("transmog page painted")
+        local elements = {}
+        for _, entry in ipairs(visible) do
+            elements[#elements + 1] = { templateKey = "EXTRA_SET", entry = entry, page = page }
+        end
+        local retainCurrentPage = true
+        pagedContent:SetDataProvider(CreateDataProvider({ { elements = elements } }), retainCurrentPage)
+        LuckysWardrobe.Perf:End("transmog page painted")
+    end
+
     local function refresh()
+        LuckysWardrobe.Perf:Begin("transmog page refresh")
         local entries = TransmogExtraSets.Entries()
         local visible = TransmogExtraSets.VisibleEntries(entries, filters, searchBox:GetText())
 
@@ -658,18 +701,11 @@ function TransmogExtraSets:CreatePage(wardrobe)
         local signature = TransmogExtraSets.PageSignature(visible)
         if signature == paintedSignature then
             LuckysWardrobe.Perf:Count("transmog page unchanged")
-            return
+        else
+            paintedSignature = signature
+            paint(visible)
         end
-        paintedSignature = signature
-
-        LuckysWardrobe.Perf:Begin("transmog page painted")
-        local elements = {}
-        for _, entry in ipairs(visible) do
-            elements[#elements + 1] = { templateKey = "EXTRA_SET", entry = entry, page = page }
-        end
-        local retainCurrentPage = true
-        pagedContent:SetDataProvider(CreateDataProvider({ { elements = elements } }), retainCurrentPage)
-        LuckysWardrobe.Perf:End("transmog page painted")
+        LuckysWardrobe.Perf:End("transmog page refresh")
     end
 
     -- The page drawn again whether or not it would come out any different,
@@ -680,8 +716,10 @@ function TransmogExtraSets:CreatePage(wardrobe)
         refresh()
     end
 
-    local function rebuildNow()
-        TransmogExtraSets.InvalidateEntries()
+    -- Everything a visit to the tab asks for: the page drawn from the rows as
+    -- they stand, and the item data behind any set the client has still not
+    -- judged asked for. Neither costs anything when there is nothing to do.
+    local function refreshAndWarm()
         refresh()
         warmItemData()
     end
@@ -693,8 +731,10 @@ function TransmogExtraSets:CreatePage(wardrobe)
         if page:IsShown() then refresh() end
     end
 
-    local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
-        if page:IsShown() then rebuildNow() end
+    -- The rows have already been thrown away by the time this runs; what the
+    -- delay collapses is the burst of them that learning one appearance sets off.
+    afterCollectionChanged = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
+        if page:IsShown() then refreshAndWarm() end
     end)
 
     filterButton:SetIsDefaultCallback(function()
@@ -729,7 +769,6 @@ function TransmogExtraSets:CreatePage(wardrobe)
     end)
 
     page:SetScript("OnShow", function(self)
-        self:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
         self:RegisterEvent("VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS")
         self:RegisterEvent("UI_SCALE_CHANGED")
         self:RegisterEvent("DISPLAY_SIZE_CHANGED")
@@ -738,13 +777,15 @@ function TransmogExtraSets:CreatePage(wardrobe)
             self:RegisterUnitEvent("UNIT_FORM_CHANGED", "player")
             self.inAlternateForm = inAlternateForm
         end
-        -- The collection can change while the page is off screen and its
-        -- events are unregistered, so coming back always reads it fresh.
-        rebuildNow()
+        -- The collection is watched all session, so the rows this tab was left
+        -- with are still the right ones and are opened on. A row still waiting
+        -- on the client is the exception: what it counted is provisional until
+        -- the client has named the piece, so those are counted again.
+        if rowsWaiting() then TransmogExtraSets.InvalidateEntries() end
+        refreshAndWarm()
     end)
 
     page:SetScript("OnHide", function(self)
-        self:UnregisterEvent("TRANSMOG_COLLECTION_UPDATED")
         self:UnregisterEvent("VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS")
         self:UnregisterEvent("UI_SCALE_CHANGED")
         self:UnregisterEvent("DISPLAY_SIZE_CHANGED")
@@ -753,9 +794,7 @@ function TransmogExtraSets:CreatePage(wardrobe)
 
     page:SetScript("OnEvent", function(self, event)
         LuckysWardrobe.Perf:Count("event " .. event)
-        if event == "TRANSMOG_COLLECTION_UPDATED" then
-            queueRebuild()
-        elseif event == "VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS" then
+        if event == "VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS" then
             -- Saving marks the applied card with the native flash. Already set
             -- means a multi-slot save is mid-burst, and is left alone.
             if not outfitSlotSaved then
@@ -776,7 +815,7 @@ function TransmogExtraSets:CreatePage(wardrobe)
         end
     end)
 
-    page.Refresh = rebuildNow
+    page.Refresh = refreshAndWarm
     LuckysWardrobe.DevLog("Transmog Extra Sets page built.")
     return page
 end
@@ -843,6 +882,7 @@ end
 function TransmogExtraSets:Init()
     filters.collected = true
     filters.uncollected = true
+    watchCollection()
     -- The catalogue is built at the first entry into the world, so the sets are
     -- there to ask the client about hours before anyone stands at a
     -- transmogrifier. Asking then is what has the tab open on the sets this
