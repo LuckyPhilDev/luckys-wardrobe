@@ -122,8 +122,8 @@ LuckysWardrobe.Strings = {
             desc = "Ctrl-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy. This takes ctrl-click off the dressing room preview.",
         },
         tooltipSetProgress = {
-            label = "Say Which Set It Belongs To",
-            desc = "Adds a line to an item's tooltip naming the set the piece belongs to and how much of that set you have collected, so a drop says what it is worth before you decide what to do with it.",
+            label = "Show Set Information",
+            desc = "Adds a line to an item's tooltip naming the set it belongs to and how much of that set you have, as in \"From set: Glyphed Garb 7/8\", so a drop says what it is worth at a glance.",
         },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
