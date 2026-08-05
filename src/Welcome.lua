@@ -1,4 +1,4 @@
--- luacheck: globals CreateFrame EventUtil UIParent UISpecialFrames
+-- luacheck: globals C_Timer CreateFrame EventUtil UIParent UISpecialFrames
 
 -- Lucky's Wardrobe: A note the first time the addon runs, saying it is newly
 -- written rather than an older one carried forward, and handing over the Discord
@@ -22,6 +22,10 @@ local HINT_HEIGHT = 14
 local BUTTON_GAP = 14
 local BUTTON_HEIGHT = 26
 local BOTTOM_PADDING = 12
+
+-- Login fires while the loading screen is still up, so the note waits for a
+-- screen the player is actually looking at.
+local SETTLE_SECONDS = 2
 
 local db
 local dialog
@@ -102,6 +106,13 @@ local function build()
     close:SetScript("OnClick", function() frame:Hide() end)
     frame.close = close
 
+    -- Counted as seen once it has been closed rather than once it has been
+    -- shown, so a note that never landed in front of the player is still owed to
+    -- them at the next login. Closing covers the button and Escape alike.
+    frame:SetScript("OnHide", function()
+        if db then db.welcomeShown = true end
+    end)
+
     -- Wrapped text is only as tall as the font makes it, so the panel is sized
     -- from what the lines measure once they hold their text.
     local text = 0
@@ -121,6 +132,12 @@ function Welcome:Show()
     dialog:Show()
 end
 
+-- Puts the note back on the slate, for testing the login it actually arrives on.
+function Welcome:Reset()
+    db.welcomeShown = false
+    print(LuckysWardrobe.Strings.addon.prefix .. " " .. S.reset)
+end
+
 function Welcome:Init(database)
     db = database
     EventUtil.ContinueOnPlayerLogin(function()
@@ -129,7 +146,6 @@ function Welcome:Init(database)
         -- reloads either way, so the welcome keeps out of its way and waits for
         -- a login that has the screen to itself.
         if #LuckysWardrobe.AddonConflicts:Find() > 0 then return end
-        db.welcomeShown = true
-        self:Show()
+        C_Timer.After(SETTLE_SECONDS, function() self:Show() end)
     end)
 end

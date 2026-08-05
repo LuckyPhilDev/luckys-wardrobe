@@ -62,7 +62,11 @@ local function initialize()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
         elseif command == "welcome" then
-            LuckysWardrobe.Welcome:Show()
+            if argument:lower() == "reset" then
+                LuckysWardrobe.Welcome:Reset()
+            else
+                LuckysWardrobe.Welcome:Show()
+            end
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "replay" then

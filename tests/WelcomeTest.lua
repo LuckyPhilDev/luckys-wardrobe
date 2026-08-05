@@ -1,11 +1,18 @@
--- luacheck: globals CreateFrame EventUtil LuckyUI LuckysWardrobe UIParent UISpecialFrames
+-- luacheck: globals C_Timer CreateFrame EventUtil LuckyUI LuckysWardrobe UIParent UISpecialFrames
 
 -- The note is shown once and never again, so these go through when it appears,
--- what it says, and the address it hands over.
+-- what it says, the address it hands over, and what counts as having seen it.
 
 local loginCallback
 EventUtil = {
     ContinueOnPlayerLogin = function(callback) loginCallback = callback end,
+}
+
+-- The note is held back until the loading screen is out of the way, so the wait
+-- is run by hand rather than skipped over.
+local settle
+C_Timer = {
+    After = function(_, callback) settle = callback end,
 }
 
 UIParent = {}
@@ -71,8 +78,12 @@ LuckyUI = {
         function panel:SetHeight(value) self.height = value end
         function panel:GetHeight() return self.height end
         function panel:Show() self.shown = true end
-        function panel:Hide() self.shown = false end
+        function panel:Hide()
+            self.shown = false
+            if self.onHide then self.onHide() end
+        end
         function panel:IsShown() return self.shown end
+        function panel:SetScript(_, handler) self.onHide = handler end
         function panel:CreateFontString()
             local fs = FontString()
             self.lines[#self.lines + 1] = fs
@@ -111,6 +122,7 @@ local function said(text)
 end
 
 local function login(db)
+    settle = nil
     Welcome:Init(db)
     loginCallback()
     return db
@@ -120,11 +132,13 @@ end
 local db = { welcomeShown = false }
 Welcome:Init(db)
 assert(panels == 0, "built nothing before the player is in")
-assert(not db.welcomeShown, "left the note unshown until it has actually been shown")
 
+-- Login lands while the loading screen is still up, where a note can be missed
+-- entirely, so it waits for a screen the player is looking at.
 loginCallback()
-assert(panel and panel:IsShown(), "put the note on screen at the first login")
-assert(db.welcomeShown, "remembered that the note has been seen")
+assert(panels == 0, "built nothing while the loading screen is still up")
+settle()
+assert(panel and panel:IsShown(), "put the note on screen once the login has settled")
 assert(panel:GetHeight() > 0, "sized the panel to the text it holds")
 assert(panel.close:GetText() == S.close, "offered a way to close it")
 assert(said(S.headline), "said the addon is newly written")
@@ -134,9 +148,16 @@ assert(said(S.copyHint), "said how to copy the address")
 assert(panel.link:GetText() == S.discordURL, "handed over the Discord address")
 assert(UISpecialFrames[1] == "LuckysWardrobeWelcome", "let Escape close it")
 
+-- Showing it is not the same as landing in front of somebody. A note still on
+-- screen is one the player has yet to answer, so it is not written off until it
+-- has been closed, whether by the button or by Escape.
+assert(not db.welcomeShown, "left the note owed while it was still on screen")
+panel:Hide()
+assert(db.welcomeShown, "counted the note as seen once it was closed")
+
 -- Only ever once. A player who has seen it gets their login back.
-panel.shown = false
 login({ welcomeShown = true })
+assert(not settle, "did not even wait around at a later login")
 assert(not panel:IsShown(), "said nothing at a later login")
 assert(panels == 1, "built no second panel")
 
@@ -151,21 +172,31 @@ assert(panel.link.highlighted, "selected the address ready to copy")
 -- waits rather than stacking up behind it.
 conflicts = { { addon = "BetterWardrobe" } }
 local conflicted = login({ welcomeShown = false })
-assert(not panel:IsShown(), "held the note back while a conflict is being warned about")
+assert(not settle, "held the note back while a conflict is being warned about")
 assert(not conflicted.welcomeShown, "left the note owed, so it arrives at the next login")
 
 conflicts = {}
-loginCallback()
+local clear = login({ welcomeShown = false })
+settle()
 assert(panel:IsShown(), "showed the note once the conflict is out of the way")
+panel:Hide()
+assert(clear.welcomeShown, "wrote it off once that one had been closed")
 
 -- /wardrobe welcome brings it back for someone who has already dismissed it.
-panel.shown = false
-login({ welcomeShown = true })
+local seen = login({ welcomeShown = true })
 assert(not panel:IsShown(), "still said nothing at that login")
 Welcome:Show()
 assert(panel:IsShown(), "showed the note again when asked for by name")
 
 panel.close.click()
 assert(not panel:IsShown(), "closed the note on the button")
+
+-- /wardrobe welcome reset puts it back on the slate, for testing the login it
+-- actually arrives on.
+Welcome:Reset()
+assert(not seen.welcomeShown, "owed the note again after a reset")
+login(seen)
+settle()
+assert(panel:IsShown(), "showed the note at the login after a reset")
 
 print("Lucky's Wardrobe welcome test passed")

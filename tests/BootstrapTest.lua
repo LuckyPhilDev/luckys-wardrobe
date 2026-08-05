@@ -65,13 +65,16 @@ LuckysWardrobe.AddonConflicts = {
 }
 
 local welcomeDB
-local welcomeShown = false
+local welcomeShown, welcomeReset = false, false
 LuckysWardrobe.Welcome = {
     Init = function(_, db)
         welcomeDB = db
     end,
     Show = function()
         welcomeShown = true
+    end,
+    Reset = function()
+        welcomeReset = true
     end,
 }
 
@@ -281,6 +284,10 @@ assert(setListToggled and not opened, "/wardrobe sets opened the set list rather
 opened = false
 SlashCmdList.LUCKYSWARDROBE("welcome")
 assert(welcomeShown and not opened, "/wardrobe welcome brought the note back rather than opening settings")
+
+welcomeShown = false
+SlashCmdList.LUCKYSWARDROBE("  WELCOME   Reset  ")
+assert(welcomeReset and not welcomeShown, "/wardrobe welcome reset put it back on the slate, whatever the spacing and case")
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("scan")
