@@ -57,6 +57,13 @@ LuckyMinimap = {
     end,
 }
 
+local conflictsChecked = false
+LuckysWardrobe.AddonConflicts = {
+    Init = function()
+        conflictsChecked = true
+    end,
+}
+
 LuckysWardrobe.Settings = {
     Init = function(_, db)
         initializedDB = db
@@ -163,6 +170,7 @@ eventHandler(nil, "ADDON_LOADED", "Another_Addon")
 assert(LuckysWardrobeDB == nil, "ignored another addon's load event")
 
 eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
+assert(conflictsChecked, "looked for conflicting wardrobe addons")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")

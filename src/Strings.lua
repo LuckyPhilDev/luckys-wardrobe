@@ -14,6 +14,11 @@ LuckysWardrobe.Strings = {
         prefix = "|cffc8902aLucky's Wardrobe:|r",
         initialized = "Initialized.",
     },
+    addonConflicts = {
+        intro = "Lucky's Wardrobe has found another wardrobe addon installed. Both change the same collection and transmog windows, so leaving them together will break one or the other.",
+        betterWardrobe = "Better Wardrobe: turn it off in the AddOns list on the character screen, then reload.",
+        luckysBetterWardrobe = "Lucky's Better Wardrobe: delete the folder Interface\\AddOns\\LuckysBetterWardrobe. Lucky's Wardrobe replaced it, and the update left the old folder behind rather than removing it.",
+    },
     settings = {
         groups = {
             general = "General",

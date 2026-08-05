@@ -33,5 +33,6 @@ RecolorGroups.lua
 Transmog.lua
 SituationLabels.lua
 SituationPresets.lua
+AddonConflicts.lua
 Settings.lua
 Core.lua

@@ -40,6 +40,8 @@ Extract the release zip into `World of Warcraft/_retail_/Interface/AddOns/`.
 
 Lucky's Utils is required. Release packages include it automatically.
 
+Lucky's Wardrobe changes the same collection and transmog windows that Better Wardrobe does, so the two cannot run together. Turn Better Wardrobe off in the AddOns list. If you were running Lucky's Better Wardrobe, delete its `LuckysBetterWardrobe` folder, since the update to Lucky's Wardrobe leaves the old one behind.
+
 ## Usage
 
 1. Open the **Collections Journal** (Shift+P) and go to **Appearances > Sets**.
