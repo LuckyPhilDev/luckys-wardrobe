@@ -930,21 +930,54 @@ function ExtraSets.FilterEntries(entries, query)
     return filtered
 end
 
+-- How many colourways each set is one of, taken by building the rows and asking
+-- them. There are several ways a set can end up a colourway of another, a shared
+-- set name and a name differing by a single word among them, and the row is
+-- where they all come out as one number: the one it goes on to show.
+--
+-- Counted over the list being sorted rather than the whole catalogue, so a
+-- filter that leaves a set showing a single tint sorts it as the plain row it
+-- becomes. Which rows the entries gather into does not depend on the order they
+-- arrive in, so counting them before the sort answers for the list after it.
+local function variantCounts(entries)
+    local counts = {}
+    for _, row in ipairs(ExtraSets.BuildRows(entries)) do
+        if row.variants then
+            for _, variant in ipairs(row.variants) do counts[variant] = #row.variants end
+        else
+            counts[row] = 1
+        end
+    end
+    return counts
+end
+
+local SORT_MODES = {
+    name = true,
+    completion = true,
+    pieces = true,
+    variants = true,
+}
+
 -- "default" keeps catalogue order: armour type, then set ID, which puts a set's
 -- recolours next to each other. "name" is alphabetical. "completion" puts the
 -- fewest missing pieces first; sets with nothing resolvable sort last because
 -- there is nothing left to finish there. "pieces" puts the smallest sets first,
 -- sized by the same total the row displays, so the order can be read off the
--- list. Descending inverts any of them.
+-- list. "variants" puts the sets with the fewest colourways first, by the count
+-- the row goes on to show. Descending inverts any of them.
+--
+-- Colourways of one set share a count, so they stay together whichever way the
+-- list is turned, and the row built from them lands where they do.
 function ExtraSets.SortEntries(entries, mode, direction)
     local descending = direction == "descending"
-    if mode ~= "completion" and mode ~= "name" and mode ~= "pieces" then
+    if not SORT_MODES[mode] then
         if not descending then return entries end
         local reversed = {}
         for index = #entries, 1, -1 do reversed[#reversed + 1] = entries[index] end
         return reversed
     end
 
+    local variants = mode == "variants" and variantCounts(entries) or nil
     local decorated = {}
     for index, entry in ipairs(entries) do
         decorated[index] = { entry = entry, order = index }
@@ -960,6 +993,13 @@ function ExtraSets.SortEntries(entries, mode, direction)
         elseif mode == "pieces" then
             if left.entry.total ~= right.entry.total then
                 before = left.entry.total < right.entry.total
+            else
+                before = left.order < right.order
+            end
+        elseif mode == "variants" then
+            local leftCount, rightCount = variants[left.entry], variants[right.entry]
+            if leftCount ~= rightCount then
+                before = leftCount < rightCount
             else
                 before = left.order < right.order
             end
@@ -1773,6 +1813,7 @@ function ExtraSets:CreatePage(wardrobe)
             { key = "name", label = menu.byName },
             { key = "completion", label = menu.byCompletion },
             { key = "pieces", label = menu.byPieces },
+            { key = "variants", label = menu.byVariants },
         }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return filters.sortMode == mode.key end, function()
