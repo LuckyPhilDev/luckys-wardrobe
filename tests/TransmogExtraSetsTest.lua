@@ -83,13 +83,14 @@ local function pieces(...)
     return list
 end
 
-local function entry(name, setID, pieceList)
+local function entry(name, setID, pieceList, ensembles)
     return ExtraSets.BuildEntry({
         setID = setID,
         name = name,
         armorType = CLOTH,
         classMask = 0,
         pieces = pieceList,
+        ensembles = ensembles,
     }, resolver)
 end
 
@@ -101,6 +102,29 @@ local unresolvableSet = entry("Ghost Raiment", 13, pieces({ "HEAD", 9999 }))
 assert(completeSet.collected == 2 and ExtraSets.IsComplete(completeSet), "fixture: complete set is complete")
 assert(partialSet.collected == 1 and not ExtraSets.IsComplete(partialSet), "fixture: partial set is not")
 assert(emptySet.collected == 0, "fixture: empty set has nothing collected")
+
+-- Cards are outfits to put on, so an ensemble that is one slot's worth of
+-- appearances is not one of them.
+
+local cloakColours = entry("Drape of Many Colours", 20,
+    pieces({ "BACK", 2001 }, { "BACK", 2002 }, { "BACK", 2003 }), { 70001 })
+local oneCloak = entry("Lone Drape", 21, pieces({ "BACK", 2001 }), { 70002 })
+local boughtOutfit = entry("Bought Regalia", 22, pieces({ "HEAD", 2001 }, { "CHEST", 2002 }), { 70003 })
+
+local outfits = TransmogExtraSets.OutfitEntries(
+    { completeSet, cloakColours, oneCloak, boughtOutfit, unresolvableSet })
+assert(#outfits == 3, "kept the outfits and dropped the single-slot ensembles")
+assert(outfits[1] == completeSet and outfits[2] == boughtOutfit and outfits[3] == unresolvableSet,
+    "an ensemble covering more than one slot is an outfit like any other set")
+for _, dropped in ipairs({ cloakColours, oneCloak }) do
+    for _, kept in ipairs(outfits) do
+        assert(kept ~= dropped, "an ensemble of one slot's appearances is not a card")
+    end
+end
+-- Ghost Raiment is one head piece, and it is one piece because this client
+-- could not resolve the rest of it rather than because that is all the set is.
+assert(#unresolvableSet.pieces == 1 and not unresolvableSet.fromEnsemble,
+    "a set from the armour lists is never dropped for being short, however short it is")
 
 -- The filter button's two checkboxes.
 

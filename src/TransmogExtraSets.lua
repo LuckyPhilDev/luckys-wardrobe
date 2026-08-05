@@ -77,6 +77,35 @@ function TransmogExtraSets.LayoutIndexAfter(setsIndex, otherIndexes)
     return (setsIndex + nextIndex) / 2
 end
 
+-- Whether everything a set covers goes in one place. Several pieces in one slot
+-- is a set of colourways rather than a set of gear.
+local function coversOneSlot(entry)
+    local slot
+    for _, piece in ipairs(entry.pieces) do
+        if slot and piece.slot ~= slot then return false end
+        slot = piece.slot
+    end
+    return true
+end
+
+-- The sets that are outfits. Plenty of ensembles are a single appearance rather
+-- than something to dress in: a cloak sold on its own, a set of shoulders in
+-- four colours. They are worth collecting and the Collections page lists them,
+-- but a card here is an outfit to put on, and one slot is not an outfit.
+--
+-- Only the ensembles are held to this. A set from the armour lists covering one
+-- slot is a set this client could only partly resolve, not a set of one piece,
+-- and dropping it would hide the little of it there is to collect.
+function TransmogExtraSets.OutfitEntries(entries)
+    local outfits = {}
+    for _, entry in ipairs(entries) do
+        if not (entry.fromEnsemble and coversOneSlot(entry)) then
+            outfits[#outfits + 1] = entry
+        end
+    end
+    return outfits
+end
+
 -- The sets this character can actually put on. A set the client refuses, over
 -- a faction lock most often, can never be applied at the transmogrifier, so it
 -- is not offered here: Blizzard's own Sets tab lists only the sets the player
@@ -201,10 +230,14 @@ function TransmogExtraSets.Entries()
             -- so a look it already shows folds away on both pages or the two
             -- disagree about which sets exist.
             local classID = resolver.playerClassID()
-            cachedRows = ExtraSets.CollapseDuplicates(
+            local rows = ExtraSets.CollapseDuplicates(
                 ExtraSets.BuildEntries(ExtraSets.RecordsForClass(ExtraSets.Records(), classID), resolver),
                 ExtraSets.NativeLooks(classID)
             )
+            -- What a set covers never changes, so the outfits are settled here
+            -- alongside the rows rather than every time the client is asked to
+            -- judge them again.
+            cachedRows = TransmogExtraSets.OutfitEntries(rows)
         end
         cachedEntries = TransmogExtraSets.WearableEntries(
             cachedRows, resolver.playerClassID(), resolver.sourceValidity)
