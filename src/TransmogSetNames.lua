@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogCollection C_TransmogSets CreateFrame EventUtil TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Names on the set cards at the transmogrifier, so a wall of
 -- little models says which set each one is without hovering them one by one.
@@ -15,6 +15,11 @@ local TransmogSetNames = LuckysWardrobe.TransmogSetNames
 
 local NAME_PADDING = 8
 local NAME_LINE_SPACING = 2
+-- Two lines of a card's width take the longest set names Blizzard has written.
+-- A name past that shrinks to fit rather than wrapping down over the model, and
+-- stops shrinking while it can still be read across the room.
+local MAX_LINES = 2
+local MIN_LINE_HEIGHT = 8
 local COLLECTED_COLOUR = { r = 0.827, g = 0.776, b = 0.620 }
 local INCOMPLETE_COLOUR = { r = 0.612, g = 0.627, b = 0.690 }
 -- Above the card's own dimming and its transmogrified glow, so the name stays
@@ -36,6 +41,11 @@ local function nameLabel(card)
     text:SetPoint("TOPRIGHT", -NAME_PADDING, -NAME_PADDING)
     text:SetJustifyH("CENTER")
     text:SetSpacing(NAME_LINE_SPACING)
+    text:SetMaxLines(MAX_LINES)
+    -- Blizzard's own shrink to fit, which scales a string down until it sits
+    -- inside the lines it is allowed rather than cutting it off.
+    Mixin(text, AutoScalingFontStringMixin)
+    text:SetMinLineHeight(MIN_LINE_HEIGHT)
 
     overlay.Text = text
     card.luckysSetName = overlay

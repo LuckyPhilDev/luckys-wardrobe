@@ -1,6 +1,25 @@
--- luacheck: globals C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 LuckysWardrobe = {}
+
+function Mixin(object, ...)
+    for _, mixin in ipairs({ ... }) do
+        for key, value in pairs(mixin) do object[key] = value end
+    end
+    return object
+end
+
+-- Blizzard's shrink to fit, which takes over SetText so that every new string
+-- is scaled down to the lines it is allowed. The stub keeps that shape, so a
+-- name set here is a name the real one would have scaled.
+AutoScalingFontStringMixin = {}
+function AutoScalingFontStringMixin:SetText(value)
+    self.text = value or ""
+    self.scalings = (self.scalings or 0) + 1
+end
+function AutoScalingFontStringMixin:SetMinLineHeight(height)
+    self.minLineHeight = height
+end
 
 local function newRegion(kind)
     local region = { kind = kind, points = {}, shown = true, text = "" }
@@ -8,6 +27,7 @@ local function newRegion(kind)
     function region:SetAllPoints() self.allPoints = true end
     function region:SetJustifyH(justify) self.justifyH = justify end
     function region:SetSpacing(spacing) self.spacing = spacing end
+    function region:SetMaxLines(lines) self.maxLines = lines end
     function region:SetTextColor(r, g, b) self.colour = { r, g, b } end
     function region:SetText(value) self.text = value or "" end
     function region:GetText() return self.text end
@@ -105,6 +125,9 @@ assert(text.layer == "OVERLAY", "drew the name over the card")
 assert(text.template == "GameFontNormalOutline", "outlined the name, so it reads over the model behind it")
 assert(text.justifyH == "CENTER", "centred the name")
 assert(text.spacing == 2, "spaced the lines of a name that wraps")
+assert(text.maxLines == 2, "held the name to two lines")
+assert(text.scalings == 1, "shrank the name to fit those two lines")
+assert(text.minLineHeight and text.minLineHeight > 0, "gave the shrinking a floor to stop at")
 assert(isColour(text, COLLECTED_COLOUR), "tinted a complete set's name like its border")
 
 local left, right, bottom = text.points.TOPLEFT, text.points.TOPRIGHT, text.points.BOTTOM
@@ -130,6 +153,11 @@ LuckysWardrobe.TransmogSetNames:Apply(extraCard, "Ironfeather Battlesuit", true)
 assert(extraCard.luckysSetName.fontString.text == "Ironfeather Battlesuit", "named the extra set's card")
 assert(extraCard.luckysSetName.shown, "showed the extra set's name")
 assert(isColour(extraCard.luckysSetName.fontString, COLLECTED_COLOUR), "tinted the extra set's name too")
+
+-- Cards are pooled, so a card carries a different set's name a page later.
+LuckysWardrobe.TransmogSetNames:Apply(extraCard, "Runebound Gladiator's Chain Battlegear", false)
+assert(extraCard.luckysSetName.fontString.scalings == 2, "shrank the next name the same card was given")
+assert(isColour(extraCard.luckysSetName.fontString, INCOMPLETE_COLOUR), "retinted it for the set it now shows")
 
 -- A set this client cannot name is left as Blizzard drew it.
 
