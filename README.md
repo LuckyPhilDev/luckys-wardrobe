@@ -6,18 +6,17 @@ Find the sets you can still finish, hear about it the moment a piece drops, and 
 
 Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebuild that adds to the collection journal instead of replacing it, so it is much lighter and far less likely to break when a patch lands.
 
-## Features
+---
 
-- **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
-  - **One row per set.** Sets listed twice under two names are folded into a single row, and a set that comes in several colourways is one row with a picker in the details pane to switch between them, the same way the Sets tab handles its variants. A folded name still finds the row that holds it.
-  - **Sets you can buy.** The sets an ensemble teaches are listed too, close to two thousand of them, and open a set to see which ensemble to go after. Search for "ensemble" to list every set there is one for.
-  - **One garment, every colour.** The Trading Post sells the same outfit in eighteen colours as eighteen separate sets. Those come together into one row with the colours behind a picker, so a page of sweatsuits is a single line again.
-- **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8". Sets that only appear on the Extra Sets tab are named too, so a world drop nobody would guess was part of anything still says what it belongs to.
-- **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
-- **Settings access**: Open the addon settings with `/wardrobe`.
+## Features
 
 ### Collection Journal
 
+- **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, preview any set on your character, and shift-click to track the pieces you are missing.
+  - **One row per set.** Sets listed twice under two names are folded into a single row, and a set that comes in several colourways is one row with a picker in the details pane to switch between them, the same way the Sets tab handles its variants. A folded name still finds the row that holds it.
+  - **Sets you can buy.** The sets an ensemble teaches are listed too, close to two thousand of them, and open a set to see which ensemble to go after. Search for "ensemble" to list every set there is one for.
+  - **One garment, every colour.** The Trading Post sells the same outfit in eighteen colours as eighteen separate sets. Those come together into one row with the colours behind a picker, so a page of sweatsuits is a single line again.
+  - **Sorted how you like.** Order the tab by name, completion, piece count, or how many colours a set comes in, either direction, and narrow it by expansion or by what you have collected.
 - **Sort by completion**: Order the Sets list by how close each one is, ascending to work on the nearest first or descending to see what you have most of. Favourites stay at the top.
 - **Filter by expansion and source**: Narrow the list to the expansions you are working through, or to where the sets come from, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. The count reflects what the filters actually left on screen.
 - **Track a whole set, or one piece of it**: Shift-click a set to start tracking every appearance you are still missing from it, or open the set and shift-click one of its pieces to track just that one. Shift-click a piece you are already tracking to call it off.
@@ -40,15 +39,28 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown.
 - **Keep your active tab**: Switching outfits at the transmog NPC no longer throws you back to Items. Clicking a slot still opens Items.
 
+### Everywhere Else
+
+- **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8". Sets that only appear on the Extra Sets tab are named too, so a world drop nobody would guess was part of anything still says what it belongs to.
+- **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
+- **Minimap button**: Shift-click for the sets you can finish where you are standing, or right-click for settings. Drag it to reposition it.
+- **A welcome note**: A hello at your first login, with the Discord address for anything the addon is still missing. `/wardrobe welcome` brings it back any time.
+
+---
+
 ## Installation
 
-Extract the release zip into `World of Warcraft/_retail_/Interface/AddOns/`.
+Install from [CurseForge](https://www.curseforge.com/wow/addons/luckys-better-wardrobe), or place the `Luckys_Wardrobe` folder in `World of Warcraft/_retail_/Interface/AddOns/`.
 
-Lucky's Utils is required. Release packages include it automatically.
+Lucky's Utils is required. CurseForge release packages include it automatically.
 
-Lucky's Wardrobe changes the same collection and transmog windows that Better Wardrobe and Lucky's Better Wardrobe do, so they cannot run alongside it. If one of them is still enabled you get a dialog at login offering to turn either it or Lucky's Wardrobe off, whichever you would rather keep, and reloading for you.
+### Upgrading from Better Wardrobe
 
-Lucky's Better Wardrobe is the addon Lucky's Wardrobe replaced, and the update leaves its old folder behind. Delete `Interface/AddOns/LuckysBetterWardrobe` to be rid of it for good.
+Lucky's Wardrobe changes the same collection and transmog windows that Better Wardrobe and Lucky's Better Wardrobe do, so they cannot run alongside it. If one of them is still enabled you get a dialog at login, and it can turn either one off for you.
+
+The update from Lucky's Better Wardrobe leaves its old folder behind. Delete `Interface/AddOns/LuckysBetterWardrobe` to be rid of it for good.
+
+---
 
 ## Usage
 
@@ -57,6 +69,8 @@ Lucky's Better Wardrobe is the addon Lucky's Wardrobe replaced, and the update l
 3. Shift-click a set to track every appearance you are still missing from it.
 4. Walk into a dungeon or raid and the set list opens with what you can finish there.
 5. Adjust everything via `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
+
+---
 
 ## Slash Commands
 
@@ -67,25 +81,32 @@ Lucky's Better Wardrobe is the addon Lucky's Wardrobe replaced, and the update l
 | `/wardrobe sets` | Show the sets you can finish where you are standing |
 | `/wardrobe welcome` | Show the welcome note again, with the Discord address |
 | `/wardrobe welcome reset` | Owe the welcome note again, so it arrives at the next login |
+
+A keybinding for the set list is available under **Sets You Can Finish Here** in the game's Key Bindings screen.
+
+### Troubleshooting
+
+These report what the addon can see, for working out why something looks wrong.
+
+| Command | Action |
+|---|---|
 | `/wardrobe replay` | Reopen the set list as if you had just walked in, for checking your settings |
-| `/wardrobe scan` | Report what the addon can see about the instance you are in, for troubleshooting |
+| `/wardrobe scan` | Report what the addon can see about the instance you are in |
 | `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |
 | `/wardrobe extrasets full` | List the extra sets and the ones left out, with the reason for each |
 | `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
 | `/wardrobe extrasets looks <name>` | Compare the looks behind a set with the ones the Sets tab holds, for checking why a set was folded away |
+| `/wardrobe extrasets variants <name>` | Ask the client which sets it already calls colourways of one another |
+| `/wardrobe extrasets colours` | List every family of sets grouped as one garment in several colours (`colors` works too) |
 | `/wardrobe extrasets pieces` | Report the set selected in the Extra Sets tab piece by piece, for working out why it reads as unwearable |
 | `/wardrobe extrasets perf` | Report how long the tab's work takes and how it lands on your frame rate |
 | `/wardrobe extrasets perf reset` | Clear those measurements and start again |
 | `/wardrobe recolors` | Report how many recolor families this client's appearances form |
-| `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
 | `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |
+| `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
 | `/wardrobe recolors probe` | Report how many appearances in each slot the client can name yet, for when a report comes back short |
 
-A keybinding for the set list is available under **Sets You Can Finish Here** in the game's Key Bindings screen.
-
-## Minimap Button
-
-Shift-click the minimap button for the sets you can finish where you are standing, or right-click it for settings. Drag it to reposition it.
+---
 
 ## Settings
 
@@ -95,15 +116,30 @@ Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
 - **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it.
 - **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, choose whether set cards carry their names, and choose how much situation detail appears on saved outfits.
-- **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both.
+- **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both. A button puts the list back in the corner if you drag it somewhere you cannot reach.
+
+---
+
+## Known Issues & Notes
+
+- Wowhead addresses take ctrl-click off the dressing room preview. Turn them off in **Appearances** if you would rather keep the preview.
+- The Extra Sets catalogue is read from your client the first time you open Appearances. On a cold client it takes a moment, and the tab says so while it works.
+- Some pieces are not on every client build. A set that holds one says how many it cannot show, and those pieces cannot be previewed or applied.
+- Catalyst marks and catalyst loot alerts need Transmog Upgrade Master. Without it those two options stay off, and the settings panel says why.
+
+---
 
 ## Roadmap
 
 - More of Better Wardrobe's collection journal and transmog vendor features, rebuilt on the lighter foundation.
 
+---
+
 ## A note on AI
 
 My addons are made by one person who plays the game and wants them to work properly. I use AI tools to move faster, mostly on code, bug hunting, and docs, but every change is reviewed and tested in game before release. If a feature feels off or something breaks, that's mine to fix, and the Discord is the fastest way to reach me.
+
+---
 
 ## Author
 
