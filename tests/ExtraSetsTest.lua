@@ -683,7 +683,7 @@ assert(#barkbloomRows[1].variants == 4, "holding every colourway")
 -- eighteen colours as eighteen sets, and the client says nothing about their
 -- being related, so the only place it is written down is the names.
 
-for id = 7001, 7044 do sourceStates[id] = { appearanceID = 8000 + id, collected = false } end
+for id = 7001, 7052 do sourceStates[id] = { appearanceID = 8000 + id, collected = false } end
 
 do
 local colourRows
@@ -776,6 +776,39 @@ colourRows = rowsOf({
 })
 assert(#colourRows == 2 and colourRows[1].name == "Standalone Cowl" and colourRows[2].name == "Wrap",
     "the family took the place of the first of its colourways")
+
+-- The client gives two sets of one family the same name. Those gather by that
+-- shared name first, and the row they make still belongs beside its colours
+-- rather than being stranded next to them as a family of its own.
+colourRows = rowsOf({
+    validRecord({ setID = 781, name = "Vagabond's Brick Threads",
+        pieces = pieces({ "HEAD", 7045 }, { "CHEST", 7046 }) }),
+    validRecord({ setID = 782, name = "Vagabond's Camo Threads",
+        pieces = pieces({ "HEAD", 7047 }, { "CHEST", 7048 }) }),
+    validRecord({ setID = 783, name = "Vagabond's Snowy Threads",
+        pieces = pieces({ "HEAD", 7049 }, { "CHEST", 7050 }) }),
+    validRecord({ setID = 784, name = "Vagabond's Snowy Threads",
+        pieces = pieces({ "HEAD", 7051 }, { "CHEST", 7052 }) }),
+})
+assert(#colourRows == 1 and colourRows[1].name == "Vagabond's Threads",
+    "the two sets sharing a name came in with the rest rather than standing apart")
+assert(#colourRows[1].variants == 4, "and came in one by one, since each is a colourway of its own")
+
+-- Which leaves two colourways under one word, so the picker names the ensemble
+-- each is bought from instead. The client answers for one of them and not the
+-- other, and the one it will not answer for keeps the word rather than blanking.
+local function itemNamed(itemID)
+    return itemID == 79003 and "Ensemble: Vagabond's Snowy Threads" or nil
+end
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[1], itemNamed) == "Brick",
+    "a colourway nothing else is called keeps its word whatever the client says")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3], itemNamed)
+    == "Ensemble: Vagabond's Snowy Threads",
+    "a word two colourways share gives way to the ensemble that tells them apart")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[4], itemNamed) == "Snowy",
+    "and one the client has not loaded the ensemble for waits, rather than showing nothing")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Snowy",
+    "with no way to ask the client at all, the shared word is still what there is")
 end
 
 -- Search.

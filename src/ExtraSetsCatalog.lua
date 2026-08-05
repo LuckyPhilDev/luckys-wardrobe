@@ -7,10 +7,12 @@
 -- collection knows about them.
 --
 -- Two listings feed it. The armour lists number their sets the way Wowhead
--- does, which is a numbering of its own that has to be checked against the
--- client's before the client is believed about any of them. The ensemble list
--- numbers its sets the way the client does, because an ensemble item names the
--- set it teaches in the client's own data, so those need no such check.
+-- does, which is a numbering of its own. The ensemble list numbers its sets the
+-- way the client does, because an ensemble item names the set it teaches in the
+-- client's own data, which is why far more of what it says can be believed.
+-- Neither is taken on trust: the ensembles carry the numbering of the build
+-- their snapshot was taken from, not of the build being played, and a set that
+-- moved between the two would be renamed and refiled without complaint.
 --
 -- Building a record means turning each item ID into the appearance source the
 -- collection actually tracks. A piece this client cannot answer for is counted,
@@ -200,11 +202,13 @@ local function buildRecord(setID, set, armorType)
     -- belongs to. The snapshot only fills the gaps. None of this changes while
     -- a session runs, so it is read here rather than every time the page does.
     local info = C_TransmogSets.GetSetInfo(setID)
-    -- An ensemble names its set in the client's own numbering, so there is
-    -- nothing to check: the set under that number is the set the ensemble
-    -- teaches. Only the armour lists, which number their sets the way Wowhead
-    -- does, can be pointing at a different set than the number they share.
-    if info and not set.ensembles and not Catalog.SameSet(pieces, C_TransmogSets.GetAllSourceIDs(setID)) then
+    -- Every listing is checked, the ensembles included. Their numbering is the
+    -- client's own rather than Wowhead's, which is why they can be believed
+    -- about far more than the armour lists, but it is the numbering of the
+    -- build the snapshot was taken from and not of the build being played. A
+    -- set that has moved between the two is a set the client would rename,
+    -- refile, and redate without a word of complaint.
+    if info and not Catalog.SameSet(pieces, C_TransmogSets.GetAllSourceIDs(setID)) then
         report.identityMismatches = report.identityMismatches + 1
         LuckysWardrobe.DevLog("Extra Sets: client set " .. setID .. " (" .. tostring(info.name)
             .. ") is not the snapshot's " .. tostring(set.name) .. "; keeping the snapshot's own.")

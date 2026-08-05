@@ -72,6 +72,8 @@ local transmogSetInfos = {
     -- from another numbering runs into. Nothing about the answer says so: it is
     -- a well-formed set, just not this one.
     [23] = { name = "Fixture Someone Else's Set", label = "Fixture Elsewhere", classMask = 16, expansionID = 9 },
+    -- The set an ensemble names, holding the very pieces the ensemble teaches.
+    [30] = { name = "Fixture Client Tabards", label = "Fixture Trading Post", classMask = 0, expansionID = 3 },
 }
 
 -- setID -> the sources the client counts towards its own set of that number.
@@ -81,6 +83,7 @@ local clientSetSources = {
     -- pieces too, so its list is the longer of the two and still the same set.
     [20] = { 2001, 2003 },
     [23] = { 5501, 5502, 5503 },
+    [30] = { 6001, 6002 },
 }
 
 -- Set 10 is one both classes' Sets tab lists, and the second class lists it
@@ -115,6 +118,10 @@ LuckysWardrobe.ExtraSetsData = {
     -- The ensembles, numbered the way the client numbers its own sets rather
     -- than the way the armour lists number theirs. The cloth list uses 20 for a
     -- set of its own, and these are two different sets under one number.
+    --
+    -- That numbering is the client's, but the client of the build the snapshot
+    -- was taken from. Set 20 has moved between that build and this one, and set
+    -- 30 has not, so one of these is believed and the other is not.
     ensembles = {
         [20] = {
             name = "Fixture Ensemble Plate (snapshot)",
@@ -305,7 +312,8 @@ local partly = recordFor(23)
 assert(partly.name == "Fixture Partly Missing", "kept the bundled name where the client means another set")
 assert(partly.classMask == 128 and partly.expansionID == nil and partly.label == nil,
     "took nothing from a client set that is not this set")
-assert(Catalog:GetReport().identityMismatches == 1, "counted the set the two numberings disagree about")
+assert(Catalog:GetReport().identityMismatches == 2,
+    "counted the sets the snapshot and this client number differently, in either listing")
 
 assert(Catalog.SameSet({ { sourceID = 1 }, { sourceID = 2 } }, { 1, 2 }), "the same sources are the same set")
 assert(Catalog.SameSet({ { sourceID = 1 }, { sourceID = 2 }, { sourceID = 3 } }, { 1, 2 }),
@@ -334,20 +342,23 @@ assert(#twiceListed.pieces == 1, "counted a source listed twice as one piece")
 local ensemblePlate = ensembleRecordFor(20)
 assert(ensemblePlate and garb ~= ensemblePlate,
     "two listings using one number keep a record each rather than one shutting the other out")
-assert(ensemblePlate.name == "Fixture Hidden Garb" and ensemblePlate.classMask == 8
-    and ensemblePlate.expansionID == 5 and ensemblePlate.label == "Fixture Quest",
-    "believed the client about a set an ensemble names, sharing no piece with it though it does")
-assert(Catalog:GetReport().identityMismatches == 1,
-    "and did not count that as a numbering the two lists disagree about")
 assert(ensemblePlate.ensembles[1] == 70001 and ensemblePlate.ensembles[2] == 70002,
     "kept the ensembles that teach the set, so the page can say where to buy it")
 assert(ensemblePlate.armorType == 4,
     "read the armour off the pieces for the list that does not say, the cloak among them left out")
+-- The snapshot's numbering is the client's, but of another build. This client
+-- holds a set 20 that shares no piece with what the ensemble teaches, so its
+-- name, class, and expansion are about some other set and none are taken.
+assert(ensemblePlate.name == "Fixture Ensemble Plate (snapshot)" and ensemblePlate.classMask == 0
+    and ensemblePlate.expansionID == nil and ensemblePlate.label == nil,
+    "an ensemble is checked against the client like any other listing")
 
 local tabards = ensembleRecordFor(30)
-assert(tabards.name == "Fixture Ensemble Tabards" and tabards.classMask == 0,
-    "a set the client does not hold keeps the bundled name")
+assert(tabards.name == "Fixture Client Tabards" and tabards.label == "Fixture Trading Post"
+    and tabards.expansionID == 3,
+    "and where the client holds the very set the ensemble teaches, the client names it")
 assert(tabards.armorType == 0, "a set of tabards and shirts is nobody's armour in particular")
+assert(Catalog:GetReport().identityMismatches == 2, "both numberings that disagree are counted")
 assert(Catalog:GetReport().fromEnsembles == 2, "counted the sets that came from an ensemble")
 
 -- Pieces this client cannot answer for are counted, never guessed at.

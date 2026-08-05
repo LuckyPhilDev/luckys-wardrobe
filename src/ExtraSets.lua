@@ -272,8 +272,18 @@ end
 -- What a colourway is called in the picker: the one word that tells it from its
 -- siblings where the family was found that way, and otherwise the qualifier the
 -- set's own name carries.
-function ExtraSets.VariantLabelFor(variant)
-    return variant.variantLabel or ExtraSets.VariantLabel(variant.name)
+--
+-- The client names two sets of one family the same thing often enough to matter,
+-- and two rows reading alike is a picker that cannot be used. Where that
+-- happens the ensemble each is bought from stands in, since that is both what
+-- tells them apart and what the player would go after. It is only known once
+-- the client has loaded the item, so until then the repeated word stands.
+function ExtraSets.VariantLabelFor(variant, itemName)
+    local label = variant.variantLabel or ExtraSets.VariantLabel(variant.name)
+    if not (variant.ambiguousLabel and itemName) then return label end
+
+    local names = ExtraSets.EnsembleNames(variant, itemName)
+    return names[1] or label
 end
 
 -- A set named like another but for a single word is that set in another colour:
@@ -307,8 +317,12 @@ local MAX_COLOUR_FAMILY_PIECES = 4
 -- what keeps "Vagabond's * Threads" whole rather than split across whichever
 -- other position happens to match a set somewhere else in the list. A tie goes
 -- to the earlier word, so the same list always groups the same way.
+-- A row standing for several sets that share a name is a candidate like any
+-- other, and answers on the name they share. The client gives two of these sets
+-- one name often enough that leaving those rows out strands them beside the
+-- family they plainly belong to.
 local function colourCandidates(row)
-    if row.isGroup or not row.fromEnsemble then return nil end
+    if row.isColourFamily or not row.fromEnsemble then return nil end
     if #row.pieces > MAX_COLOUR_FAMILY_PIECES then return nil end
 
     local words = {}
@@ -327,6 +341,35 @@ local function colourCandidates(row)
         table.insert(words, index, varying)
     end
     return candidates
+end
+
+-- One family, out of the rows that joined it. A row already standing for
+-- several sets that share a name brings them in one by one: the picker offers
+-- colourways, and a pair the client happens to call the same thing is two of
+-- those rather than one.
+--
+-- Which leaves two colourways under one word, since that is what the client
+-- named them. They are marked so the picker can fall back to naming the
+-- ensemble each is bought from, which is what really tells them apart.
+local function buildColourFamily(rows, chosen, name)
+    local variants, seen, repeated = {}, {}, {}
+    for _, row in ipairs(rows) do
+        local label = chosen[row].label
+        for _, variant in ipairs(row.variants or { row }) do
+            variant.variantLabel = label
+            variant.ambiguousLabel = nil
+            variants[#variants + 1] = variant
+            if seen[label] then repeated[label] = true end
+            seen[label] = true
+        end
+    end
+    for _, variant in ipairs(variants) do
+        if repeated[variant.variantLabel] then variant.ambiguousLabel = true end
+    end
+
+    local group = ExtraSets.BuildGroup(variants, name)
+    group.isColourFamily = true
+    return group
 end
 
 -- Rows gathered into colourway families, in the order they were already in: a
@@ -364,12 +407,7 @@ local function colourFamilies(rows)
             grouped[#grouped + 1] = row
         elseif not built[candidate.key] then
             built[candidate.key] = true
-            for _, member in ipairs(members[candidate.key]) do
-                member.variantLabel = chosen[member].label
-            end
-            local group = ExtraSets.BuildGroup(members[candidate.key], candidate.name)
-            group.isColourFamily = true
-            grouped[#grouped + 1] = group
+            grouped[#grouped + 1] = buildColourFamily(members[candidate.key], chosen, candidate.name)
         end
     end
     return grouped
@@ -1435,7 +1473,11 @@ function ExtraSets:CreatePage(wardrobe)
     -- cold, since building the list only asks the client about pieces it will
     -- not judge, so without this pass the notice would be wrong exactly where
     -- it matters and right only after leaving the set and coming back. The
-    -- ensembles ride along: their names come off the same item data.
+    -- ensembles ride along: their names come off the same item data, and every
+    -- colourway's is asked for rather than only the one on show, because two
+    -- that the client named alike are told apart in the picker by theirs.
+    local fillVariantDropdown
+
     local function loadSetItems(row, pass)
         local waiting = false
         local function request(itemID)
@@ -1445,9 +1487,12 @@ function ExtraSets:CreatePage(wardrobe)
             end
         end
 
-        local entry = ExtraSets.VariantOf(row, selectedVariants[row.key])
-        for _, piece in ipairs(entry.pieces) do request(piece.itemID) end
-        for _, itemID in ipairs(entry.ensembles or {}) do request(itemID) end
+        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
+            request(piece.itemID)
+        end
+        for _, variant in ipairs(row.variants or { row }) do
+            for _, itemID in ipairs(variant.ensembles or {}) do request(itemID) end
+        end
         if not waiting or pass >= Utils.ITEM_LOAD_PASSES then return end
 
         C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
@@ -1457,6 +1502,7 @@ function ExtraSets:CreatePage(wardrobe)
             local shown = ExtraSets.VariantOf(row, selectedVariants[row.key])
             showNotice(shown)
             showSource(shown)
+            fillVariantDropdown(row)
             loadSetItems(row, pass + 1)
         end)
     end
@@ -1473,18 +1519,19 @@ function ExtraSets:CreatePage(wardrobe)
 
     -- The colourways of the set on screen, each with what it is worth
     -- collecting, the way the Sets tab offers its own variants.
-    local function fillVariantDropdown(row)
+    fillVariantDropdown = function(row)
         variantDropdown:SetShown(row.isGroup or false)
         if not row.isGroup then return end
 
         local chosen = ExtraSets.VariantOf(row, selectedVariants[row.key])
         variantDropdown:SetText(S.variantOption:format(
-            ExtraSets.VariantLabelFor(chosen), chosen.collected, chosen.total))
+            ExtraSets.VariantLabelFor(chosen, C_Item.GetItemInfo), chosen.collected, chosen.total))
         variantDropdown:SetupMenu(function(_, menu)
             for _, variant in ipairs(row.variants) do
                 menu:CreateRadio(
                     S.variantOption:format(
-                        ExtraSets.VariantLabelFor(variant), variant.collected, variant.total),
+                        ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
+                        variant.collected, variant.total),
                     function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
                     function()
                         selectedVariants[row.key] = variant.key
@@ -1915,7 +1962,7 @@ function ExtraSets:PrintColourFamilies()
     for _, family in ipairs(formed) do
         local labels = {}
         for index, variant in ipairs(family.variants) do
-            labels[index] = ExtraSets.VariantLabelFor(variant)
+            labels[index] = ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo)
         end
         grouped = grouped + #family.variants
         say(S.coloursLine:format(
