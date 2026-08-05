@@ -100,6 +100,15 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     transmog:Toggle({
+        label = S.settings.showSetNames.label,
+        desc = S.settings.showSetNames.desc,
+        checked = db.showSetNames,
+        onToggle = function(checked)
+            db.showSetNames = checked
+            LuckysWardrobe.TransmogSetNames:Refresh()
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.showSituationValues.label,
         desc = S.settings.showSituationValues.desc,
         image = "transmog/show-situation-values",
