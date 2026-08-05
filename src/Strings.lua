@@ -185,10 +185,16 @@ LuckysWardrobe.Strings = {
         pieceUnavailableShort = "Pieces unavailable",
         unavailableNotice = "%d piece(s) in this set are not available on this client build.",
         nothingToApply = "You have not collected any of this set's pieces yet.",
+        nothingApplied = "None of this set's pieces could be applied to what you are wearing.",
         wowheadMenu = "Link on Wowhead",
         notUsable = "This set is not one your character can wear.",
         notUsableClass = "This set is not one your character can wear. It belongs to %s.",
         notUsableArmour = "This set is not one your character can wear. It is a %s set, and your character wears %s.",
+        notUsableFaction = "This set is not one your character can wear. It belongs to the %s.",
+        notUsableRace = "This set is not one your character can wear. It belongs to another race.",
+        -- The client's own sentence for a refusal it does not otherwise explain,
+        -- which is more than the page could say for itself.
+        notUsableReason = "This set is not one your character can wear. %s",
         -- Indexed by the client's own armour subclass ID, as the sets themselves
         -- are, and written to read inside a sentence rather than as a heading.
         armourTypes = { "cloth", "leather", "mail", "plate" },

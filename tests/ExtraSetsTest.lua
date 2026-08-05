@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
 
 LuckysWardrobe = {}
 
@@ -261,6 +261,44 @@ assert(ExtraSets.UnwearableNotice(garb, "armour", 1)
     "named the armour the set is and the armour the character wears")
 assert(ExtraSets.UnwearableNotice(garb, "other", 1) == S.notUsable,
     "a refusal with nothing to explain says only that the set is out of reach")
+
+-- Refusals the client explains itself. Its own word for why it said no beats
+-- anything worked out from the record, and its sentence stands in where the
+-- page has nothing of its own to say.
+
+local function refusing(sourceID, refusal, message)
+    return function(asked)
+        if not sourceStates[asked] then return nil end
+        if asked ~= sourceID then return true end
+        return false, refusal, message
+    end
+end
+
+local factionRefusal = refusing(2003, "faction", "Requires Alliance")
+local reason, message = ExtraSets.UnwearableReason(garb, CLOTH_CLASS, factionRefusal)
+assert(reason == "faction" and message == "Requires Alliance",
+    "a lock the client names comes back named, with the words it used")
+assert(ExtraSets.UnwearableReason(garb, 1, factionRefusal) == "faction",
+    "the client naming the lock beats the armour the record was going to be blamed for")
+
+local _, unnamedMessage = ExtraSets.UnwearableReason(garb, CLOTH_CLASS, refusing(2003, nil, "No good here"))
+assert(unnamedMessage == "No good here", "a refusal the client will not name still carries its sentence")
+
+assert(ExtraSets.UnwearableNotice(garb, "faction", CLOTH_CLASS, { faction = "Alliance" })
+    == "This set is not one your character can wear. It belongs to the Alliance.",
+    "named the faction the set belongs to")
+assert(ExtraSets.UnwearableNotice(garb, "race", CLOTH_CLASS) == S.notUsableRace,
+    "a race lock says so without naming a race the client never gave")
+assert(ExtraSets.UnwearableNotice(garb, "other", CLOTH_CLASS, { message = "No good here" })
+    == "This set is not one your character can wear. No good here",
+    "a refusal the page cannot name is quoted in the client's own words")
+-- A pandaren who has not picked a side is told no faction rather than the
+-- wrong one, so the client's own sentence is what is left to show.
+assert(ExtraSets.UnwearableNotice(garb, "faction", CLOTH_CLASS, { message = "Requires Alliance" })
+    == "This set is not one your character can wear. Requires Alliance",
+    "a faction lock with no faction to name falls back to what the client said")
+assert(ExtraSets.UnwearableNotice(garb, "faction", CLOTH_CLASS) == S.notUsable,
+    "with nothing to say beyond the lock, the set is only called out of reach")
 
 local unknownClassEntry = ExtraSets.BuildEntry(validRecord({ classMask = 2 ^ (20 - 1) }), stubResolver(1))
 assert(ExtraSets.UnwearableNotice(unknownClassEntry, "class", 1) == S.notUsable,
@@ -813,6 +851,13 @@ C_TransmogSets = {
 local loadedItems = {}
 local requestedItems = {}
 
+-- The character being played is Horde, so a set locked against them belongs to
+-- the Alliance.
+FACTION_ALLIANCE = "Alliance"
+FACTION_HORDE = "Horde"
+UnitFactionGroup = function() return "Horde" end
+Enum = { TransmogUseErrorType = { PlayerCondition = 1, Race = 8, Faction = 9 } }
+
 C_TransmogCollection = {
     GetSourceInfo = function(sourceID)
         local state = sourceStates[sourceID]
@@ -825,6 +870,8 @@ C_TransmogCollection = {
             -- The client answers this from the item's own data, so a source
             -- whose item it has not loaded says no rather than saying nothing.
             isValidSourceForPlayer = loadedItems[state.itemID] ~= nil and not state.unwearable,
+            useErrorType = state.useErrorType,
+            useError = state.useError,
         }
     end,
     GetAllAppearanceSources = function(visualID)
@@ -1381,7 +1428,24 @@ runTimers()
 assert(noticeFont.shown and noticeFont.text == LuckysWardrobe.Strings.extraSets.notUsable,
     "said so once the client could answer")
 
+-- A set the client turns down over faction is the one a player is most likely
+-- to be puzzled by, since nothing about it looks out of reach: it is the right
+-- armour, it is nobody's class, and the character simply plays the other side.
+sourceStates[4002].useErrorType = Enum.TransmogUseErrorType.Faction
+sourceStates[4002].useError = "Requires Alliance"
+collectionUpdated()
+runTimers()
+assert(noticeFont.text == "This set is not one your character can wear. It belongs to the Alliance.",
+    "named the faction the set belongs to rather than leaving the player guessing")
+
+sourceStates[4002].useErrorType = Enum.TransmogUseErrorType.PlayerCondition
+collectionUpdated()
+runTimers()
+assert(noticeFont.text == "This set is not one your character can wear. Requires Alliance",
+    "a refusal the page cannot name is quoted in the client's own words")
+
 requestedItems = {}
+sourceStates[4002].useErrorType, sourceStates[4002].useError = nil, nil
 sourceStates[4002].unwearable = nil
 collectionUpdated()
 assert(not noticeFont.shown, "a set this character can wear says nothing")
