@@ -1560,7 +1560,7 @@ end
 
 function ExtraSets:PrintPieceReport()
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     local entry = extraPage and extraPage.SelectedEntry()
     if not entry then
@@ -1597,7 +1597,7 @@ end
 -- name a fold, two that share none name a genuine recolour.
 function ExtraSets:PrintLooks(query)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
     local catalog = LuckysWardrobe.ExtraSetsCatalog
     local report = catalog:GetReport()
     if not report then

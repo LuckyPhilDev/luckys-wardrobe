@@ -373,7 +373,7 @@ end
 
 function Catalog:PrintReport(verbose)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     if not report then
         say(S.notStarted)
@@ -466,7 +466,7 @@ end
 
 function Catalog:PrintMatches(query)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     if not report then
         say(S.notStarted)

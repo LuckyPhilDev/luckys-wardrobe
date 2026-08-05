@@ -127,6 +127,7 @@ WardrobeCollectionFrame = {
     },
 }
 
+dofile("src/Utils.lua")
 dofile("src/SetTracking.lua")
 
 local db = { trackSetsOnShiftClick = true }

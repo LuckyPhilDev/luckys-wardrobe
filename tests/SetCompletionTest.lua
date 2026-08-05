@@ -167,6 +167,7 @@ _G.C_ClassColor = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Classes.lua")
 dofile("src/SetSources.lua")
 dofile("src/SetCompletion.lua")

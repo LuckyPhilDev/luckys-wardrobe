@@ -32,6 +32,12 @@ for index, slot in ipairs(SLOTS) do
     Utils.SLOT_TOOLTIP_GLOBALS[slot.key] = slot.tooltipGlobal
 end
 
+--- Prints one line to chat under the addon's name, which is how every command
+--- and every alert speaks.
+function Utils.Say(line)
+    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, line))
+end
+
 -- Every expansion, named as the game names it, for the Expansion submenu both
 -- filter menus offer. A new expansion is one name added here.
 Utils.EXPANSION_NAMES = {

@@ -302,7 +302,7 @@ function RecolorGroups:PrintFunnel()
     local S = LuckysWardrobe.Strings.recolorGroups
     for categoryID = 1, #SLOT_ORDER do
         local counts = RecolorGroups.ResolutionFunnel(categoryID)
-        print(LuckysWardrobe.Strings.addon.prefix .. " " .. S.funnelLine:format(
+        LuckysWardrobe.Utils.Say(S.funnelLine:format(
             SLOT_ORDER[categoryID], counts.appearances, counts.sources,
             counts.items, counts.sourceNames, counts.itemNames))
     end
@@ -310,7 +310,7 @@ end
 
 function RecolorGroups:PrintReport(verbose)
     local S = LuckysWardrobe.Strings.recolorGroups
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     local appearances, coverage = RecolorGroups.LiveAppearances()
     local families, rejections = RecolorGroups.Group(appearances)

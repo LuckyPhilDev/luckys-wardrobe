@@ -74,6 +74,7 @@ _G.GetInventoryItemLink = function() return nil end
 _G.NUM_BAG_SLOTS, _G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED = 4, 1, 19
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Catalyst.lua")
 dofile("src/LootAlerts.lua")
 

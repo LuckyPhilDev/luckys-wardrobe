@@ -12,9 +12,7 @@ local INSTANCE_TYPES = { party = true, raid = true }
 
 local db
 
-local function say(text)
-    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, text))
-end
+local say = LuckysWardrobe.Utils.Say
 
 --- Whether a set belongs to the tier the game is currently on.
 -- A set's patchID and the client's interface number are the same kind of number,

@@ -55,6 +55,7 @@ local function initialize()
     SLASH_LUCKYSWARDROBE1 = "/wardrobe"
     SLASH_LUCKYSWARDROBE2 = "/lw"
     SlashCmdList.LUCKYSWARDROBE = function(message)
+        local say = LuckysWardrobe.Utils.Say
         local command, argument = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
         command = command:lower()
         if command == "sets" then
@@ -76,7 +77,7 @@ local function initialize()
             elseif subcommand == "perf" then
                 if query:lower() == "reset" then
                     LuckysWardrobe.Perf:Reset()
-                    print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.perf.reset)
+                    say(LuckysWardrobe.Strings.perf.reset)
                 else
                     LuckysWardrobe.Perf:PrintReport()
                 end
@@ -85,7 +86,6 @@ local function initialize()
             end
         elseif command == "recolors" then
             local S = LuckysWardrobe.Strings.recolorGroups
-            local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
             if argument:lower() == "probe" then
                 LuckysWardrobe.RecolorGroups:PrintFunnel()
             elseif argument:lower() == "dump" then

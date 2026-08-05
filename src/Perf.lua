@@ -132,7 +132,7 @@ end
 
 function Perf:PrintReport()
     local S = LuckysWardrobe.Strings.perf
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     if self:IsEmpty() then
         say(S.nothing)
