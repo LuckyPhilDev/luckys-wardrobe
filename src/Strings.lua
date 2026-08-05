@@ -175,6 +175,7 @@ LuckysWardrobe.Strings = {
             header = "Extra Sets from the %s set list on client %s: %d of %d set(s) listed.",
             shownLine = "  shown for this character's class: %d",
             officialLine = "  also in Blizzard's own Sets tab: %d",
+            mismatchLine = "  set(s) this client numbers differently, kept as the bundled list has them: %d",
             unresolvedLine = "  piece(s) this client has no appearance for: %d",
             groupLine = "  %s: %d",
             hint = "Use /wardrobe extrasets full to list everything, /wardrobe extrasets find <name> to look one up, or /wardrobe extrasets pieces to read the selected set piece by piece.",
