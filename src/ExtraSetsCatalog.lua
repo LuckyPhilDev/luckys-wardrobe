@@ -6,6 +6,12 @@
 -- supplies which items belong together and the client supplies everything the
 -- collection knows about them.
 --
+-- Two listings feed it. The armour lists number their sets the way Wowhead
+-- does, which is a numbering of its own that has to be checked against the
+-- client's before the client is believed about any of them. The ensemble list
+-- numbers its sets the way the client does, because an ensemble item names the
+-- set it teaches in the client's own data, so those need no such check.
+--
 -- Building a record means turning each item ID into the appearance source the
 -- collection actually tracks. A piece this client cannot answer for is counted,
 -- never guessed at, and a set with no resolvable piece at all is left out with
@@ -16,9 +22,14 @@ LuckysWardrobe.ExtraSetsCatalog = {}
 local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
 -- Each set asks the client about every one of its items, so the work is paced
--- to keep a frame's share of it small: the whole catalogue lands in about a
--- second, which is faster than a player can open Collections and reach the tab.
-local SETS_PER_STEP = 50
+-- to keep a frame's share of it small: the whole catalogue lands in a couple of
+-- seconds, which is faster than a player can open Collections and reach the tab.
+--
+-- The pacing counts pieces rather than sets because sets are nothing like the
+-- same size: a tier is nine pieces and an ensemble can teach over a hundred, so
+-- a fixed number of sets would make one frame twenty times the work of another.
+-- A set is never split across frames, so a step can overrun by one large set.
+local PIECES_PER_STEP = 400
 local MAX_VERBOSE_LINES = 40
 
 local ARMOUR_SLOTS = {
@@ -39,6 +50,11 @@ local ARMOUR_SLOTS = {
 -- Records leave here already ordered, so nothing downstream has to know what a
 -- slot means.
 local SLOT_ORDER = LuckysWardrobe.Utils.ARMOUR_SLOTS
+
+-- The armour a class wears, as the client's own armour subclass IDs. The rest
+-- of that enum is armour nobody wears as an armour type: tabards and shirts
+-- under miscellaneous, and the cosmetic pieces that go with anything.
+local WEARABLE_ARMOUR = { [1] = true, [2] = true, [3] = true, [4] = true }
 
 local REJECT = {
     unresolvable = "no piece this client can resolve",
@@ -84,29 +100,55 @@ end
 -- piece this client holds no data for at all comes back empty and flagged, so a
 -- set can say how much of itself this build is missing.
 local function resolveItem(itemID)
-    local equipLoc = select(4, C_Item.GetItemInfoInstant(itemID))
-    if not equipLoc then return nil, nil, true end
+    local equipLoc, _, classID, subclassID = select(4, C_Item.GetItemInfoInstant(itemID))
+    if not equipLoc then return nil, true end
 
     local slot = ARMOUR_SLOTS[equipLoc]
     if not slot then return nil end
 
     local _, sourceID = C_TransmogCollection.GetItemInfo(itemID)
-    if not sourceID then return nil, nil, true end
-    return slot, sourceID
+    if not sourceID then return nil, true end
+
+    local piece = { slot = slot, sourceID = sourceID, itemID = itemID }
+    -- Which armour this piece is, for the listing that does not say. Only the
+    -- four kinds a class wears can answer that: a cloak is cloth whoever wears
+    -- it, and a tabard, shirt, or cosmetic piece is nobody's armour at all, so
+    -- neither says who the set around it is for.
+    if slot ~= "BACK" and classID == Enum.ItemClass.Armor and WEARABLE_ARMOUR[subclassID] then
+        piece.armour = subclassID
+    end
+    return piece
+end
+
+-- The armour a set is, read off the pieces for the listing that does not say
+-- it: whichever kind most of them are. A tie goes to the lower ID so the answer
+-- is the same on every client. A set of nothing but cloaks, tabards, shirts,
+-- and cosmetics is nobody's armour in particular, which zero says.
+local function dominantArmour(counts)
+    local kind, most
+    for armour, count in pairs(counts) do
+        if not most or count > most or (count == most and armour < kind) then
+            kind, most = armour, count
+        end
+    end
+    return kind or 0
 end
 
 -- Pieces come out in slot order, keeping the snapshot's order within a slot so
 -- a set carrying both a chest and a robe shows them the way Wowhead lists them.
 local function buildPieces(itemIDs)
-    local bySlot, unresolved, seenSources = {}, 0, {}
+    local bySlot, unresolved, seenSources, armourCounts = {}, 0, {}, {}
     for _, itemID in ipairs(itemIDs) do
-        local slot, sourceID, unknown = resolveItem(itemID)
+        local piece, unknown = resolveItem(itemID)
         if unknown then
             unresolved = unresolved + 1
-        elseif slot and not seenSources[sourceID] then
-            seenSources[sourceID] = true
-            bySlot[slot] = bySlot[slot] or {}
-            table.insert(bySlot[slot], { slot = slot, sourceID = sourceID, itemID = itemID })
+        elseif piece and not seenSources[piece.sourceID] then
+            seenSources[piece.sourceID] = true
+            bySlot[piece.slot] = bySlot[piece.slot] or {}
+            table.insert(bySlot[piece.slot], piece)
+            if piece.armour then
+                armourCounts[piece.armour] = (armourCounts[piece.armour] or 0) + 1
+            end
         end
     end
 
@@ -116,7 +158,7 @@ local function buildPieces(itemIDs)
             pieces[#pieces + 1] = piece
         end
     end
-    return pieces, unresolved
+    return pieces, unresolved, dominantArmour(armourCounts)
 end
 
 -- Whether the set the client holds under an ID is the set the snapshot holds
@@ -144,8 +186,10 @@ function Catalog.SameSet(pieces, clientSourceIDs)
     return matched * 2 >= #clientSourceIDs
 end
 
+-- armorType is what the listing says the set is, and nil for the one that does
+-- not say: an ensemble record takes the armour its own pieces are.
 local function buildRecord(setID, set, armorType)
-    local pieces, unresolved = buildPieces(set.pieces)
+    local pieces, unresolved, pieceArmour = buildPieces(set.pieces)
     if #pieces == 0 then
         return reject(setID, set.name, REJECT.unresolvable)
     end
@@ -156,7 +200,11 @@ local function buildRecord(setID, set, armorType)
     -- belongs to. The snapshot only fills the gaps. None of this changes while
     -- a session runs, so it is read here rather than every time the page does.
     local info = C_TransmogSets.GetSetInfo(setID)
-    if info and not Catalog.SameSet(pieces, C_TransmogSets.GetAllSourceIDs(setID)) then
+    -- An ensemble names its set in the client's own numbering, so there is
+    -- nothing to check: the set under that number is the set the ensemble
+    -- teaches. Only the armour lists, which number their sets the way Wowhead
+    -- does, can be pointing at a different set than the number they share.
+    if info and not set.ensembles and not Catalog.SameSet(pieces, C_TransmogSets.GetAllSourceIDs(setID)) then
         report.identityMismatches = report.identityMismatches + 1
         LuckysWardrobe.DevLog("Extra Sets: client set " .. setID .. " (" .. tostring(info.name)
             .. ") is not the snapshot's " .. tostring(set.name) .. "; keeping the snapshot's own.")
@@ -170,10 +218,13 @@ local function buildRecord(setID, set, armorType)
     if officialClassMask then
         report.alsoOfficial = report.alsoOfficial + 1
     end
+    if set.ensembles then
+        report.fromEnsembles = report.fromEnsembles + 1
+    end
     records[#records + 1] = {
         setID = setID,
         name = (info and info.name ~= "" and info.name) or set.name,
-        armorType = armorType,
+        armorType = armorType or pieceArmour,
         classMask = info and info.classMask or set.classMask,
         expansionID = info and info.expansionID,
         label = info and info.label,
@@ -182,6 +233,9 @@ local function buildRecord(setID, set, armorType)
         -- Which classes' Sets tab already lists this set, so the page can drop
         -- the ones it would otherwise show a second time.
         officialClassMask = officialClassMask,
+        -- The ensembles that teach this set, as item IDs. The client names each
+        -- of them in the player's own language, so only the numbers are bundled.
+        ensembles = set.ensembles,
     }
 end
 
@@ -242,18 +296,24 @@ function Catalog:OfficialLooks(classID)
     return looks
 end
 
--- Set IDs are the keys of a hash table, so the work list fixes an order once
--- and the stepper walks it across frames from there.
+-- Set IDs are the keys of a hash table, so a group fixes an order once and the
+-- stepper walks it across frames from there.
+local function workGroup(sets, armorType)
+    local setIDs = {}
+    for setID in pairs(sets or {}) do setIDs[#setIDs + 1] = setID end
+    table.sort(setIDs)
+    return { sets = sets or {}, armorType = armorType, setIDs = setIDs }
+end
+
+-- The ensembles are walked last, so where an ensemble teaches a look one of the
+-- armour lists already carries, the armour list keeps the row and the ensemble
+-- joins it as another name for the same set rather than displacing it.
 local function workList()
     local work = {}
     for _, armour in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
-        local setIDs = {}
-        for setID in pairs(LuckysWardrobe.ExtraSetsData.sets[armour.key] or {}) do
-            setIDs[#setIDs + 1] = setID
-        end
-        table.sort(setIDs)
-        work[#work + 1] = { key = armour.key, armorType = armour.armorType, setIDs = setIDs }
+        work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.sets[armour.key], armour.armorType)
     end
+    work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.ensembles)
     return work
 end
 
@@ -268,7 +328,8 @@ local function finalize()
 end
 
 local function stepWork()
-    for _ = 1, SETS_PER_STEP do
+    local budget = PIECES_PER_STEP
+    while budget > 0 do
         local group = state.work[state.groupIndex]
         if not group then return finalize() end
 
@@ -278,7 +339,9 @@ local function stepWork()
             state.groupIndex = state.groupIndex + 1
             state.cursor = 0
         else
-            buildRecord(setID, LuckysWardrobe.ExtraSetsData.sets[group.key][setID], group.armorType)
+            local set = group.sets[setID]
+            budget = budget - #set.pieces
+            buildRecord(setID, set, group.armorType)
         end
     end
 end
@@ -301,6 +364,7 @@ function Catalog:StartBuild()
         snapshot = LuckysWardrobe.ExtraSetsData.snapshot,
         build = version .. "." .. buildNumber,
         alsoOfficial = 0,
+        fromEnsembles = 0,
         identityMismatches = 0,
         unresolvedPieces = 0,
         rejections = {},
@@ -395,6 +459,7 @@ function Catalog:PrintReport(verbose)
     say(S.foldedLine:format(LuckysWardrobe.ExtraSets.FoldedCount(shown)))
     say(S.nativeFoldedLine:format(#LuckysWardrobe.ExtraSets.NativeFolds()))
     say(S.officialLine:format(report.alsoOfficial))
+    say(S.ensembleLine:format(report.fromEnsembles))
     if report.identityMismatches > 0 then
         say(S.mismatchLine:format(report.identityMismatches))
     end

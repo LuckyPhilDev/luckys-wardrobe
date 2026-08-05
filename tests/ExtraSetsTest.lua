@@ -109,6 +109,35 @@ assert(
     ExtraSets.ValidateRecord(validRecord({ pieces = pieces({ "CHEST", 7 }, { "CHEST", 8 }) })),
     "accepted two pieces in one slot, as a set with a chest and a robe has"
 )
+assert(ExtraSets.ValidateRecord(validRecord({ ensembles = { 70001 } })),
+    "accepted a set with an ensemble that teaches it")
+assert(not ExtraSets.ValidateRecord(validRecord({ ensembles = {} })),
+    "rejected an empty ensemble list, which says a set is sold as one without saying which")
+assert(not ExtraSets.ValidateRecord(validRecord({ ensembles = { "70001" } })),
+    "rejected ensembles that are not item IDs")
+assert(ExtraSets.ValidateRecord(validRecord({ armorType = 0 })),
+    "accepted a set of tabards and cloaks, which is nobody's armour in particular")
+
+-- The two listings number their sets differently, so a record's identity is the
+-- list it came from as well as the number.
+
+local wowheadNumbered = validRecord({ setID = 20 })
+local clientNumbered = validRecord({ setID = 20, ensembles = { 70001 } })
+assert(ExtraSets.RecordKey(wowheadNumbered) ~= ExtraSets.RecordKey(clientNumbered),
+    "one number in two listings is two records")
+assert(ExtraSets.RecordKey(validRecord({ setID = 20 })) == ExtraSets.RecordKey(wowheadNumbered),
+    "and the same number in one listing is one record")
+
+-- The ensembles that teach a look, gathered as rows fold into one another.
+
+local merged = ExtraSets.MergeEnsembles({ 1, 2 }, { 2, 3 })
+assert(#merged == 3 and merged[1] == 1 and merged[2] == 2 and merged[3] == 3,
+    "gathered both lists without repeating what they share")
+local kept = { 1 }
+assert(ExtraSets.MergeEnsembles(kept, nil) == kept, "nothing to add leaves the list alone")
+assert(ExtraSets.MergeEnsembles(kept, { 2 }) ~= kept,
+    "and a merge never writes into a list the catalogue owns")
+assert(#kept == 1, "so the record it came from is untouched")
 
 -- Class mask maths.
 
@@ -136,6 +165,10 @@ assert(ExtraSets.MatchesClass(anyoneLeather, LEATHER_CLASS), "the same set belon
 assert(ExtraSets.MatchesClass(validRecord({ classMask = clothBit, armorType = LEATHER }), CLOTH_CLASS),
     "armour never overrules a set named for the class")
 assert(ExtraSets.MatchesClass(anyoneLeather, nil), "no class chosen means no class narrowing")
+local anyoneAnything = validRecord({ classMask = 0, armorType = 0 })
+assert(ExtraSets.MatchesClass(anyoneAnything, CLOTH_CLASS)
+    and ExtraSets.MatchesClass(anyoneAnything, LEATHER_CLASS),
+    "a set of tabards and cloaks belongs to every class, since none of them is barred from it")
 
 local forCloth = ExtraSets.RecordsForClass(
     { lockedCloth, lockedLeather, anyoneCloth, anyoneLeather }, CLOTH_CLASS)
@@ -201,6 +234,7 @@ assert(#devLogs == 2, "reported both rejected records")
 
 local garb = entries[1]
 assert(garb.key == 20 and garb.armorType == CLOTH, "keyed entries by set ID and kept the armour type")
+assert(garb.ensembles == nil and not garb.fromEnsemble, "a set from an armour list is not sold as an ensemble")
 assert(garb.name == "Live Name", "took the name the catalogue resolved")
 assert(garb.collected == 1 and garb.total == 2, "counted shared appearances once")
 assert(garb.missing == 1, "derived the missing count")
@@ -216,6 +250,25 @@ assert(loadingSet.loading, "unresolved appearance data marks the entry loading")
 assert(loadingSet.unavailable == 1, "unknown sources are counted unavailable")
 assert(loadingSet.pieces[3].state == "unavailable", "the invalid source is labelled, not hidden")
 assert(loadingSet.collected == 0 and loadingSet.total == 2, "unavailable pieces stay out of the totals")
+
+-- Sets an ensemble teaches. They arrive numbered the way the client numbers its
+-- own, so a number an armour list also uses is two sets rather than a clash.
+
+local soldAsEnsemble = validRecord({ ensembles = { 70001 } })
+local bothListings = ExtraSets.BuildEntries({ validRecord(), soldAsEnsemble }, stubResolver(1))
+assert(#bothListings == 2 and bothListings[1].key ~= bothListings[2].key,
+    "kept a set from each listing rather than dropping one as a duplicate")
+assert(bothListings[2].fromEnsemble and bothListings[2].ensembles[1] == 70001,
+    "an entry says it came from an ensemble and which one teaches it")
+assert(#ExtraSets.BuildEntries({ soldAsEnsemble, soldAsEnsemble }, stubResolver(1)) == 1,
+    "while the same set twice in one listing is still one row")
+
+assert(#ExtraSets.EnsembleNames(bothListings[2], function() return "Ensemble: Test Garb" end) == 1,
+    "an ensemble is named the way the client names the item")
+assert(#ExtraSets.EnsembleNames(bothListings[2], function() return nil end) == 0,
+    "and one the client has not loaded yet is left out rather than named by its number")
+assert(#ExtraSets.EnsembleNames(bothListings[1], error) == 0,
+    "a set no ensemble teaches asks the client nothing")
 
 -- Whether a character can wear a set is worked out for the one on screen, not
 -- for every row: it costs the client a table for every piece it is asked about.
@@ -428,6 +481,25 @@ assert(#ExtraSets.FilterEntries(collapsed, "Lookalike") == 2, "folded names are 
 assert(#ExtraSets.FilterEntries(collapsed, "Distinct Regalia") == 1,
     "a set folded under another name is found by the name it lost")
 
+-- An ensemble teaching a look an armour list already carries folds into that
+-- row like any other duplicate, and takes the one thing it knows with it.
+
+local ensembleRecord = colourway(602, "Charm Vestments", { 5101, 5102, 5103 })
+ensembleRecord.ensembles = { 70001 }
+local withEnsemble = ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
+    { colourwayRecords[1], ensembleRecord }, stubResolver(CLOTH_CLASS)))
+assert(#withEnsemble == 1 and withEnsemble[1].setID == 601,
+    "the armour list keeps the row, since it was listed first")
+assert(withEnsemble[1].ensembles[1] == 70001,
+    "and learns where the look can be bought from the row it folded away")
+assert(not withEnsemble[1].fromEnsemble,
+    "without becoming a row that came from the ensemble list, which its number is not read against")
+assert(colourwayRecords[1].ensembles == nil,
+    "the catalogue record the row was built from is left as it was")
+assert(#ExtraSets.FilterEntries(withEnsemble, "ensemble") == 1,
+    "a set there is an ensemble for answers to the word, so searching it lists what can be bought")
+assert(#ExtraSets.FilterEntries(collapsed, "ensemble") == 0, "and a set there is not does not")
+
 -- A set with a piece still loading cannot be told apart from a shorter set, so
 -- it waits for the rebuild that follows rather than folding into the wrong row.
 local pendingRecords = {
@@ -524,6 +596,38 @@ assert(ExtraSets.VariantOf(group, nil).setID == 601, "a set opens on its first c
 assert(ExtraSets.VariantOf(group, 603).setID == 603, "and shows the one that was picked")
 assert(ExtraSets.VariantOf(group, 999).setID == 601, "falling back when that one is no longer there")
 assert(ExtraSets.VariantOf(rows[2], nil) == rows[2], "a plain row is its own colourway")
+
+-- A row standing for several colourways answers for every ensemble behind them,
+-- since the row is the only place any of those looks is shown.
+local boughtVariants = {
+    ExtraSets.BuildEntries({ colourway(661, "Bought Robes (Recolor)", { 5101 }) }, stubResolver(CLOTH_CLASS))[1],
+    ExtraSets.BuildEntries({ colourway(662, "Bought Robes (Heroic)", { 5102 }) }, stubResolver(CLOTH_CLASS))[1],
+}
+boughtVariants[1].ensembles = { 70001 }
+boughtVariants[2].ensembles = { 70002, 70001 }
+local boughtGroup = ExtraSets.BuildGroup(boughtVariants)
+assert(#boughtGroup.ensembles == 2 and boughtGroup.ensembles[1] == 70001 and boughtGroup.ensembles[2] == 70002,
+    "gathered the ensembles across the colourways, each named once")
+
+-- Where the piece icons go. A tier's nine pieces are one strip; the dozens an
+-- ensemble can teach wrap, and the ones past what the pane holds are counted.
+
+local oneStrip, noneLeft = ExtraSets.PieceLayout(3)
+assert(#oneStrip == 3 and noneLeft == 0, "a small set is placed whole")
+assert(oneStrip[1].row == 1 and oneStrip[2].row == 1, "in a single strip")
+assert(oneStrip[1].y == oneStrip[3].y, "sitting at one height")
+assert(oneStrip[1].x < oneStrip[2].x and oneStrip[2].x < oneStrip[3].x, "filled left to right")
+assert(oneStrip[1].x == -oneStrip[3].x, "centred on the pane")
+
+local wrapped = ExtraSets.PieceLayout(12)
+assert(#wrapped == 12 and wrapped[10].row == 1 and wrapped[11].row == 2, "a wider set wraps onto a second strip")
+assert(wrapped[11].y < wrapped[10].y, "which sits below the first")
+assert(wrapped[11].x > wrapped[1].x and wrapped[11].x < 0 and wrapped[12].x > 0,
+    "and is centred on the two it holds rather than spread across a full strip")
+
+local capped, leftOff = ExtraSets.PieceLayout(126)
+assert(#capped == 40 and leftOff == 86,
+    "a set with more pieces than the pane holds shows what fits and counts the rest")
 
 -- Filters can leave a set with one colourway, and it goes back to a plain row.
 local lastStanding = ExtraSets.BuildRows({ collapsed[1], collapsed[3] })
@@ -676,6 +780,7 @@ local function newTexture()
     function texture:SetHeight() end
     function texture:SetWidth(width) self.width = width end
     function texture:SetShown(shown) self.shown = shown end
+    function texture:Show() self.shown = true end
     function texture:Hide() self.shown = false end
     return texture
 end

@@ -232,6 +232,12 @@ LuckysWardrobe.Strings = {
         colours = "%d colours",
         variantOption = "%s (%d/%d)",
         alsoListed = "Also listed as %s",
+        -- The client names the ensemble item itself, and every one of them is
+        -- called "Ensemble: <the set>", so the line reads as a sentence.
+        ensembleSource = "From %s",
+        -- What a player types to list everything there is an ensemble for.
+        ensembleTerm = "Ensemble",
+        piecesNotShown = "...and %d more piece(s)",
         progress = "%d / %d",
         pieceUnavailable = "This piece is not available on this client build.",
         pieceUnavailableShort = "Pieces unavailable",
@@ -258,6 +264,7 @@ LuckysWardrobe.Strings = {
             foldedLine = "  folded into another row as the same look: %d",
             nativeFoldedLine = "  hidden as looks the Sets tab already shows this class: %d",
             officialLine = "  hidden as Blizzard's own Sets tab lists them: %d",
+            ensembleLine = "  set(s) an ensemble teaches: %d",
             mismatchLine = "  set(s) this client numbers differently, kept as the bundled list has them: %d",
             unresolvedLine = "  piece(s) this client has no appearance for: %d",
             groupLine = "  %s: %d",

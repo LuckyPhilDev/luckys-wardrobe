@@ -19,6 +19,18 @@ local NATIVE_SETS_TAB_ID = 2
 -- wraps it instead.
 local NAME_MIN_LINE_HEIGHT = 16
 
+-- The row of piece icons, as the Sets tab draws it: one strip under the set's
+-- counts. The sets an ensemble teaches run to dozens of pieces where a tier
+-- runs to nine, so a set too wide for the pane wraps onto further strips, and
+-- one with more pieces than the pane has room for shows what fits and says how
+-- many it left off rather than burying the model it is describing.
+local PIECES_PER_ROW = 10
+local PIECE_SPACING = 37
+local PIECE_ROW_HEIGHT = 37
+local PIECE_ROW_TOP = -98
+local PIECE_ROW_BACKGROUND_TOP = -82
+local MAX_PIECE_ROWS = 4
+
 -- The offsets Blizzard gives the class dropdown above the Sets page.
 local CLASS_DROPDOWN_X = -9
 local CLASS_DROPDOWN_Y = 4
@@ -92,6 +104,16 @@ function ExtraSets.ValidateRecord(record)
     if type(record.armorType) ~= "number" then return nil, "armorType is required" end
     if type(record.classMask) ~= "number" or record.classMask < 0 then return nil, "classMask is required" end
     if type(record.pieces) ~= "table" or #record.pieces == 0 then return nil, "pieces are required" end
+    if record.ensembles ~= nil then
+        if type(record.ensembles) ~= "table" or #record.ensembles == 0 then
+            return nil, "ensembles must list at least one item"
+        end
+        for _, itemID in ipairs(record.ensembles) do
+            if type(itemID) ~= "number" or itemID <= 0 or itemID % 1 ~= 0 then
+                return nil, "ensemble item IDs must be positive integers"
+            end
+        end
+    end
 
     local seenSourceIDs = {}
     for _, piece in ipairs(record.pieces) do
@@ -103,6 +125,33 @@ function ExtraSets.ValidateRecord(record)
         seenSourceIDs[piece.sourceID] = true
     end
     return true
+end
+
+-- What tells one record from another. The bundled armour lists number their
+-- sets the way Wowhead does, while the ensembles carry the client's own
+-- numbering, so the same number stands for two unrelated sets across the two
+-- listings and the number alone cannot say which record is which.
+function ExtraSets.RecordKey(record)
+    if record.ensembles then return "ensemble:" .. record.setID end
+    return record.setID
+end
+
+-- The ensembles that teach a look, gathered without repeats. Merging never
+-- writes into either list it was given: the first belongs to a catalogue record
+-- that outlives every rebuild of the page.
+function ExtraSets.MergeEnsembles(into, from)
+    if not from then return into end
+
+    local merged, seen = {}, {}
+    for _, list in ipairs({ into or {}, from }) do
+        for _, itemID in ipairs(list) do
+            if not seen[itemID] then
+                seen[itemID] = true
+                merged[#merged + 1] = itemID
+            end
+        end
+    end
+    return merged
 end
 
 -- A mask of zero names every class at once, which is how the game marks the
@@ -121,7 +170,9 @@ function ExtraSets.MatchesClass(record, classID)
     if record.classMask ~= 0 then return ExtraSets.ClassAllowed(record.classMask, classID) end
 
     local armourType = LuckysWardrobe.Classes:ArmourType(classID)
-    return armourType == nil or record.armorType == armourType
+    -- A set of nothing but cloaks, tabards, shirts, and cosmetics is nobody's
+    -- armour in particular, which zero says, and anybody can wear it.
+    return armourType == nil or record.armorType == 0 or record.armorType == armourType
 end
 
 -- Both pages read one class dropdown, so a set Blizzard's Sets tab lists for
@@ -327,7 +378,7 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
     -- containments to its end: each step holds strictly more looks than the
     -- last, so the walk always finishes. A chain ending at a native look has
     -- no row to gather against, so the whole chain is folded away with it.
-    local absorbedNames, nativeFolds = {}, {}
+    local absorbedNames, absorbedEnsembles, nativeFolds = {}, {}, {}
     for _, entry in ipairs(entries) do
         local survivor = survivorOf[entry]
         if survivor then
@@ -341,6 +392,12 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
             else
                 absorbedNames[survivor] = absorbedNames[survivor] or {}
                 table.insert(absorbedNames[survivor], entry.name)
+                -- The surviving row is the only place this look is shown, so
+                -- where a folded one could be bought as an ensemble that comes
+                -- with it. Losing it would fold away the one thing that says
+                -- how to get the look.
+                absorbedEnsembles[survivor] =
+                    ExtraSets.MergeEnsembles(absorbedEnsembles[survivor], entry.ensembles)
             end
         end
     end
@@ -349,6 +406,7 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
     for _, entry in ipairs(kept) do
         if not survivorOf[entry] then
             entry.alternateNames = absorbedNames[entry]
+            entry.ensembles = ExtraSets.MergeEnsembles(entry.ensembles, absorbedEnsembles[entry])
             rows[#rows + 1] = entry
         end
     end
@@ -362,10 +420,11 @@ end
 function ExtraSets.BuildGroup(variants)
     local first = variants[1]
     local collected, total, unavailable, loading = 0, 0, 0, false
-    local appearances = {}
+    local appearances, ensembles = {}, nil
     for _, variant in ipairs(variants) do
         loading = loading or variant.loading
         unavailable = unavailable + variant.unavailable
+        ensembles = ExtraSets.MergeEnsembles(ensembles, variant.ensembles)
         for id, isCollected in pairs(variant.appearances) do
             if appearances[id] == nil then
                 appearances[id] = isCollected
@@ -384,6 +443,8 @@ function ExtraSets.BuildGroup(variants)
         expansionID = first.expansionID,
         armorType = first.armorType,
         classMask = first.classMask,
+        ensembles = ensembles,
+        fromEnsemble = first.fromEnsemble,
         pieces = first.pieces,
         appearances = appearances,
         collected = collected,
@@ -409,11 +470,11 @@ end
 
 -- Which colourway of a set is on show. Defaults to the first, and falls back to
 -- it when the one last picked has been filtered out from under the row.
-function ExtraSets.VariantOf(row, chosenSetID)
+function ExtraSets.VariantOf(row, chosenKey)
     if not row.isGroup then return row end
 
     for _, variant in ipairs(row.variants) do
-        if variant.setID == chosenSetID then return variant end
+        if variant.key == chosenKey then return variant end
     end
     return row.variants[1]
 end
@@ -426,13 +487,14 @@ function ExtraSets.BuildEntries(records, resolver)
     local seenSetIDs = {}
 
     for _, record in ipairs(records) do
+        local key = ExtraSets.RecordKey(record)
         local valid, problem = ExtraSets.ValidateRecord(record)
         if not valid then
             LuckysWardrobe.DevLog("Extra Sets record rejected: " .. tostring(problem))
-        elseif seenSetIDs[record.setID] then
-            LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate set " .. record.setID)
+        elseif seenSetIDs[key] then
+            LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate set " .. key)
         else
-            seenSetIDs[record.setID] = true
+            seenSetIDs[key] = true
             entries[#entries + 1] = ExtraSets.BuildEntry(record, resolver)
         end
     end
@@ -478,13 +540,21 @@ function ExtraSets.BuildEntry(record, resolver)
     end
 
     return {
-        key = record.setID,
+        key = ExtraSets.RecordKey(record),
         setID = record.setID,
         name = record.name,
         label = record.label or "",
         expansionID = record.expansionID,
         armorType = record.armorType,
         classMask = record.classMask,
+        -- Where the set can simply be bought, for the sets that can be. Kept as
+        -- the record's own list until something folds into this row, which is
+        -- the only thing that ever gives a row a second one.
+        ensembles = record.ensembles,
+        -- Which listing the set came from, which is what its number can be read
+        -- against. Folding another row in gives this one more ensembles without
+        -- changing where the row itself came from.
+        fromEnsemble = record.ensembles ~= nil,
         pieces = pieces,
         -- Which looks this set is made of, and whether each is collected. What
         -- makes two sets the same set, and what lets one row speak for several.
@@ -597,6 +667,37 @@ function ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
     return rows, ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
 end
 
+-- The ensembles that teach a set, named the way the player reads them on the
+-- item itself. An ensemble whose item the client has not loaded yet is left out
+-- rather than named by its number, and asking for it is what starts it loading.
+function ExtraSets.EnsembleNames(entry, itemName)
+    local names = {}
+    for _, itemID in ipairs(entry.ensembles or {}) do
+        local name = itemName(itemID)
+        if name then names[#names + 1] = name end
+    end
+    return names
+end
+
+-- Where each piece icon sits in the block under the set's counts: filled left
+-- to right, each strip centred on the pane, and no more strips than the pane
+-- has room for. Answers the places and how many pieces were left off the end.
+function ExtraSets.PieceLayout(count)
+    local shown = math.min(count, MAX_PIECE_ROWS * PIECES_PER_ROW)
+    local places = {}
+    for index = 1, shown do
+        local row = math.ceil(index / PIECES_PER_ROW)
+        local column = index - (row - 1) * PIECES_PER_ROW
+        local acrossRow = math.min(shown - (row - 1) * PIECES_PER_ROW, PIECES_PER_ROW)
+        places[index] = {
+            row = row,
+            x = (column - 1) * PIECE_SPACING - math.floor((acrossRow - 1) * PIECE_SPACING / 2),
+            y = PIECE_ROW_TOP - (row - 1) * PIECE_ROW_HEIGHT,
+        }
+    end
+    return places, count - shown
+end
+
 function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
@@ -643,6 +744,9 @@ function ExtraSets.FilterEntries(entries, query)
         -- A collapsed row answers for the names it absorbed as well as its own,
         -- or folding "(Heroic Lookalike)" away would make it unsearchable.
         local words = { entry.name, entry.label }
+        -- A set that can simply be bought answers to the word too, so searching
+        -- for it lists everything there is an ensemble for.
+        if entry.ensembles then words[#words + 1] = LuckysWardrobe.Strings.extraSets.ensembleTerm end
         for _, name in ipairs(entry.alternateNames or {}) do words[#words + 1] = name end
         if table.concat(words, " "):lower():find(normalized, 1, true) then
             filtered[#filtered + 1] = entry
@@ -982,19 +1086,24 @@ function ExtraSets:CreatePage(wardrobe)
     countsText:SetPoint("TOP", labelText, "BOTTOM", 0, -2)
     countsText:SetWidth(380)
 
-    local iconRowBackground = detailsFrame:CreateTexture(nil, "BORDER")
-    iconRowBackground:SetAtlas("transmog-set-iconrow-background", true)
-    iconRowBackground:SetPoint("TOP", 0, -82)
-
     local modelFade = detailsFrame:CreateTexture(nil, "BACKGROUND")
     modelFade:SetAtlas("transmog-set-model-cutoff-fade")
     modelFade:SetHeight(178)
     modelFade:SetPoint("TOPLEFT", 2, 0)
     modelFade:SetPoint("TOPRIGHT")
 
+    -- Where a set can simply be bought, for the sets sold as ensembles. It
+    -- takes the bottom of the pane, and pushes the notice above it on the sets
+    -- that have something to say there as well.
+    local sourceText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sourceText:SetPoint("BOTTOM", 0, 12)
+    sourceText:SetWidth(380)
+
     local noticeText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    noticeText:SetPoint("BOTTOM", 0, 12)
     noticeText:SetWidth(380)
+
+    local overflowText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    overflowText:SetWidth(380)
 
     -- Where the Sets tab puts the same control: the top corner of the details
     -- pane, over the model rather than beside the list.
@@ -1009,7 +1118,22 @@ function ExtraSets:CreatePage(wardrobe)
     detailsText:SetText(S.select)
 
     local itemFrames = {}
+    local rowBackgrounds = {}
     local selectedEntry
+
+    -- One strip of Blizzard's icon-row art per row of pieces, built as the
+    -- rows are needed. The art is a single strip, so a set wide enough to wrap
+    -- gets another laid under each row rather than one row of pieces framed and
+    -- the rest floating over the model.
+    local function getRowBackground(index)
+        if rowBackgrounds[index] then return rowBackgrounds[index] end
+
+        local background = detailsFrame:CreateTexture(nil, "BORDER")
+        background:SetAtlas("transmog-set-iconrow-background", true)
+        background:SetPoint("TOP", 0, PIECE_ROW_BACKGROUND_TOP - (index - 1) * PIECE_ROW_HEIGHT)
+        rowBackgrounds[index] = background
+        return background
+    end
 
     local function refreshCamera()
         local detailsCameraID = C_TransmogSets.GetCameraIDs()
@@ -1150,27 +1274,53 @@ function ExtraSets:CreatePage(wardrobe)
         noticeText:SetShown(entry.unavailable > 0 or unwearable ~= nil)
     end
 
+    -- Which ensembles teach the set, for the sets there is one to buy. Nothing
+    -- else on the page says where a look comes from, and for these it is the
+    -- whole answer.
+    local function showSource(entry)
+        local names = ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)
+        sourceText:SetShown(#names > 0)
+        if #names > 0 then sourceText:SetFormattedText(S.ensembleSource, table.concat(names, ", ")) end
+
+        -- Both lines sit at the bottom edge, so the notice stands on top of the
+        -- source line when there is one and takes the edge itself when there is
+        -- not, rather than leaving a gap where the missing line would be.
+        noticeText:ClearAllPoints()
+        if #names > 0 then
+            noticeText:SetPoint("BOTTOM", sourceText, "TOP", 0, 2)
+        else
+            noticeText:SetPoint("BOTTOM", detailsFrame, "BOTTOM", 0, 12)
+        end
+    end
+
     -- Asking for a set's items is what starts them loading, and the answers
     -- land frames later. Sets this character can wear are the ones that arrive
     -- cold, since building the list only asks the client about pieces it will
     -- not judge, so without this pass the notice would be wrong exactly where
-    -- it matters and right only after leaving the set and coming back.
-    local function loadPieceItems(row, pass)
+    -- it matters and right only after leaving the set and coming back. The
+    -- ensembles ride along: their names come off the same item data.
+    local function loadSetItems(row, pass)
         local waiting = false
-        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
-            if piece.itemID and not C_Item.GetItemInfo(piece.itemID) then
-                C_Item.RequestLoadItemDataByID(piece.itemID)
+        local function request(itemID)
+            if itemID and not C_Item.GetItemInfo(itemID) then
+                C_Item.RequestLoadItemDataByID(itemID)
                 waiting = true
             end
         end
+
+        local entry = ExtraSets.VariantOf(row, selectedVariants[row.key])
+        for _, piece in ipairs(entry.pieces) do request(piece.itemID) end
+        for _, itemID in ipairs(entry.ensembles or {}) do request(itemID) end
         if not waiting or pass >= Utils.ITEM_LOAD_PASSES then return end
 
         C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
             -- The row on screen may have moved on while the client answered, and
             -- the colourway on show may have changed under a row that has not.
             if selectedEntry ~= row then return end
-            showNotice(ExtraSets.VariantOf(row, selectedVariants[row.key]))
-            loadPieceItems(row, pass + 1)
+            local shown = ExtraSets.VariantOf(row, selectedVariants[row.key])
+            showNotice(shown)
+            showSource(shown)
+            loadSetItems(row, pass + 1)
         end)
     end
 
@@ -1200,7 +1350,7 @@ function ExtraSets:CreatePage(wardrobe)
                         ExtraSets.VariantLabel(variant.name), variant.collected, variant.total),
                     function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
                     function()
-                        selectedVariants[row.key] = variant.setID
+                        selectedVariants[row.key] = variant.key
                         displayEntry(row)
                     end
                 )
@@ -1233,13 +1383,16 @@ function ExtraSets:CreatePage(wardrobe)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         showNotice(entry)
-        loadPieceItems(row, 1)
+        showSource(entry)
+        loadSetItems(row, 1)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
-        local spacing = 37
-        local xOffset = -math.floor((#entry.pieces - 1) * spacing / 2)
-        for index, piece in ipairs(entry.pieces) do
+        for _, background in ipairs(rowBackgrounds) do background:Hide() end
+        local places, leftOff = ExtraSets.PieceLayout(#entry.pieces)
+        for strip = 1, places[#places].row do getRowBackground(strip):Show() end
+        for index, place in ipairs(places) do
+            local piece = entry.pieces[index]
             local itemFrame = getItemFrame(index)
             local collected = piece.state == "collected"
             itemFrame.piece = piece
@@ -1255,14 +1408,25 @@ function ExtraSets:CreatePage(wardrobe)
             -- uncollected piece reads as a bright frame around nothing.
             itemFrame.border:SetAlpha(collected and 1 or 0.3)
             itemFrame:ClearAllPoints()
-            itemFrame:SetPoint("TOP", detailsFrame, "TOP", xOffset + (index - 1) * spacing, -98)
+            itemFrame:SetPoint("TOP", detailsFrame, "TOP", place.x, place.y)
             itemFrame:Show()
             LuckysWardrobe.TrackedAppearances:Mark(
                 itemFrame, piece.state ~= "unavailable" and piece.sourceID or nil)
 
+            -- The model wears what the icons show, so the two never describe
+            -- different outfits, and a set of dozens does not cost dozens of
+            -- redresses to say the same thing.
             if redress and piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
                 model:TryOn(piece.sourceID)
             end
+        end
+
+        overflowText:SetShown(leftOff > 0)
+        if leftOff > 0 then
+            overflowText:ClearAllPoints()
+            overflowText:SetPoint("TOP", detailsFrame, "TOP", 0,
+                places[#places].y - PIECE_ROW_HEIGHT + 8)
+            overflowText:SetFormattedText(S.piecesNotShown, leftOff)
         end
 
         if redress then refreshCamera() end
@@ -1332,6 +1496,9 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
             GameTooltip:AddLine(S.counts:format(entry.collected, entry.total), 1, 1, 1)
+            for _, name in ipairs(ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)) do
+                GameTooltip:AddLine(S.ensembleSource:format(name), 0.6, 0.8, 1)
+            end
             -- A row that folded other names in says so, or the set the player
             -- was looking for reads as missing from the list.
             for _, name in ipairs(entry.alternateNames or {}) do

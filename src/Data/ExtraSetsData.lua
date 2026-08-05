@@ -16,4 +16,5 @@ LuckysWardrobe.ExtraSetsData = {
         { key = "plate", armorType = 4 },
     },
     sets = {},
+    ensembles = {},
 }

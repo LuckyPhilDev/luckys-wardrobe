@@ -33,6 +33,20 @@ local items = {
     [62301] = "INVTYPE_HEAD", [62302] = "INVTYPE_CHEST",
     [64001] = "INVTYPE_HEAD", [64002] = "INVTYPE_CHEST", [64003] = "INVTYPE_WEAPON",
     [64101] = "INVTYPE_HEAD", [64102] = "INVTYPE_CHEST",
+    [65001] = "INVTYPE_HEAD", [65002] = "INVTYPE_CHEST", [65003] = "INVTYPE_LEGS",
+    [65004] = "INVTYPE_CLOAK",
+    [66001] = "INVTYPE_TABARD", [66002] = "INVTYPE_BODY",
+}
+
+-- itemID -> the armour subclass the client calls it, where it is not cloth.
+-- The cloak is cloth like every other cloak, which is exactly why a set holding
+-- one is not a cloth set on account of it.
+local itemArmour = {
+    [64001] = 4, [64002] = 4,
+    [65001] = 4, [65002] = 4, [65003] = 4,
+    -- Tabards and shirts are the client's miscellaneous armour: nobody's
+    -- armour type in particular.
+    [66001] = 0, [66002] = 0,
 }
 
 -- itemID -> { appearanceID, sourceID }. 62302 is an item this client knows but
@@ -46,6 +60,9 @@ local itemAppearances = {
     [64001] = { 94001, 4001 }, [64002] = { 94002, 4002 }, [64003] = { 94003, 4003 },
     -- Both of these answer with the same source, which no set should list twice.
     [64101] = { 94101, 4101 }, [64102] = { 94101, 4101 },
+    [65001] = { 95001, 5001 }, [65002] = { 95002, 5002 },
+    [65003] = { 95003, 5003 }, [65004] = { 95004, 5004 },
+    [66001] = { 96001, 6001 }, [66002] = { 96002, 6002 },
 }
 
 local transmogSetInfos = {
@@ -91,8 +108,25 @@ LuckysWardrobe.ExtraSetsData = {
             [10] = { name = "Fixture Official Regalia", classMask = 0, pieces = { 61001, 61002 } },
         },
         plate = {
-            [40] = { name = "Fixture Armed Ensemble", classMask = 4, pieces = { 64001, 64002, 64003 } },
+            [40] = { name = "Fixture Armed Set", classMask = 4, pieces = { 64001, 64002, 64003 } },
             [41] = { name = "Fixture Twice Listed", classMask = 0, pieces = { 64101, 64102 } },
+        },
+    },
+    -- The ensembles, numbered the way the client numbers its own sets rather
+    -- than the way the armour lists number theirs. The cloth list uses 20 for a
+    -- set of its own, and these are two different sets under one number.
+    ensembles = {
+        [20] = {
+            name = "Fixture Ensemble Plate (snapshot)",
+            classMask = 0,
+            ensembles = { 70001, 70002 },
+            pieces = { 65001, 65002, 65003, 65004 },
+        },
+        [30] = {
+            name = "Fixture Ensemble Tabards",
+            classMask = 0,
+            ensembles = { 70003 },
+            pieces = { 66001, 66002 },
         },
     },
 }
@@ -142,11 +176,13 @@ C_TransmogCollection = {
     end,
 }
 
+Enum = { ItemClass = { Armor = 4 } }
+
 C_Item = {
     GetItemInfoInstant = function(itemID)
         local equipLoc = items[itemID]
         if not equipLoc then return nil end
-        return itemID, "Armor", "Cloth", equipLoc, 0, 4, 1
+        return itemID, "Armor", "Cloth", equipLoc, 0, Enum.ItemClass.Armor, itemArmour[itemID] or 1
     end,
 }
 
@@ -193,7 +229,13 @@ end
 
 local function recordFor(setID)
     for _, record in ipairs(Catalog:GetRecords()) do
-        if record.setID == setID then return record end
+        if record.setID == setID and not record.ensembles then return record end
+    end
+end
+
+local function ensembleRecordFor(setID)
+    for _, record in ipairs(Catalog:GetRecords()) do
+        if record.setID == setID and record.ensembles then return record end
     end
 end
 
@@ -217,7 +259,8 @@ local function fingerprint()
         parts[#parts + 1] = table.concat({
             record.setID, record.name, record.label or "", record.classMask,
             record.armorType, record.expansionID or "", record.unresolvedPieces,
-            record.officialClassMask or "", pieceKeys(record),
+            record.officialClassMask or "", table.concat(record.ensembles or {}, "+"),
+            pieceKeys(record),
         }, "|")
     end
     return table.concat(parts, "\n")
@@ -242,7 +285,7 @@ assert(immediate, "a callback added after the build runs at once")
 
 -- Records: what the client can resolve, in display order.
 
-assert(#Catalog:GetRecords() == 6, "listed every set with at least one resolvable piece")
+assert(#Catalog:GetRecords() == 8, "listed every set with at least one resolvable piece")
 
 local garb = recordFor(20)
 assert(garb, "listed a set the client never shows in the Sets tab")
@@ -283,6 +326,29 @@ assert(armed.unresolvedPieces == 0, "a weapon is not a piece this client failed 
 
 local twiceListed = recordFor(41)
 assert(#twiceListed.pieces == 1, "counted a source listed twice as one piece")
+
+-- The ensembles. Their numbering is the client's own, so the set the client
+-- holds under the number is the set the ensemble teaches, and nothing about it
+-- has to be checked first.
+
+local ensemblePlate = ensembleRecordFor(20)
+assert(ensemblePlate and garb ~= ensemblePlate,
+    "two listings using one number keep a record each rather than one shutting the other out")
+assert(ensemblePlate.name == "Fixture Hidden Garb" and ensemblePlate.classMask == 8
+    and ensemblePlate.expansionID == 5 and ensemblePlate.label == "Fixture Quest",
+    "believed the client about a set an ensemble names, sharing no piece with it though it does")
+assert(Catalog:GetReport().identityMismatches == 1,
+    "and did not count that as a numbering the two lists disagree about")
+assert(ensemblePlate.ensembles[1] == 70001 and ensemblePlate.ensembles[2] == 70002,
+    "kept the ensembles that teach the set, so the page can say where to buy it")
+assert(ensemblePlate.armorType == 4,
+    "read the armour off the pieces for the list that does not say, the cloak among them left out")
+
+local tabards = ensembleRecordFor(30)
+assert(tabards.name == "Fixture Ensemble Tabards" and tabards.classMask == 0,
+    "a set the client does not hold keeps the bundled name")
+assert(tabards.armorType == 0, "a set of tabards and shirts is nobody's armour in particular")
+assert(Catalog:GetReport().fromEnsembles == 2, "counted the sets that came from an ensemble")
 
 -- Pieces this client cannot answer for are counted, never guessed at.
 
@@ -345,7 +411,7 @@ assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by re
 -- Looking a set up by name reaches all three places it can be.
 
 local listed, dropped, native, folded = Catalog:FindCandidates("fixture")
-assert(#listed == 4 and #dropped == 1, "found both listed and left-out sets")
+assert(#listed == 6 and #dropped == 1, "found both listed and left-out sets")
 -- Both sets the Sets tab lists are found by name, the collision among them:
 -- this list is the client's own, so it answers for the client's numbering.
 assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
@@ -370,7 +436,8 @@ print = realPrint
 
 local reportText = table.concat(printed, "\n")
 assert(reportText:find("2026%-08%-04"), "named the snapshot the sets came from")
-assert(reportText:find("6 of 7 set%(s%) listed"), "counted what was listed against what was bundled")
+assert(reportText:find("8 of 9 set%(s%) listed"), "counted what was listed against what was bundled")
+assert(reportText:find("an ensemble teaches: 2"), "counted the sets that reached the list as ensembles")
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
 assert(reportText:find("folded into another row as the same look: 1"),
     "accounted for the sets the page folded away, so the count is not short with nothing to say why")
