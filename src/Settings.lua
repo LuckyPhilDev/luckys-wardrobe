@@ -52,6 +52,15 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     appearances:Toggle({
+        label = S.settings.markTracked.label,
+        desc = S.settings.markTracked.desc,
+        checked = db.markTrackedAppearances,
+        onToggle = function(checked)
+            db.markTrackedAppearances = checked
+            LuckysWardrobe.TrackedAppearances:Refresh()
+        end,
+    })
+    appearances:Toggle({
         label = S.settings.wowheadLink.label,
         desc = S.settings.wowheadLink.desc,
         checked = db.wowheadLinkOnCtrlClick,
