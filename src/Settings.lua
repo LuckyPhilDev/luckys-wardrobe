@@ -71,6 +71,17 @@ function LuckysWardrobe.Settings:Init(db)
 
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({
+        label = S.settings.hideUnwearableSets.label,
+        desc = S.settings.hideUnwearableSets.desc,
+        -- The same switch sits in the Sets tab's own filter menu, so the panel
+        -- reads it afresh rather than showing what it was last time.
+        checked = function() return db.hideUnwearableSets end,
+        onToggle = function(checked)
+            db.hideUnwearableSets = checked
+            LuckysWardrobe.TransmogSets:Refresh()
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.keepTransmogTab.label,
         desc = S.settings.keepTransmogTab.desc,
         checked = db.keepTransmogTab,

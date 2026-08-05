@@ -104,6 +104,13 @@ LuckysWardrobe.ExtraSets = {
     end,
 }
 
+local transmogSetsDB
+LuckysWardrobe.TransmogSets = {
+    Init = function(_, db)
+        transmogSetsDB = db
+    end,
+}
+
 local transmogExtraSetsInitialized = false
 LuckysWardrobe.TransmogExtraSets = {
     Init = function()
@@ -183,6 +190,7 @@ assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved vari
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
+assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
@@ -204,6 +212,7 @@ assert(LuckysWardrobeDB.showSituationValues == true, "enabled situation values b
 assert(LuckysWardrobeDB.showSituationTooltips == true, "enabled situation tooltips by default")
 assert(LuckysWardrobeDB.devMode == false, "applied database defaults")
 assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory by default")
+assert(LuckysWardrobeDB.hideUnwearableSets == true, "hid sets this character cannot wear by default")
 assert(LuckysWardrobeDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(LuckysWardrobeDB.markTrackedAppearances == true, "marked tracked appearances by default")
 assert(logCreated, "created development logger")

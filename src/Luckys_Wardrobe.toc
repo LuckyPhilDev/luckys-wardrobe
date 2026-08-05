@@ -29,6 +29,7 @@ LootAlerts.lua
 Randomiser.lua
 ExtraSetsCatalog.lua
 ExtraSets.lua
+TransmogSets.lua
 TransmogExtraSets.lua
 RecolorGroups.lua
 Transmog.lua
