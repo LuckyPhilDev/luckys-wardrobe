@@ -21,6 +21,7 @@ Classes.lua
 SetSources.lua
 SetsBrowser.lua
 SetTracking.lua
+TrackedAppearances.lua
 WowheadLink.lua
 Catalyst.lua
 SetCompletion.lua

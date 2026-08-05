@@ -18,6 +18,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Sort by completion**: Order the Sets list by how close each one is, ascending to work on the nearest first or descending to see what you have most of. Favourites stay at the top.
 - **Filter by expansion and source**: Narrow the list to the expansions you are working through, or to where the sets come from, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. The count reflects what the filters actually left on screen.
 - **Track a whole set**: Shift-click a set to start tracking every appearance you are still missing from it, the way shift-clicking an item on the Items tab tracks that one.
+- **See what you are hunting**: Open a set and the pieces you are tracking carry a crosshair in the corner, in the Sets tab and the Extra Sets tab alike, so a set says what you are still out after. Hover one and its tooltip says so too.
 
 ### Set Tracker
 
@@ -81,7 +82,7 @@ Shift-click the minimap button for the sets you can finish where you are standin
 Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 
 - **General**: Turn on dev mode for troubleshooting, and see version info.
-- **Appearances**: Turn shift-click set tracking on or off.
+- **Appearances**: Turn shift-click set tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
 - **Transmog**: Keep your active tab at the transmog NPC when switching outfits, and choose how much situation detail appears on saved outfits.
 - **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both.
 

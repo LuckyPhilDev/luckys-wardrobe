@@ -128,6 +128,14 @@ assert(#tracked == 1 and tracked[1] == 201, "tracked a collectible source for ea
 assert(#errors == 0, "did not report an error for a tracked set")
 assert(stockClicks == 2, "consumed Shift-left-click")
 
+-- Source 101 is not itself tracked, but 201 teaches the same look and is, which
+-- is what the crosshair on a set's pieces asks about.
+assert(LuckysWardrobe.SetTracking:IsTracking(103), "saw a source tracked outright")
+assert(LuckysWardrobe.SetTracking:IsTracking(101) == false, "saw a look nothing tracks as untracked")
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 201 end
+assert(LuckysWardrobe.SetTracking:IsTracking(101), "saw a look tracked through another item that teaches it")
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 103 end
+
 db.trackSetsOnShiftClick = false
 setRow:OnClick("LeftButton")
 assert(#tracked == 1, "respected disabled setting")

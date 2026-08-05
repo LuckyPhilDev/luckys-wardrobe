@@ -79,6 +79,13 @@ LuckysWardrobe.SetTracking = {
     end,
 }
 
+local trackedAppearancesDB
+LuckysWardrobe.TrackedAppearances = {
+    Init = function(_, db)
+        trackedAppearancesDB = db
+    end,
+}
+
 local wowheadDB
 LuckysWardrobe.WowheadLink = {
     Init = function(_, db)
@@ -173,6 +180,7 @@ eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
 assert(conflictsChecked, "looked for conflicting wardrobe addons")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
+assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
@@ -197,6 +205,7 @@ assert(LuckysWardrobeDB.showSituationTooltips == true, "enabled situation toolti
 assert(LuckysWardrobeDB.devMode == false, "applied database defaults")
 assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory by default")
 assert(LuckysWardrobeDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
+assert(LuckysWardrobeDB.markTrackedAppearances == true, "marked tracked appearances by default")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSWARDROBE1 == "/wardrobe", "registered slash command")
 assert(SLASH_LUCKYSWARDROBE2 == "/lw", "registered short slash alias")
