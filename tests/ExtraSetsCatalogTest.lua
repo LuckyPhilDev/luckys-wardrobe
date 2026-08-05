@@ -66,10 +66,11 @@ local clientSetSources = {
     [23] = { 5501, 5502, 5503 },
 }
 
--- The client's Sets tab lists its own 23, which is not the snapshot's 23. A
--- count of overlap that goes by the number alone counts it as one the player
--- can already see.
-local allSetsByClass = { [1] = { 10 }, [2] = { 23 } }
+-- Set 10 is one both classes' Sets tab lists, and the second class lists it
+-- twice, as a client that names a set once per variant would. That tab also
+-- lists the client's own 23, which is not the snapshot's 23: going by the
+-- number alone would hide a set nobody can reach any other way.
+local allSetsByClass = { [1] = { 10 }, [2] = { 10, 10, 23 } }
 
 LuckysWardrobe.ExtraSetsData = {
     snapshot = "2026-08-04",
@@ -141,10 +142,18 @@ end
 dofile("src/ExtraSetsCatalog.lua")
 local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
--- The report asks the page how many sets this character's class sees, so the
--- page stands in for itself here.
-local shownEntries = { {}, {} }
-LuckysWardrobe.ExtraSets = { Entries = function() return shownEntries end }
+-- The report asks the page how many sets this character's class sees and how
+-- many it folded away as the same look, so the page stands in for itself here.
+-- One of the two rows below speaks for a set listed again under another name.
+local shownEntries = { {}, { alternateNames = { "Live Name (Recolor)" } } }
+LuckysWardrobe.ExtraSets = {
+    Entries = function() return shownEntries end,
+    FoldedCount = function(entries)
+        local folded = 0
+        for _, entry in ipairs(entries) do folded = folded + #(entry.alternateNames or {}) end
+        return folded
+    end,
+}
 
 local function runBuild()
     for _ = 1, 100 do
@@ -181,7 +190,7 @@ local function fingerprint()
         parts[#parts + 1] = table.concat({
             record.setID, record.name, record.label or "", record.classMask,
             record.armorType, record.expansionID or "", record.unresolvedPieces,
-            pieceKeys(record),
+            record.officialClassMask or "", pieceKeys(record),
         }, "|")
     end
     return table.concat(parts, "\n")
@@ -259,12 +268,16 @@ local ghost = rejectionFor(22)
 assert(ghost and ghost.name == "Fixture Ghost Set", "named the set it left out")
 assert(ghost.category == "no piece this client can resolve", "said why")
 
--- Overlap with Blizzard's own Sets tab is counted rather than hidden: it is
--- exactly what a later pass would de-duplicate.
+-- Overlap with Blizzard's own Sets tab. The catalogue keeps the set and says
+-- which classes' Sets tab lists it; the page is what drops the duplicate row.
 
-assert(recordFor(10), "a set Blizzard already lists is still listed here")
+local official = recordFor(10)
+assert(official, "kept a set Blizzard already lists")
+assert(official.officialClassMask == 3, "named every class whose Sets tab lists it, each counted once")
+assert(garb.officialClassMask == nil, "a set no Sets tab lists belongs to no class there")
 -- The Sets tab lists a 10 and a 23. Only the 10 is the set the snapshot means,
--- so only the 10 is a set the player can already see without this page.
+-- so only the 10 is a duplicate: the page keeps the 23 for every class.
+assert(partly.officialClassMask == nil, "a set that only shares a number is nobody's duplicate")
 assert(Catalog:GetReport().alsoOfficial == 1,
     "counted the set the Sets tab really holds, not the one that shares its number")
 
@@ -283,11 +296,14 @@ assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by re
 -- Looking a set up by name reaches all three places it can be.
 
 local listed, dropped, native = Catalog:FindCandidates("fixture")
-assert(#listed == 6 and #dropped == 1, "found both listed and left-out sets")
+assert(#listed == 5 and #dropped == 1, "found both listed and left-out sets")
 -- Both sets the Sets tab lists are found by name, the collision among them:
 -- this list is the client's own, so it answers for the client's numbering.
 assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
     "found the sets Blizzard lists natively, in set order")
+for _, record in ipairs(listed) do
+    assert(record.setID ~= 10, "a set the page drops as a duplicate is not reported as listed")
+end
 local none, alsoNone, stillNone = Catalog:FindCandidates("nothing named this")
 assert(#none == 0 and #alsoNone == 0 and #stillNone == 0, "an unknown name matches nothing")
 
@@ -303,7 +319,9 @@ local reportText = table.concat(printed, "\n")
 assert(reportText:find("2026%-08%-04"), "named the snapshot the sets came from")
 assert(reportText:find("6 of 7 set%(s%) listed"), "counted what was listed against what was bundled")
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
-assert(reportText:find("also in Blizzard's own Sets tab: 1"), "counted the overlap")
+assert(reportText:find("folded into another row as the same look: 1"),
+    "accounted for the sets the page folded away, so the count is not short with nothing to say why")
+assert(reportText:find("hidden as Blizzard's own Sets tab lists them: 1"), "counted the overlap it hides")
 assert(reportText:find("no appearance for: 2"), "counted the pieces this client could not resolve")
 
 print("Lucky's Wardrobe extra sets catalogue tests passed")

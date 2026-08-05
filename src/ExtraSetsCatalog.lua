@@ -60,18 +60,25 @@ end
 -- The class filter narrows GetAllSets, so the official snapshot has to union
 -- every class. The mutation is save, loop, restore inside one call, which the
 -- UI never observes between frames. Names are kept so a set Blizzard already
--- lists can be told apart from one only the bundled data names.
+-- lists can be told apart from one only the bundled data names, and the classes
+-- it turned up under are kept as a mask: the Sets tab shows a set only under
+-- those, which is the only place it can be a duplicate.
 local function snapshotOfficialSets()
-    local official = {}
+    local names, classMasks = {}, {}
     local savedFilter = C_TransmogSets.GetTransmogSetsClassFilter()
     for classID = 1, GetNumClasses() do
         C_TransmogSets.SetTransmogSetsClassFilter(classID)
+        local classBit = 2 ^ (classID - 1)
         for _, set in ipairs(C_TransmogSets.GetAllSets() or {}) do
-            official[set.setID] = set.name or ""
+            names[set.setID] = set.name or ""
+            local mask = classMasks[set.setID] or 0
+            if math.floor(mask / classBit) % 2 == 0 then
+                classMasks[set.setID] = mask + classBit
+            end
         end
     end
     C_TransmogSets.SetTransmogSetsClassFilter(savedFilter)
-    return official
+    return names, classMasks
 end
 
 -- The collection tracks appearance sources, not items, so an item ID is only
@@ -159,9 +166,11 @@ local function buildRecord(setID, set, armorType)
         info = nil
     end
     -- Sharing a number with a set the Sets tab lists is not appearing in the
-    -- Sets tab, which is the whole point of this count: it says how much of the
-    -- bundled list a player can already see without this page.
-    if info and report.official[setID] then
+    -- Sets tab, so only a set the client agrees is this one can be a duplicate.
+    -- That settles both what the page drops and how much of the bundled list a
+    -- player can already see without it.
+    local officialClassMask = info and report.officialClasses[setID]
+    if officialClassMask then
         report.alsoOfficial = report.alsoOfficial + 1
     end
     records[#records + 1] = {
@@ -173,6 +182,9 @@ local function buildRecord(setID, set, armorType)
         label = info and info.label,
         pieces = pieces,
         unresolvedPieces = unresolved,
+        -- Which classes' Sets tab already lists this set, so the page can drop
+        -- the ones it would otherwise show a second time.
+        officialClassMask = officialClassMask,
     }
 end
 
@@ -237,8 +249,8 @@ function Catalog:StartBuild()
         identityMismatches = 0,
         unresolvedPieces = 0,
         rejections = {},
-        official = snapshotOfficialSets(),
     }
+    report.official, report.officialClasses = snapshotOfficialSets()
     state = { work = workList(), groupIndex = 1, cursor = 0 }
     stepFrame:SetScript("OnUpdate", step)
 end
@@ -309,7 +321,9 @@ function Catalog:PrintReport(verbose)
     -- The catalogue spans every class, while the tab shows one class at a time.
     -- Counting the page's own entries keeps the report and the page from ever
     -- disagreeing about how much of it this character sees.
-    say(S.shownLine:format(#LuckysWardrobe.ExtraSets.Entries()))
+    local shown = LuckysWardrobe.ExtraSets.Entries()
+    say(S.shownLine:format(#shown))
+    say(S.foldedLine:format(LuckysWardrobe.ExtraSets.FoldedCount(shown)))
     say(S.officialLine:format(report.alsoOfficial))
     if report.identityMismatches > 0 then
         say(S.mismatchLine:format(report.identityMismatches))
@@ -345,14 +359,15 @@ function Catalog:PrintReport(verbose)
 end
 
 -- Every set whose name contains the query: listed, left out by a rule, or one
--- Blizzard lists natively. A set can appear in more than one list, which is the
--- point: the overlap between the bundled data and the Sets tab is exactly what
--- a duplicate looks like.
+-- Blizzard lists natively. A set Blizzard lists is never also reported as
+-- listed here, because the page drops it for the class it duplicates.
 function Catalog:FindCandidates(query)
     local normalized = (query or ""):lower()
     local listed, dropped, native = {}, {}, {}
     for _, record in ipairs(records or {}) do
-        if record.name:lower():find(normalized, 1, true) then listed[#listed + 1] = record end
+        if not record.officialClassMask and record.name:lower():find(normalized, 1, true) then
+            listed[#listed + 1] = record
+        end
     end
     for _, rejection in ipairs(report and report.rejections or {}) do
         if rejection.name and rejection.name:lower():find(normalized, 1, true) then
