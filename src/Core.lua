@@ -72,6 +72,8 @@ local function initialize()
                 LuckysWardrobe.ExtraSetsCatalog:PrintMatches(query)
             elseif subcommand == "looks" and query ~= "" then
                 LuckysWardrobe.ExtraSets:PrintLooks(query)
+            elseif subcommand == "variants" and query ~= "" then
+                LuckysWardrobe.ExtraSets:PrintVariants(query)
             elseif subcommand == "pieces" then
                 LuckysWardrobe.ExtraSets:PrintPieceReport()
             elseif subcommand == "perf" then

@@ -975,12 +975,20 @@ EventUtil = {
 local setsClassFilter = CLOTH_CLASS
 -- The looks the client counts for the Sets tab's own sets, for the looks dump.
 local setPrimaryAppearances = {}
+-- What the client calls a colourway of what. Set 603 is one it groups under 601
+-- the way it groups a tier's difficulties; 601 is that group's base set, and
+-- everything else it says nothing about.
+local baseSetIDs = { [601] = 601, [603] = 601 }
+local variantSets = { [601] = { { setID = 601 }, { setID = 603 } } }
+
 C_TransmogSets = {
     GetCameraIDs = function() return nil end,
     GetSetInfo = function(setID) return setID == 20 and { name = "Live Name" } or nil end,
     GetTransmogSetsClassFilter = function() return setsClassFilter end,
     SetTransmogSetsClassFilter = function(classID) setsClassFilter = classID end,
     GetSetPrimaryAppearances = function(setID) return setPrimaryAppearances[setID] end,
+    GetBaseSetID = function(setID) return baseSetIDs[setID] end,
+    GetVariantSets = function(setID) return variantSets[setID] end,
 }
 -- Item data arrives from the server, so the client holds it only once asked.
 local loadedItems = {}
@@ -1907,5 +1915,19 @@ assert(looksText:find("Sets tab set 901: Charm Vestments: 9501,9502,9503", 1, fa
 assert(looksText:find("Sets tab set 902: Charm Vestments: nothing resolved yet", 1, false),
     "a Sets tab set the client answers no looks for says so rather than vanishing")
 assert(not looksText:find("Elsewhere"), "only names matching the query are dumped")
+
+-- The variants dump, which is what says whether a family of colourways is one
+-- the client already groups or one this page would have to infer.
+
+local variantsPrinted = {}
+print = function(line) variantsPrinted[#variantsPrinted + 1] = line end
+ExtraSets:PrintVariants("charm vestments")
+print = realPrint
+local variantsText = table.concat(variantsPrinted, "\n")
+assert(variantsText:find("set 601: Charm Vestments %(Heroic Recolor%): base set 601, variants 601, 603", 1, false),
+    "a set the client groups says which base it belongs to and what it groups with")
+assert(variantsText:find("set 602: Charm Vestments %(Heroic Lookalike%): base set none, variants none", 1, false),
+    "and one it says nothing about says nothing, which is the answer too")
+assert(not variantsText:find("Distinct Regalia"), "only names matching the query are dumped")
 
 print("Lucky's Wardrobe extra sets tests passed")

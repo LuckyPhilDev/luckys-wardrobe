@@ -1766,6 +1766,54 @@ end
 -- Sets tab counts for its own same-named sets. Dev dump for when a fold, or
 -- the lack of one, surprises someone: two lines that share most of their IDs
 -- name a fold, two that share none name a genuine recolour.
+-- What the client itself says about a set's colourways. Blizzard marks the
+-- difficulty tints of a tier as variants of one base set, and the Sets tab shows
+-- them behind one row with a dropdown rather than as rows of their own. Whether
+-- it marks a batch of recolours the same way decides whether this page has
+-- anything to infer: a set that names a base other than itself is already
+-- grouped, in the client's own words and the player's own language.
+--
+-- Dev dump, for settling that one family at a time. A record the client answers
+-- nothing for is the answer too, and is printed rather than skipped.
+function ExtraSets:PrintVariants(query)
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local say = Utils.Say
+    local catalog = LuckysWardrobe.ExtraSetsCatalog
+    if not catalog:GetReport() then
+        say(S.notStarted)
+        return
+    end
+    if not catalog:IsReady() then
+        say(S.building)
+        return
+    end
+
+    local normalized = (query or ""):lower()
+    local lines = {}
+    for _, record in ipairs(ExtraSets.Records()) do
+        if record.name:lower():find(normalized, 1, true) then
+            local baseSetID = C_TransmogSets.GetBaseSetID(record.setID)
+            local variants = {}
+            for _, variant in ipairs(C_TransmogSets.GetVariantSets(record.setID) or {}) do
+                variants[#variants + 1] = variant.setID
+            end
+            lines[#lines + 1] = S.variantLine:format(
+                record.setID,
+                record.name,
+                baseSetID or S.variantNoBase,
+                #variants > 0 and table.concat(variants, ", ") or S.variantNone
+            )
+        end
+    end
+
+    if #lines == 0 then
+        say(S.findNone:format(query))
+        return
+    end
+    say(S.variantsHeader:format(query))
+    for _, line in ipairs(lines) do say(line) end
+end
+
 function ExtraSets:PrintLooks(query)
     local S = LuckysWardrobe.Strings.extraSets.report
     local say = Utils.Say
