@@ -859,6 +859,13 @@ LuckysWardrobe.SetTracking = {
     end,
 }
 
+local markedSources = {}
+LuckysWardrobe.TrackedAppearances = {
+    Mark = function(_, itemFrame, sourceID)
+        markedSources[itemFrame] = sourceID or false
+    end,
+}
+
 local ctrlDown = false
 local linkedSource
 LuckysWardrobe.WowheadLink = {
@@ -1265,6 +1272,12 @@ assert(tooltip.shown, "showed the tooltip")
 
 local missingPiece = pieceButtons[2]
 assert(missingPiece.piece.state == "missing", "second piece is missing")
+
+-- The crosshair is put on by the same pass that lays the pieces out, so every
+-- piece on show names the source its mark answers to.
+assert(markedSources[missingPiece] == missingPiece.piece.sourceID,
+    "handed the piece's source over to be marked when tracked")
+
 assert(collectedPiece.border.alpha == 1 and missingPiece.border.alpha < 1,
     "faded the border with the piece it holds, rather than framing nothing brightly")
 missingPiece.scripts.OnEnter(missingPiece)

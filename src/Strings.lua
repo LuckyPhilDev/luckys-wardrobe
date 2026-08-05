@@ -96,8 +96,8 @@ LuckysWardrobe.Strings = {
             desc = "Shift-click a set in Blizzard's Sets collection to track every appearance you are still missing from it.",
         },
         markTracked = {
-            label = "Mark Tracked Appearances",
-            desc = "Stamps a crosshair on every appearance you are tracking, so a page of your collection shows at a glance what you are hunting for. It stands in for the game's own tick, which reads more like something you have already collected.",
+            label = "Mark Tracked Pieces",
+            desc = "Stamps a crosshair over the pieces you are tracking when you open a set, in the Sets tab and the Extra Sets tab, so a set says which of its pieces you are out hunting for.",
         },
         wowheadLink = {
             label = "Wowhead Address on Ctrl-Click",

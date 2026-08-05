@@ -1,8 +1,7 @@
--- luacheck: globals EventUtil LuckysWardrobe WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals CreateFrame EventUtil LuckysWardrobe WardrobeCollectionFrame hooksecurefunc
 
--- The mark rides Blizzard's own tracking tick, so these go through the model the
--- way the Items tab drives it: a page turn, a click that starts or stops
--- tracking, and the setting being turned off and on again.
+-- The mark answers a set being opened, tracking starting or stopping while it is
+-- open, and the setting being turned off, so these go through all three.
 
 function hooksecurefunc(target, name, hook)
     local stock = target[name]
@@ -16,95 +15,111 @@ EventUtil = {
     ContinueOnAddOnLoaded = function(_, callback) callback() end,
 }
 
+local events = {}
+function CreateFrame()
+    return {
+        RegisterEvent = function(_, event) events[event] = true end,
+        SetScript = function(_, _, handler) events.handler = handler end,
+    }
+end
+
+local tracked = {}
+LuckysWardrobe = { SetTracking = {
+    IsTracking = function(_, sourceID) return tracked[sourceID] == true end,
+} }
+
 local function Texture()
     local texture = { shown = false }
     function texture:SetTexture(path) self.path = path end
     function texture:SetSize(width, height) self.width, self.height = width, height end
     function texture:SetVertexColor(...) self.colour = { ... } end
     function texture:SetPoint() end
-    function texture:Show() self.shown = true end
-    function texture:Hide() self.shown = false end
     function texture:SetShown(shown) self.shown = shown end
     return texture
 end
 
--- Stands in for the parts of Blizzard's appearance model this feature touches.
--- The tick is built on the first showing, as the game builds it.
-local function AppearanceModel()
-    local model = { isTracked = false }
-    function model:CreateTexture() return Texture() end
-    function model:SetTrackingCheckmarkShown(shown)
-        if not self.ContentTrackingCheckmark then
-            if not shown then return end
-            self.ContentTrackingCheckmark = self:CreateTexture()
-        end
-        self.ContentTrackingCheckmark:SetShown(shown)
-    end
-    function model:UpdateTrackingCheckmark()
-        self:SetTrackingCheckmarkShown(self.isTracked)
-    end
-    return model
+local function ItemFrame(sourceID)
+    local itemFrame = { sourceID = sourceID }
+    function itemFrame:CreateTexture() return Texture() end
+    return itemFrame
 end
 
-local hunted = AppearanceModel()
-local ignored = AppearanceModel()
-
-WardrobeCollectionFrame = {
-    ItemsCollectionFrame = { Models = { hunted, ignored } },
+-- Blizzard's Sets tab pools its piece frames and lays them out afresh for each
+-- set it opens, so the pool is what says which pieces are on show.
+local setPieces = { ItemFrame(101), ItemFrame(102) }
+local setsCollection = {
+    DetailsFrame = {
+        itemFramesPool = {
+            EnumerateActive = function(self)
+                local index = 0
+                return function()
+                    index = index + 1
+                    return self.active[index]
+                end
+            end,
+            active = setPieces,
+        },
+    },
+    DisplaySet = function() end,
 }
+
+WardrobeCollectionFrame = { SetsCollectionFrame = setsCollection }
 
 dofile("src/TrackedAppearances.lua")
 
 local TrackedAppearances = LuckysWardrobe.TrackedAppearances
-
--- Someone can open the settings panel before they ever open Collections.
-TrackedAppearances:Refresh()
-
 local db = { markTrackedAppearances = true }
 TrackedAppearances:Init(db)
 
-local function crosshairShown(model)
-    return model.luckysTrackedCrosshair and model.luckysTrackedCrosshair.shown or false
+assert(events.CONTENT_TRACKING_UPDATE, "listened for tracking changes")
+
+local function crosshair(itemFrame)
+    return itemFrame.luckysTrackedCrosshair
 end
 
-local function tickShown(model)
-    return model.ContentTrackingCheckmark and model.ContentTrackingCheckmark.shown or false
+local function marked(itemFrame)
+    return crosshair(itemFrame) ~= nil and crosshair(itemFrame).shown
 end
 
--- A page of appearances nobody is hunting stays unmarked, and no texture is
--- built for one.
-hunted:UpdateTrackingCheckmark()
-ignored:UpdateTrackingCheckmark()
-assert(not hunted.luckysTrackedCrosshair, "built nothing for an untracked appearance")
-assert(not crosshairShown(hunted) and not crosshairShown(ignored), "marked nothing")
+-- A set nobody is hunting is left as the tab drew it, down to building no
+-- texture for it.
+setsCollection:DisplaySet(1)
+assert(not crosshair(setPieces[1]), "built nothing for a set nobody is hunting")
 
-hunted.isTracked = true
-hunted:UpdateTrackingCheckmark()
-assert(crosshairShown(hunted), "marked the appearance being tracked")
-assert(not tickShown(hunted), "took the tick off, so the tile carries one mark")
-assert(not crosshairShown(ignored), "left the rest of the page alone")
+-- Tracking one of its pieces while the set is open marks that piece alone.
+tracked[102] = true
+events.handler()
+assert(marked(setPieces[2]), "marked the piece being hunted")
+assert(not marked(setPieces[1]), "left the rest of the set alone")
 
--- The same texture answers every refresh rather than a fresh one stacking up.
-local crosshair = hunted.luckysTrackedCrosshair
-hunted:UpdateTrackingCheckmark()
-assert(hunted.luckysTrackedCrosshair == crosshair, "reused the mark it had already built")
+-- The same texture answers every update rather than a fresh one stacking up.
+local texture = crosshair(setPieces[2])
+events.handler()
+assert(crosshair(setPieces[2]) == texture, "reused the mark it had already built")
 
--- Stopping tracking is reported through the same call the game makes.
-hunted.isTracked = false
-hunted:UpdateTrackingCheckmark()
-assert(not crosshairShown(hunted), "cleared the mark when tracking stopped")
+tracked[102] = nil
+events.handler()
+assert(not marked(setPieces[2]), "cleared the mark when tracking stopped")
 
-hunted.isTracked = true
-hunted:UpdateTrackingCheckmark()
+-- The Extra Sets tab hands its own pieces over as it draws them, and a piece
+-- this client cannot resolve hands over nothing.
+local extraPiece = ItemFrame()
+local unresolvedPiece = ItemFrame()
+tracked[201] = true
+TrackedAppearances:Mark(extraPiece, 201)
+TrackedAppearances:Mark(unresolvedPiece, nil)
+assert(marked(extraPiece), "marked a tracked piece on the Extra Sets tab")
+assert(not crosshair(unresolvedPiece), "left a piece with no source unmarked")
 
+-- Pieces marked before are still answering, whichever tab they came from.
+tracked[101] = true
+setsCollection:DisplaySet(1)
 db.markTrackedAppearances = false
 TrackedAppearances:Refresh()
-assert(not crosshairShown(hunted), "cleared the marks when the setting was turned off")
-assert(tickShown(hunted), "handed the tile back to the game's own tick")
+assert(not marked(setPieces[1]) and not marked(extraPiece), "cleared every mark when the setting was turned off")
 
 db.markTrackedAppearances = true
 TrackedAppearances:Refresh()
-assert(crosshairShown(hunted), "marked it again when the setting came back on")
-assert(not tickShown(hunted), "took the tick back off")
+assert(marked(setPieces[1]) and marked(extraPiece), "marked them again when the setting came back on")
 
 print("Lucky's Wardrobe tracked appearances test passed")

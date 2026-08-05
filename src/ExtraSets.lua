@@ -1234,6 +1234,8 @@ function ExtraSets:CreatePage(wardrobe)
             itemFrame:ClearAllPoints()
             itemFrame:SetPoint("TOP", detailsFrame, "TOP", xOffset + (index - 1) * spacing, -98)
             itemFrame:Show()
+            LuckysWardrobe.TrackedAppearances:Mark(
+                itemFrame, piece.state ~= "unavailable" and piece.sourceID or nil)
 
             if redress and piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
                 model:TryOn(piece.sourceID)

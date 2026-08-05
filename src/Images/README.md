@@ -41,8 +41,8 @@ The panel resolves it against `addonFolder` and `imagesRoot`, both set in `Setti
 ## Icons
 
 Icons are drawn white with a dark outline baked in, so `SetVertexColor` can tint
-them without losing the outline that keeps them readable over a model. Reference
-one by its full path:
+them without losing the outline that keeps them readable over item art.
+Reference one by its full path:
 
 ```lua
 local CROSSHAIR = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\tracked-appearance"

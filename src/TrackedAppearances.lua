@@ -1,70 +1,85 @@
--- luacheck: globals EventUtil WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals CreateFrame EventUtil WardrobeCollectionFrame hooksecurefunc
 
--- Lucky's Wardrobe: A crosshair on the appearances you are tracking, so the
--- Items tab shows what you are hunting for without hovering a thing.
+-- Lucky's Wardrobe: A crosshair over the set pieces you are tracking, so an
+-- open set says which of its pieces you are out hunting for.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.TrackedAppearances = {}
 
 local TrackedAppearances = LuckysWardrobe.TrackedAppearances
 
 local CROSSHAIR = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\tracked-appearance"
-local CROSSHAIR_SIZE = 24
--- The panel's accentLight, so the mark reads as this addon's rather than the
--- game's own collection art.
+-- Sized to ring the 28px icon inside a piece's 32px frame, so the mark reads
+-- over the icon without hiding it.
+local CROSSHAIR_SIZE = 26
+-- The settings panel's accentLight, so the mark reads as this addon's rather
+-- than part of the game's own collection art.
 local CROSSHAIR_COLOUR = { r = 0.910, g = 0.690, b = 0.251 }
 
 local db
-local models = {}
+local marked = {}
 
-local function crosshairFor(model)
-    if not model.luckysTrackedCrosshair then
-        local crosshair = model:CreateTexture(nil, "OVERLAY", nil, 2)
+local function crosshairFor(itemFrame)
+    if not itemFrame.luckysTrackedCrosshair then
+        local crosshair = itemFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         crosshair:SetTexture(CROSSHAIR)
         crosshair:SetSize(CROSSHAIR_SIZE, CROSSHAIR_SIZE)
         crosshair:SetVertexColor(CROSSHAIR_COLOUR.r, CROSSHAIR_COLOUR.g, CROSSHAIR_COLOUR.b)
-        crosshair:SetPoint("BOTTOMRIGHT", model, "BOTTOMRIGHT", -2, 2)
-        model.luckysTrackedCrosshair = crosshair
+        crosshair:SetPoint("CENTER")
+        itemFrame.luckysTrackedCrosshair = crosshair
     end
-    return model.luckysTrackedCrosshair
+    return itemFrame.luckysTrackedCrosshair
 end
 
--- Rides the game's own tracking tick, which is refreshed on every page turn,
--- every click that starts or stops tracking, and every tracking update from
--- elsewhere. That is the whole set of moments the mark has to answer to.
-local function markModel(model, isTracked)
-    local crosshair = model.luckysTrackedCrosshair
+local function refreshFrame(itemFrame)
+    local sourceID = itemFrame.luckysTrackedSourceID
+    local hunted = db.markTrackedAppearances
+        and sourceID ~= nil
+        and LuckysWardrobe.SetTracking:IsTracking(sourceID)
 
-    if not db.markTrackedAppearances then
-        if crosshair then crosshair:Hide() end
-        return
-    end
+    -- A piece nobody is hunting is left as the page drew it, so the mark costs
+    -- nothing until there is something to mark.
+    if not hunted and not itemFrame.luckysTrackedCrosshair then return end
 
-    -- A tick reads as something already collected, which is the opposite of what
-    -- a tracked appearance is, so the crosshair stands in its place.
-    if model.ContentTrackingCheckmark then model.ContentTrackingCheckmark:Hide() end
-
-    if isTracked then
-        crosshairFor(model):Show()
-    elseif crosshair then
-        crosshair:Hide()
-    end
+    crosshairFor(itemFrame):SetShown(hunted)
 end
 
--- Every model reports its own tracking again, which puts the tick back when the
--- setting is turned off and the crosshair back when it is turned on.
+-- Which piece a frame is showing, so it can be marked now and answer tracking
+-- changes later. Pass no source for a piece this client cannot resolve.
+function TrackedAppearances:Mark(itemFrame, sourceID)
+    if not itemFrame.luckysTrackedRegistered then
+        itemFrame.luckysTrackedRegistered = true
+        marked[#marked + 1] = itemFrame
+    end
+
+    itemFrame.luckysTrackedSourceID = sourceID
+    refreshFrame(itemFrame)
+end
+
+-- Answers tracking starting or stopping while a set is open, and the setting
+-- being turned off and on again.
 function TrackedAppearances:Refresh()
-    for _, model in ipairs(models) do
-        model:UpdateTrackingCheckmark()
+    for _, itemFrame in ipairs(marked) do
+        refreshFrame(itemFrame)
     end
 end
 
 function TrackedAppearances:Init(database)
     db = database
 
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("CONTENT_TRACKING_UPDATE")
+    eventFrame:SetScript("OnEvent", function()
+        TrackedAppearances:Refresh()
+    end)
+
+    -- The Sets tab pools its piece frames and lays them out afresh for every set
+    -- it opens, so the marks are put on at the end of the same call. The Extra
+    -- Sets tab marks its own pieces as it draws them.
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
-        models = WardrobeCollectionFrame.ItemsCollectionFrame.Models
-        for _, model in ipairs(models) do
-            hooksecurefunc(model, "SetTrackingCheckmarkShown", markModel)
-        end
+        hooksecurefunc(WardrobeCollectionFrame.SetsCollectionFrame, "DisplaySet", function(self)
+            for itemFrame in self.DetailsFrame.itemFramesPool:EnumerateActive() do
+                TrackedAppearances:Mark(itemFrame, itemFrame.sourceID)
+            end
+        end)
     end)
 end

@@ -22,17 +22,25 @@ local function getCandidates(sourceID)
     return candidates
 end
 
-local function trackAppearance(sourceID)
-    local candidates = getCandidates(sourceID)
-
-    for _, candidateID in ipairs(candidates) do
+-- A set piece is one item of a look several items share, and tracking any of
+-- them is hunting for this piece.
+function SetTracking:IsTracking(sourceID)
+    for _, candidateID in ipairs(getCandidates(sourceID)) do
         if C_ContentTracking.IsTracking(APPEARANCE, candidateID) then
-            return false
+            return true
         end
     end
 
+    return false
+end
+
+local function trackAppearance(sourceID)
+    if SetTracking:IsTracking(sourceID) then
+        return false
+    end
+
     local lastError = Enum.ContentTrackingError.Untrackable
-    for _, candidateID in ipairs(candidates) do
+    for _, candidateID in ipairs(getCandidates(sourceID)) do
         local sourceInfo = C_TransmogCollection.GetSourceInfo(candidateID)
         if sourceInfo and sourceInfo.playerCanCollect then
             local ok, err = pcall(C_ContentTracking.StartTracking, APPEARANCE, candidateID)
