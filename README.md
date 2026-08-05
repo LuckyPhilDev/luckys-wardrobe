@@ -28,6 +28,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 ### Transmog Window
 
+- **Extra Sets tab**: A tab beside Sets at the transmog NPC showing the hidden sets your class can wear, drawn as the same preview cards as the Sets tab. Click a set to apply every piece you have collected, shift-click to track what you are missing, and right-click for its Wowhead address. The cards run from closest to complete down to untouched, with search and a collected filter to narrow them.
 - **Random outfit**: Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Situation presets**: Save the situations you have picked for an outfit under a name, then apply the whole lot to another outfit in one click. Delete them from the same menu.
 - **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown.
@@ -82,7 +83,6 @@ Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 
 ## Roadmap
 
-- An Extra tab for the sets Blizzard's list leaves out.
 - More of Better Wardrobe's collection journal and transmog vendor features, rebuilt on the lighter foundation.
 
 ## A note on AI

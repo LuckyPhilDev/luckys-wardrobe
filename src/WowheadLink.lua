@@ -67,15 +67,28 @@ function WowheadLink:HandlesClick(button)
     return button == "LeftButton" and IsControlKeyDown() and db.wowheadLinkOnCtrlClick
 end
 
+local function showURL(path)
+    local subdomain = SUBDOMAIN_BY_LOCALE[GetLocale()] or "www"
+    shownURL = ("https://%s.wowhead.com/%s"):format(subdomain, path)
+    StaticPopup_Show(POPUP)
+    return true
+end
+
 function WowheadLink:ShowForItem(itemID)
     if not itemID then
         return false
     end
+    return showURL(("item=%d"):format(itemID))
+end
 
-    local subdomain = SUBDOMAIN_BY_LOCALE[GetLocale()] or "www"
-    shownURL = ("https://%s.wowhead.com/item=%d"):format(subdomain, itemID)
-    StaticPopup_Show(POPUP)
-    return true
+-- The transmog set page, for the Extra Sets cards at the transmogrifier. The
+-- bundled catalogue numbers its sets the way Wowhead does, which is what makes
+-- the address worth offering at all.
+function WowheadLink:ShowForTransmogSet(setID)
+    if not setID then
+        return false
+    end
+    return showURL(("transmog-set=%d"):format(setID))
 end
 
 function WowheadLink:ShowForSource(sourceID)
