@@ -31,6 +31,7 @@ Randomiser.lua
 ExtraSetsCatalog.lua
 ExtraSets.lua
 TransmogSets.lua
+TransmogSetNames.lua
 TransmogExtraSets.lua
 RecolorGroups.lua
 Transmog.lua

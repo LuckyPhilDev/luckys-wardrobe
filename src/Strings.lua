@@ -116,6 +116,10 @@ LuckysWardrobe.Strings = {
             label = "Hide Sets You Cannot Wear",
             desc = "The Sets tab at the transmog NPC lists a set the moment one piece of it would fit, and a cloak fits anybody, so it fills up with armour this character cannot wear. Sets in your own armour type are kept whichever class they were built for. Turn this off to browse the lot again.",
         },
+        showSetNames = {
+            label = "Show Set Names",
+            desc = "Names every set card at the transmogrifier, on the Sets, Custom Sets and Extra Sets tabs, so you can tell one little model from another without hovering each in turn.",
+        },
         showSituationValues = {
             label = "Show Situation Values",
             desc = "Shows the selected situation values on outfit entries instead of just the category names.",
@@ -186,6 +190,9 @@ LuckysWardrobe.Strings = {
         lootFinishes = "%s finishes %s",
         lootPieceOf = "%s is a piece of %s, %d still missing",
         lootCatalysable = "%s can be catalysed into an appearance you are missing",
+    },
+    setNames = {
+        filter = "Show Set Names",
     },
     extraSets = {
         tab = "Extra Sets",

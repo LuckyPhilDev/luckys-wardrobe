@@ -24,6 +24,14 @@ local function piece(armour, slot)
     return { armour = armour, slot = slot or "INVTYPE_CHEST" }
 end
 
+-- The set names put their own switch in this menu, and the tab that owns the
+-- menu is what places it.
+LuckysWardrobe.TransmogSetNames = {
+    AddFilterOption = function(_, rootDescription)
+        rootDescription:CreateCheckbox("Show Set Names", function() end, function() end)
+    end,
+}
+
 -- The tab's filter menu is Blizzard's, appended to by tag rather than rebuilt.
 local menuModifiers = {}
 Menu = {
@@ -205,8 +213,10 @@ local rootDescription = {
 }
 menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, rootDescription)
 
-assert(#menuEntries == 2 and menuEntries[1].divider,
-    "appended one box, kept apart from the boxes Blizzard put there")
+assert(#menuEntries == 3 and menuEntries[1].divider,
+    "appended this addon's boxes, kept apart from the boxes Blizzard put there")
+assert(menuEntries[3].label == "Show Set Names",
+    "brought the set names switch along under the same divider rather than behind one of its own")
 
 local checkbox = menuEntries[2]
 assert(checkbox.label == LuckysWardrobe.Strings.settings.hideUnwearableSets.label,

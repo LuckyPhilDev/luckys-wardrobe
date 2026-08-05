@@ -32,6 +32,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 - **Only the sets you can wear**: The Sets tab at the transmog NPC lists a set as soon as one piece of it would fit, and a cloak fits anybody, so it fills up with armour your character cannot wear. Those are hidden, leaving what you could actually dress in. Sets in your own armour type stay whichever class they were built for. Turn it off from the tab's own Filter button, or in settings, to browse the lot again.
 - **Extra Sets tab**: A tab beside Sets at the transmog NPC showing the hidden sets your class can wear, drawn as the same preview cards as the Sets tab. Click a set to apply every piece you have collected, shift-click to track what you are missing, and right-click for its Wowhead address. The cards run from closest to complete down to untouched, with search and a collected filter to narrow them.
+- **Set names on the cards**: Every set card at the transmog NPC carries its name across the top, on the Sets, Custom Sets and Extra Sets tabs alike, so you can tell one little model from another without hovering each in turn. A set you have not finished is named in the same colour its border carries. Turn the names off from the filter menu on either sets tab, or from settings.
 - **Random outfit**: Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Situation presets**: Save the situations you have picked for an outfit under a name, then apply the whole lot to another outfit in one click. Delete them from the same menu.
 - **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown.
@@ -86,7 +87,7 @@ Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 - **General**: Turn on dev mode for troubleshooting, and see version info.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
 - **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it.
-- **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, and choose how much situation detail appears on saved outfits.
+- **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, choose whether set cards carry their names, and choose how much situation detail appears on saved outfits.
 - **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both.
 
 ## Roadmap

@@ -394,6 +394,8 @@ local function updateCard(card)
 
     -- Favourites are Blizzard's own bookkeeping and these sets are not in it.
     card.Favorite.Icon:Hide()
+
+    LuckysWardrobe.TransmogSetNames:Apply(card, entry.name, complete)
 end
 
 -- The native card tooltip, told from the entry: name coloured by the pieces'
@@ -651,6 +653,11 @@ function TransmogExtraSets:CreatePage(wardrobe)
             filters.uncollected = not filters.uncollected
             refresh()
         end)
+        -- Behind a divider because it decides how the cards are drawn rather
+        -- than which of them are here, and the Default button leaves it alone
+        -- for the same reason: it is a setting, not a filter.
+        rootDescription:CreateDivider()
+        LuckysWardrobe.TransmogSetNames:AddFilterOption(rootDescription)
     end)
 
     searchBox:HookScript("OnTextChanged", function()

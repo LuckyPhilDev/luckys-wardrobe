@@ -5,6 +5,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     keepTransmogTab = false,
     hideUnwearableSets = true,
+    showSetNames = true,
     trackSetsOnShiftClick = true,
     markTrackedAppearances = true,
     wowheadLinkOnCtrlClick = true,

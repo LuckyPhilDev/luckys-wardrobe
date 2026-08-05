@@ -100,6 +100,17 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     transmog:Toggle({
+        label = S.settings.showSetNames.label,
+        desc = S.settings.showSetNames.desc,
+        -- The filter menus at the transmogrifier turn this one too, so the row
+        -- reads the setting each time the panel opens rather than at login.
+        checked = function() return db.showSetNames end,
+        onToggle = function(checked)
+            db.showSetNames = checked
+            LuckysWardrobe.TransmogSetNames:Refresh()
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.showSituationValues.label,
         desc = S.settings.showSituationValues.desc,
         image = "transmog/show-situation-values",

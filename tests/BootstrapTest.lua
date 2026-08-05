@@ -118,6 +118,13 @@ LuckysWardrobe.TransmogSets = {
     end,
 }
 
+local setNamesDB
+LuckysWardrobe.TransmogSetNames = {
+    Init = function(_, db)
+        setNamesDB = db
+    end,
+}
+
 local transmogExtraSetsInitialized = false
 LuckysWardrobe.TransmogExtraSets = {
     Init = function()
@@ -205,6 +212,7 @@ assert(catalogueStarted, "set the Extra Sets catalogue building without waiting 
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
+assert(setNamesDB == LuckysWardrobeDB, "initialized the set card names with saved variables")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
 assert(type(LuckysWardrobeDB.situationPresets) == "table", "applied the situation presets default")
@@ -226,6 +234,7 @@ assert(LuckysWardrobeDB.showSituationTooltips == true, "enabled situation toolti
 assert(LuckysWardrobeDB.devMode == false, "applied database defaults")
 assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory by default")
 assert(LuckysWardrobeDB.hideUnwearableSets == true, "hid sets this character cannot wear by default")
+assert(LuckysWardrobeDB.showSetNames == true, "named the set cards by default")
 assert(LuckysWardrobeDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(LuckysWardrobeDB.markTrackedAppearances == true, "marked tracked appearances by default")
 assert(LuckysWardrobeDB.tooltipSetProgress == true, "said which set a piece belongs to by default")
