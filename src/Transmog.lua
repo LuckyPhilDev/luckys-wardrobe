@@ -8,7 +8,6 @@ LuckysWardrobe.Transmog = {}
 local db
 local hooked = false
 local userTab
-local watcher
 
 local function installHooks()
     if hooked then return end
@@ -17,9 +16,12 @@ local function installHooks()
     if type(TransmogFrame.SelectSlot) ~= "function" then return end
 
     local tabHeaders = wardrobe.TabHeaders
-    watcher = CreateFrame("Frame")
-    watcher:SetScript("OnUpdate", function()
-        userTab = tabHeaders.selectedTabID or userTab
+    -- The tab system says whether a tab change came from the player, and only
+    -- those are worth remembering: selecting a slot switches to Items on its
+    -- way through, so recording every change would record the very thing this
+    -- is here to undo.
+    hooksecurefunc(wardrobe, "SetTab", function(_, tabID, isUserAction)
+        if isUserAction then userTab = tabID end
     end)
 
     hooksecurefunc(TransmogFrame, "SelectSlot", function(_, _, forceRefresh)
@@ -46,10 +48,8 @@ function LuckysWardrobe.Transmog:Init(database)
     eventFrame:SetScript("OnEvent", function(_, event)
         userTab = nil
         if event == "TRANSMOGRIFY_OPEN" then
-            if watcher then watcher:Show() end
             C_Timer.After(0.1, setUpFrames)
         else
-            if watcher then watcher:Hide() end
             LuckysWardrobe.Randomiser:OnTransmogClose()
         end
     end)

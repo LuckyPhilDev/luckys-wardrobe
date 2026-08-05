@@ -3,7 +3,6 @@
 LuckysWardrobe = {}
 
 local eventFrame
-local watcher
 local createdFrames = {}
 
 -- SetScript keeps handlers off the frame table, the way the real client does,
@@ -27,9 +26,7 @@ function CreateFrame(_, _, parent, template)
         OnMouseUp = function(self) self.depressed = false end,
     }
     table.insert(createdFrames, frame)
-    if not parent then
-        if not eventFrame then eventFrame = frame else watcher = frame end
-    end
+    if not parent and not eventFrame then eventFrame = frame end
     return frame
 end
 
@@ -40,6 +37,13 @@ local wardrobeCollection = {
     TabHeaders = tabHeaders,
     SetTab = function(_, tabID) tabHeaders.selectedTabID = tabID end,
 }
+
+-- The tab system hands the owner's SetTab a flag saying whether the player did
+-- it, which is how the client tells a click apart from a tab change made on the
+-- player's behalf.
+local function clickTab(tabID)
+    wardrobeCollection:SetTab(tabID, true)
+end
 
 function hooksecurefunc(target, method, callback)
     local original = target[method]
@@ -215,10 +219,12 @@ C_TransmogOutfitInfo = {
 
 local modelScene = { GetFrameLevel = function() return 2 end }
 local characterPreview = { ModelScene = modelScene, GetFrameLevel = function() return 1 end }
+-- Selecting a slot sends the wardrobe back to Items on its way through, without
+-- the player having asked for it, exactly as the client does.
 TransmogFrame = {
     CharacterPreview = characterPreview,
     WardrobeCollection = wardrobeCollection,
-    SelectSlot = function(_, _, _) tabHeaders.selectedTabID = 1 end,
+    SelectSlot = function(_, _, _) wardrobeCollection:SetTab(1) end,
 }
 
 dofile("src/Strings.lua")
@@ -228,21 +234,26 @@ dofile("src/Transmog.lua")
 local db = { keepTransmogTab = true }
 LuckysWardrobe.Transmog:Init(db)
 eventFrame.scripts.OnEvent(nil, "TRANSMOGRIFY_OPEN")
-watcher.scripts.OnUpdate()
 
 -- Keeping the active tab.
 
+clickTab(2)
 TransmogFrame:SelectSlot(nil, true)
 assert(tabHeaders.selectedTabID == 2, "kept the active tab after an outfit refresh")
 
 TransmogFrame:SelectSlot(nil, false)
 assert(tabHeaders.selectedTabID == 1, "let a manual slot click open Items")
 
-tabHeaders.selectedTabID = 2
-watcher.scripts.OnUpdate()
+clickTab(2)
 db.keepTransmogTab = false
 TransmogFrame:SelectSlot(nil, true)
 assert(tabHeaders.selectedTabID == 1, "respected the disabled setting")
+
+-- A refresh that opened Items is not the player choosing Items, so the next
+-- refresh still goes back to the tab they had picked.
+db.keepTransmogTab = true
+TransmogFrame:SelectSlot(nil, true)
+assert(tabHeaders.selectedTabID == 2, "did not mistake its own trip through Items for a choice")
 
 -- The randomiser button.
 
