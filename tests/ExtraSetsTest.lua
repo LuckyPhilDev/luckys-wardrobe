@@ -1897,11 +1897,14 @@ assert(scrollBox.dataProvider[1].expansionID == 3, "entries carry their expansio
 local toggles = {}
 local radioSetters = {}
 local expansionToggles = {}
+local submenuToggles = {}
 local menuActions = {}
 local function submenu(label)
     return {
         CreateCheckbox = function(_, boxLabel, _isChecked, toggle)
             if label == "Expansion" then expansionToggles[boxLabel] = toggle end
+            submenuToggles[label] = submenuToggles[label] or {}
+            submenuToggles[label][boxLabel] = toggle
         end,
         CreateRadio = function(_, radioLabel, _isSelected, setSelected)
             radioSetters[label] = radioSetters[label] or {}
@@ -1946,6 +1949,29 @@ assert(#scrollBox.dataProvider == 0, "unchecking every expansion empties the lis
 filterButton.defaultReset()
 assert(#scrollBox.dataProvider == 2, "resetting filters restores the list")
 assert(filterButton.isDefaultCheck(), "reset filters read as the default state")
+
+-- The Source submenu, as the menu actually builds it. The page reaches the
+-- filter through the same builder the client calls, so a box that is not
+-- offered here is not offered in game either.
+assert(submenuToggles.Source, "offered a Source submenu")
+for _, sourceName in ipairs({ "Crafted", "Drop", "PvP", "Quest", "Vendor" }) do
+    assert(submenuToggles.Source[sourceName], "offered a box for " .. sourceName)
+end
+
+-- Neither set in this page carries a source, so unchecking one must leave both:
+-- a set no box describes is not hidden by that box.
+submenuToggles.Source.Drop()
+assert(#scrollBox.dataProvider == 2, "unchecking one source keeps the sets no box describes")
+assert(not filterButton.isDefaultCheck(), "a narrowed source reads as narrowed")
+submenuToggles.Source.Drop()
+
+-- Unchecking every source empties the list, which is what proves the menu is
+-- wired to the filter rather than merely drawn.
+menuActions.Source[UNCHECK_ALL]()
+assert(#scrollBox.dataProvider == 0, "unchecking every source empties the list")
+menuActions.Source[CHECK_ALL]()
+assert(#scrollBox.dataProvider == 2, "checking them again restores it")
+assert(filterButton.isDefaultCheck(), "and reads as the default state once more")
 
 radioSetters["Sort By"].Completion()
 assert(scrollBox.dataProvider[1].key == 20, "completion sort puts the complete set first")
