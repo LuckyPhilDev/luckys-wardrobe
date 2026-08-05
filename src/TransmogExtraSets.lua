@@ -207,10 +207,16 @@ function TransmogExtraSets.Entries()
         LuckysWardrobe.Perf:Begin("transmog entries built")
         local ExtraSets = LuckysWardrobe.ExtraSets
         local resolver = ExtraSets.LiveResolver()
-        cachedRows = cachedRows or ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
-            ExtraSets.RecordsForClass(ExtraSets.Records(), resolver.playerClassID()),
-            resolver
-        ))
+        if not cachedRows then
+            -- The Sets tab sits beside this one here as it does in Collections,
+            -- so a look it already shows folds away on both pages or the two
+            -- disagree about which sets exist.
+            local classID = resolver.playerClassID()
+            cachedRows = ExtraSets.CollapseDuplicates(
+                ExtraSets.BuildEntries(ExtraSets.RecordsForClass(ExtraSets.Records(), classID), resolver),
+                ExtraSets.NativeLooks(classID)
+            )
+        end
         cachedEntries = TransmogExtraSets.WearableEntries(
             cachedRows, resolver.playerClassID(), resolver.sourceValidity)
         LuckysWardrobe.Perf:End("transmog entries built")
