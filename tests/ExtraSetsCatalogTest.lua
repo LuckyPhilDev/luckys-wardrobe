@@ -66,7 +66,10 @@ local clientSetSources = {
     [23] = { 5501, 5502, 5503 },
 }
 
-local allSetsByClass = { [1] = { 10 }, [2] = {} }
+-- The client's Sets tab lists its own 23, which is not the snapshot's 23. A
+-- count of overlap that goes by the number alone counts it as one the player
+-- can already see.
+local allSetsByClass = { [1] = { 10 }, [2] = { 23 } }
 
 LuckysWardrobe.ExtraSetsData = {
     snapshot = "2026-08-04",
@@ -260,7 +263,10 @@ assert(ghost.category == "no piece this client can resolve", "said why")
 -- exactly what a later pass would de-duplicate.
 
 assert(recordFor(10), "a set Blizzard already lists is still listed here")
-assert(Catalog:GetReport().alsoOfficial == 1, "counted the overlap with the Sets tab")
+-- The Sets tab lists a 10 and a 23. Only the 10 is the set the snapshot means,
+-- so only the 10 is a set the player can already see without this page.
+assert(Catalog:GetReport().alsoOfficial == 1,
+    "counted the set the Sets tab really holds, not the one that shares its number")
 
 -- Same client, same catalogue.
 
@@ -278,7 +284,10 @@ assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by re
 
 local listed, dropped, native = Catalog:FindCandidates("fixture")
 assert(#listed == 6 and #dropped == 1, "found both listed and left-out sets")
-assert(#native == 1 and native[1].setID == 10, "found the set Blizzard lists natively")
+-- Both sets the Sets tab lists are found by name, the collision among them:
+-- this list is the client's own, so it answers for the client's numbering.
+assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
+    "found the sets Blizzard lists natively, in set order")
 local none, alsoNone, stillNone = Catalog:FindCandidates("nothing named this")
 assert(#none == 0 and #alsoNone == 0 and #stillNone == 0, "an unknown name matches nothing")
 

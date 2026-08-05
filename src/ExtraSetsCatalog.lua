@@ -158,6 +158,12 @@ local function buildRecord(setID, set, armorType)
             .. ") is not the snapshot's " .. tostring(set.name) .. "; keeping the snapshot's own.")
         info = nil
     end
+    -- Sharing a number with a set the Sets tab lists is not appearing in the
+    -- Sets tab, which is the whole point of this count: it says how much of the
+    -- bundled list a player can already see without this page.
+    if info and report.official[setID] then
+        report.alsoOfficial = report.alsoOfficial + 1
+    end
     records[#records + 1] = {
         setID = setID,
         name = (info and info.name ~= "" and info.name) or set.name,
@@ -186,12 +192,6 @@ local function workList()
 end
 
 local function finalize()
-    for _, record in ipairs(records) do
-        if report.official[record.setID] then
-            report.alsoOfficial = report.alsoOfficial + 1
-        end
-    end
-
     state = nil
     stepFrame:SetScript("OnUpdate", nil)
 
