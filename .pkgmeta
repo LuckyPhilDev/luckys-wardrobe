@@ -3,6 +3,7 @@ package-as: Luckys_Wardrobe
 ignore:
   - tests
   - images
+  - tools
 
 move-folders:
   Luckys_Wardrobe/src: Luckys_Wardrobe

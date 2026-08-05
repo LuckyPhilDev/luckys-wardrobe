@@ -1,7 +1,10 @@
 .release/
 .docs/
-.reference/
+reference/
 *.zip
 
 .claude/
 AGENTS.md
+
+
+tools/

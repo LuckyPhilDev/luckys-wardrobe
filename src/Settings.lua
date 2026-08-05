@@ -51,6 +51,14 @@ function LuckysWardrobe.Settings:Init(db)
             db.trackSetsOnShiftClick = checked
         end,
     })
+    appearances:Toggle({
+        label = S.settings.wowheadLink.label,
+        desc = S.settings.wowheadLink.desc,
+        checked = db.wowheadLinkOnCtrlClick,
+        onToggle = function(checked)
+            db.wowheadLinkOnCtrlClick = checked
+        end,
+    })
 
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({

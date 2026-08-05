@@ -72,8 +72,35 @@ LuckysWardrobe.SetTracking = {
     end,
 }
 
+local wowheadDB
+LuckysWardrobe.WowheadLink = {
+    Init = function(_, db)
+        wowheadDB = db
+    end,
+}
+
 LuckysWardrobe.SetsBrowser = {
     Init = function() end,
+}
+
+local extraSetsInitialized = false
+LuckysWardrobe.ExtraSets = {
+    Init = function()
+        extraSetsInitialized = true
+    end,
+}
+
+local reportedVerbose
+LuckysWardrobe.ExtraSetsCatalog = {
+    PrintReport = function(_, verbose)
+        reportedVerbose = verbose
+    end,
+}
+
+local measurementsPrinted, measurementsReset
+LuckysWardrobe.Perf = {
+    PrintReport = function() measurementsPrinted = true end,
+    Reset = function() measurementsReset = true end,
 }
 
 LuckysWardrobe.Transmog = {
@@ -131,6 +158,8 @@ assert(LuckysWardrobeDB == nil, "ignored another addon's load event")
 eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
+assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
+assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
 assert(type(LuckysWardrobeDB.situationPresets) == "table", "applied the situation presets default")
@@ -185,5 +214,21 @@ assert(diagnosed and not opened, "/wardrobe scan reported the scan rather than o
 opened = false
 SlashCmdList.LUCKYSWARDROBE("replay")
 assert(replayed and not opened, "/wardrobe replay redid the entry rather than opening settings")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("extrasets")
+assert(not opened and reportedVerbose == false, "extrasets printed the summary report")
+SlashCmdList.LUCKYSWARDROBE("  ExtraSets   FULL  ")
+assert(reportedVerbose == true, "extrasets full listed everything, whatever the spacing and case")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("extrasets perf")
+assert(not opened and measurementsPrinted, "extrasets perf printed what the page has measured")
+SlashCmdList.LUCKYSWARDROBE("extrasets perf reset")
+assert(measurementsReset, "extrasets perf reset cleared the measurements")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("something else")
+assert(opened, "an unrecognised argument still opens settings")
 
 print("Lucky's Wardrobe bootstrap test passed")

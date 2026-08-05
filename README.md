@@ -8,6 +8,11 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 ## Features
 
+- **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
+  - **One row per set.** Sets listed twice under two names are folded into a single row, and a set that comes in several colourways is one row with a picker in the details pane to switch between them, the same way the Sets tab handles its variants. A folded name still finds the row that holds it.
+- **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
+- **Settings access**: Open the addon settings with `/wardrobe`.
+
 ### Collection Journal
 
 - **Sort by completion**: Order the Sets list by how close each one is, ascending to work on the nearest first or descending to see what you have most of. Favourites stay at the top.
@@ -46,11 +51,19 @@ Lucky's Utils is required. Release packages include it automatically.
 
 | Command | Action |
 |---|---|
-| `/wardrobe` | Open the settings panel |
-| `/lw` | Alias for `/wardrobe` |
+| `/wardrobe` | Open addon settings |
+| `/lw` | Short form of `/wardrobe` |
 | `/wardrobe sets` | Show the sets you can finish where you are standing |
 | `/wardrobe replay` | Reopen the set list as if you had just walked in, for checking your settings |
 | `/wardrobe scan` | Report what the addon can see about the instance you are in, for troubleshooting |
+| `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |
+| `/wardrobe extrasets full` | List the extra sets and the ones left out, with the reason for each |
+| `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
+| `/wardrobe extrasets perf` | Report how long the tab's work takes and how it lands on your frame rate |
+| `/wardrobe extrasets perf reset` | Clear those measurements and start again |
+| `/wardrobe recolors` | Report how many recolor families this client's appearances form |
+| `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
+| `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |
 
 A keybinding for the set list is available under **Sets You Can Finish Here** in the game's Key Bindings screen.
 

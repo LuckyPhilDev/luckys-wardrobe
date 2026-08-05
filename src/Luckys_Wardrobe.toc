@@ -8,17 +8,26 @@
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 ## X-Curse-Project-ID: 1631480
 
-Bindings.xml
 Strings.lua
 Defaults.lua
+Perf.lua
+Data\ExtraSetsData.lua
+Data\ClothSets.lua
+Data\LeatherSets.lua
+Data\MailSets.lua
+Data\PlateSets.lua
 Classes.lua
 SetSources.lua
 SetsBrowser.lua
 SetTracking.lua
+WowheadLink.lua
 Catalyst.lua
 SetCompletion.lua
 LootAlerts.lua
 Randomiser.lua
+ExtraSetsCatalog.lua
+ExtraSets.lua
+RecolorGroups.lua
 Transmog.lua
 SituationLabels.lua
 SituationPresets.lua

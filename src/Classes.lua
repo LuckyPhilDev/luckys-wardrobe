@@ -14,27 +14,59 @@ local function maskHasClass(classMask, classID)
     return classMask % (flag + flag) >= flag
 end
 
+-- The armour a class transmogrifies, as the client's own armour subclass IDs.
+-- The client exposes no API for this and it only changes when a class is added.
+local ARMOUR_TYPE_BY_CLASS = {
+    [1] = 4,  -- Warrior: Plate
+    [2] = 4,  -- Paladin: Plate
+    [3] = 3,  -- Hunter: Mail
+    [4] = 2,  -- Rogue: Leather
+    [5] = 1,  -- Priest: Cloth
+    [6] = 4,  -- Death Knight: Plate
+    [7] = 3,  -- Shaman: Mail
+    [8] = 1,  -- Mage: Cloth
+    [9] = 1,  -- Warlock: Cloth
+    [10] = 2, -- Monk: Leather
+    [11] = 2, -- Druid: Leather
+    [12] = 2, -- Demon Hunter: Leather
+    [13] = 3, -- Evoker: Mail
+}
+
 -- The playable classes do not change while the client is running, and every row of
 -- the instance list asks for them.
-local playable
+local inClientOrder
+local alphabetical
+
+local function readClasses()
+    if inClientOrder then return end
+
+    inClientOrder = {}
+    for classID = 1, GetNumClasses() do
+        local info = C_CreatureInfo.GetClassInfo(classID)
+        if info then
+            inClientOrder[#inClientOrder + 1] = {
+                classID = classID,
+                file = info.classFile,
+                name = info.className,
+            }
+        end
+    end
+
+    alphabetical = {}
+    for index, class in ipairs(inClientOrder) do alphabetical[index] = class end
+    table.sort(alphabetical, function(a, b) return a.name < b.name end)
+end
 
 --- Every playable class, in the order a list of them should read.
 function Classes:All()
-    if not playable then
-        playable = {}
-        for classID = 1, GetNumClasses() do
-            local info = C_CreatureInfo.GetClassInfo(classID)
-            if info then
-                playable[#playable + 1] = {
-                    classID = classID,
-                    file = info.classFile,
-                    name = info.className,
-                }
-            end
-        end
-        table.sort(playable, function(a, b) return a.name < b.name end)
-    end
-    return playable
+    readClasses()
+    return alphabetical
+end
+
+--- The armour type a class wears, or nil for a class this version has no
+--- answer for, which a caller should read as "no armour restriction".
+function Classes:ArmourType(classID)
+    return ARMOUR_TYPE_BY_CLASS[classID]
 end
 
 --- The classes a set belongs to, empty for one that belongs to all of them.
