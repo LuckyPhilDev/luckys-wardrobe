@@ -15,7 +15,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Set info on item tooltips**: hover an item anywhere and its tooltip names the set the piece belongs to and how much of that set you have, as in "From set: Glyphed Garb 7/8". Extra Sets are named as well as the ones Blizzard lists.
 - **Track a whole set at once, or one piece of it**: shift-click a set in the Sets collection to track every appearance you are still missing from it, or open the set and shift-click one of its pieces to track just that one. Shift-click a piece you are already tracking to call it off.
 - **A crosshair on what you are hunting**: open a set and the pieces you are tracking carry a crosshair in the corner, in the Sets tab and the Extra Sets tab alike, and hovering one says so in its tooltip.
-- **Set names at the transmogrifier**: every set card at the transmog NPC carries its name across the top, on the Sets, Custom Sets and Extra Sets tabs alike.
+- **Set names at the transmogrifier**: every set card at the transmog NPC carries its name across the top, on the Sets, Custom Sets and Extra Sets tabs alike. Turn them off from the filter menu on either sets tab, or from settings.
 - **Random outfit**: hold the dice button at the transmog NPC to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Saved situations**: save the situation you have built up on one outfit and load it onto another.
 - **Situations at a glance**: see an outfit's selected situation values on the list itself, or its full list in a tooltip when you hover it.

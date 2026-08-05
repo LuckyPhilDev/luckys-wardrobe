@@ -191,6 +191,9 @@ LuckysWardrobe.Strings = {
         lootPieceOf = "%s is a piece of %s, %d still missing",
         lootCatalysable = "%s can be catalysed into an appearance you are missing",
     },
+    setNames = {
+        filter = "Show Set Names",
+    },
     extraSets = {
         tab = "Extra Sets",
         building = "Reading the extra sets from this client...",

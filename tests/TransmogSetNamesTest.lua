@@ -1,6 +1,8 @@
--- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe Menu Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 LuckysWardrobe = {}
+
+dofile("src/Strings.lua")
 
 function Mixin(object, ...)
     for _, mixin in ipairs({ ... }) do
@@ -57,6 +59,9 @@ local function newCard(elementData)
     local card = newRegion("card")
     card.level = CARD_LEVEL
     card.elementData = elementData
+    -- The template's favourite star, a frame of its own over the card.
+    card.Favorite = newRegion("frame")
+    card.Favorite.level = CARD_LEVEL + 1
     return card
 end
 
@@ -67,6 +72,32 @@ function CreateFrame(_, _, parent)
 end
 
 EventUtil = { ContinueOnAddOnLoaded = function(_, callback) callback() end }
+
+-- Blizzard tags its own menus so addons can add to them without rebuilding
+-- what is already there.
+local menuModifiers = {}
+Menu = {
+    ModifyMenu = function(tag, callback) menuModifiers[tag] = callback end,
+}
+
+-- A stand-in for the menu being built, which records what was added to it.
+local function newMenuDescription()
+    local description = { entries = {} }
+    function description:CreateDivider()
+        self.entries[#self.entries + 1] = { divider = true }
+    end
+    function description:CreateCheckbox(label, isSelected, setSelected)
+        self.entries[#self.entries + 1] =
+            { label = label, isSelected = isSelected, setSelected = setSelected }
+    end
+    return description
+end
+
+local function findCheckbox(description, label)
+    for _, entry in ipairs(description.entries) do
+        if entry.label == label then return entry end
+    end
+end
 
 function hooksecurefunc(target, method, callback)
     local original = target[method]
@@ -146,9 +177,11 @@ local plate = overlay.texture
 assert(plate, "gave the name a plate to sit on")
 assert(plate.layer == "BACKGROUND", "drew the plate behind the name")
 assert(plate.colour[1] == 0 and plate.colour[2] == 0 and plate.colour[3] == 0, "made the plate black")
-assert(plate.colour[4] > 0.5 and plate.colour[4] < 1, "left the plate a little translucent")
-assert(plate.points.TOPLEFT[1] == text and plate.points.BOTTOMRIGHT[1] == text,
-    "sized the plate from the name, so a name that wraps still sits on it")
+assert(plate.colour[4] > 0 and plate.colour[4] < 1, "left the plate translucent")
+assert(#plate.points.TOPLEFT == 0 and #plate.points.TOPRIGHT == 0,
+    "ran the plate into the card's own top corners rather than stopping short of them")
+assert(plate.points.BOTTOM[1] == text, "took the plate's depth from the name, so a name that wraps still sits on it")
+assert(setCard.Favorite.level > overlay.level, "kept the favourite star over the plate")
 
 -- Blizzard's Custom Sets tab.
 
@@ -200,5 +233,31 @@ assert(not latecomer.luckysSetName.shown, "drew a new card unnamed while the set
 db.showSetNames = true
 LuckysWardrobe.TransmogSetNames:Refresh()
 assert(latecomer.luckysSetName.shown, "named that card the moment the setting came back")
+
+-- The same setting in the filter menu of Blizzard's Sets tab.
+
+local nativeMenu = newMenuDescription()
+assert(menuModifiers["MENU_TRANSMOG_SETS_FILTER"], "added to the Sets tab's own filter menu")
+menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, nativeMenu)
+
+local option = findCheckbox(nativeMenu, LuckysWardrobe.Strings.setNames.filter)
+assert(option, "offered the names as a filter option")
+assert(nativeMenu.entries[1].divider, "kept it apart from the filters above it")
+assert(option.isSelected(), "showed the option ticked while the names are on")
+
+option.setSelected()
+assert(db.showSetNames == false, "turning the option off turned the setting off")
+assert(not setCard.luckysSetName.shown, "and took the names off the cards on screen")
+assert(not option.isSelected(), "and unticked itself")
+
+option.setSelected()
+assert(db.showSetNames == true and setCard.luckysSetName.shown, "turning it back on brought the names back")
+
+-- And in the Extra Sets tab's own filter menu, which builds its own entries and
+-- then asks for this one.
+
+local extraMenu = newMenuDescription()
+LuckysWardrobe.TransmogSetNames:AddFilterOption(extraMenu)
+assert(findCheckbox(extraMenu, LuckysWardrobe.Strings.setNames.filter), "offered the same option on the Extra Sets tab")
 
 print("Lucky's Wardrobe transmog set names test passed")

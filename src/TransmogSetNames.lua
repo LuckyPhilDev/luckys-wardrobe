@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil Menu Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Names on the set cards at the transmogrifier, so a wall of
 -- little models says which set each one is without hovering them one by one.
@@ -24,10 +24,11 @@ local MAX_LINES = 2
 local MIN_LINE_HEIGHT = 10
 local COLLECTED_COLOUR = { r = 0.827, g = 0.776, b = 0.620 }
 local INCOMPLETE_COLOUR = { r = 0.612, g = 0.627, b = 0.690 }
--- A near solid plate behind the name, since a card whose model is pale at the
--- shoulders leaves the outline alone to hold the letters apart.
+-- A plate behind the name, since a card whose model is pale at the shoulders
+-- leaves the outline alone to hold the letters apart. It runs to the card's own
+-- top edge rather than stopping short of it, so it reads as part of the card.
 local PLATE_PADDING = 4
-local PLATE_ALPHA = 0.8
+local PLATE_ALPHA = 0.55
 -- Above the card's own dimming and its transmogrified glow, so the name stays
 -- readable whatever state the card is in.
 local NAME_LEVEL_OFFSET = 5
@@ -53,12 +54,17 @@ local function nameLabel(card)
     Mixin(text, AutoScalingFontStringMixin)
     text:SetMinLineHeight(MIN_LINE_HEIGHT)
 
-    -- The plate takes its size from the name, so one line and a name that wraps
-    -- to two both sit on a plate of their own height.
+    -- The plate fills the top of the card and takes its depth from the name, so
+    -- one line and a name that wraps to two are both backed as far as they run.
     local plate = overlay:CreateTexture(nil, "BACKGROUND")
     plate:SetColorTexture(0, 0, 0, PLATE_ALPHA)
-    plate:SetPoint("TOPLEFT", text, "TOPLEFT", -PLATE_PADDING, PLATE_PADDING)
-    plate:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", PLATE_PADDING, -PLATE_PADDING)
+    plate:SetPoint("TOPLEFT")
+    plate:SetPoint("TOPRIGHT")
+    plate:SetPoint("BOTTOM", text, "BOTTOM", 0, -PLATE_PADDING)
+
+    -- The favourite star shares that corner and belongs over the plate rather
+    -- than behind it.
+    card.Favorite:SetFrameLevel(overlay:GetFrameLevel() + 1)
 
     overlay.Text = text
     card.luckysSetName = overlay
@@ -81,6 +87,18 @@ function TransmogSetNames:Refresh()
     for _, overlay in ipairs(labels) do
         overlay:SetShown(db.showSetNames and overlay.Text:GetText() ~= "")
     end
+end
+
+-- The setting again, in the filter menu of a page that shows the names: a
+-- player who wants them gone is looking at them, not at a settings panel.
+function TransmogSetNames:AddFilterOption(rootDescription)
+    rootDescription:CreateDivider()
+    rootDescription:CreateCheckbox(LuckysWardrobe.Strings.setNames.filter,
+        function() return db.showSetNames end,
+        function()
+            db.showSetNames = not db.showSetNames
+            TransmogSetNames:Refresh()
+        end)
 end
 
 local function nameNativeSet(card)
@@ -116,4 +134,10 @@ function TransmogSetNames:Init(database)
     db = database
 
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", installCardHooks)
+
+    -- Blizzard tags its own menus for addons to add to, which is how the Sets
+    -- tab gets the option without this touching the menu it already builds.
+    Menu.ModifyMenu("MENU_TRANSMOG_SETS_FILTER", function(_owner, rootDescription)
+        TransmogSetNames:AddFilterOption(rootDescription)
+    end)
 end
