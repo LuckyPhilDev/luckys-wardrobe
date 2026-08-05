@@ -135,7 +135,7 @@ end
 -- Puts the note back on the slate, for testing the login it actually arrives on.
 function Welcome:Reset()
     db.welcomeShown = false
-    print(LuckysWardrobe.Strings.addon.prefix .. " " .. S.reset)
+    LuckysWardrobe.Utils.Say(S.reset)
 end
 
 function Welcome:Init(database)

@@ -109,6 +109,7 @@ LuckysWardrobe.AddonConflicts = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Welcome.lua")
 
 local S = LuckysWardrobe.Strings.welcome
