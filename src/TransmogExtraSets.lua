@@ -106,6 +106,24 @@ function TransmogExtraSets.VisibleEntries(entries, filterState, query)
     return ExtraSets.SortEntries(ExtraSets.FilterEntries(narrowed, query), "completion", "ascending")
 end
 
+-- What the page draws, as one comparable value: the cards in the order they sit
+-- in, each with the counts printed on it. Two lists agreeing here draw the same
+-- page, so the cards already on screen can be left where they are.
+--
+-- Worth asking before drawing because drawing is not cheap: the card grid
+-- releases every model on the page and dresses it again from nothing, which a
+-- player watches as the page loading a second time. Most of what asks the page
+-- to draw itself again, a pass over the client's verdicts above all, changes
+-- none of what it would draw.
+function TransmogExtraSets.PageSignature(entries)
+    local parts = {}
+    for index, entry in ipairs(entries) do
+        parts[index] = ("%s %d/%d%s"):format(
+            entry.key, entry.collected, entry.total, entry.loading and " loading" or "")
+    end
+    return table.concat(parts, "\n")
+end
+
 -- Whether the outfit on show is wearing this set: every slot the set covers is
 -- showing one of the set's own looks for that slot. Slots the set says nothing
 -- about are not asked, which is how the native Sets tab judges its own cards,
@@ -222,11 +240,14 @@ local requestedItems = {}
 -- a lock that keeps a character out of one covers every piece of it, so its
 -- first piece answers for the rest. Says whether anything was asked for, which
 -- is the only reason to look again.
-local function requestUnjudgedItems(entries)
+--
+-- Takes catalogue records as readily as built entries: both carry the pieces,
+-- and a record has no verdict on a piece to skip it by.
+local function requestUnjudgedItems(sets)
     local asked = 0
-    for _, entry in ipairs(entries) do
+    for _, set in ipairs(sets) do
         if asked >= ITEM_LOAD_BUDGET then break end
-        for _, piece in ipairs(entry.pieces) do
+        for _, piece in ipairs(set.pieces) do
             if piece.state ~= "unavailable" and piece.itemID then
                 if not requestedItems[piece.itemID] and not C_Item.GetItemInfo(piece.itemID) then
                     requestedItems[piece.itemID] = true
@@ -238,6 +259,43 @@ local function requestUnjudgedItems(entries)
         end
     end
     return asked > 0
+end
+
+-- Told after each round of answers lands, so the page can read the verdicts
+-- again. Set once the page exists; the rounds run whether it does or not.
+local afterItemsLoaded
+
+-- A set the client has not judged stays on the page, because a cold cache is
+-- not a refusal. So a page built before the answers are in lists sets that
+-- disappear from it as they arrive, and what a player sees is the cards
+-- shuffling under them for a second or two after the tab opens.
+--
+-- The cure is to have asked already. Asking starts as soon as there are sets to
+-- ask about, which is at login rather than at the transmogrifier, and carries
+-- on a budget at a time until every set has been asked about once. Nothing is
+-- asked about twice, so the rounds run out on their own.
+local warmingItems = false
+
+local function warmItemData()
+    if warmingItems then return end
+    warmingItems = true
+
+    local ExtraSets = LuckysWardrobe.ExtraSets
+    local resolver = ExtraSets.LiveResolver()
+    local records = ExtraSets.RecordsForClass(ExtraSets.Records(), resolver.playerClassID())
+
+    local function round()
+        if not requestUnjudgedItems(records) then
+            warmingItems = false
+            return
+        end
+        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
+            TransmogExtraSets.RejudgeEntries()
+            if afterItemsLoaded then afterItemsLoaded() end
+            round()
+        end)
+    end
+    round()
 end
 
 -- Locale-free record slots to the outfit slots the transmogrifier's API
@@ -577,18 +635,17 @@ function TransmogExtraSets:CreatePage(wardrobe)
     page.GetOutfitSlotSavedState = function() return outfitSlotSaved end
     page.SetOutfitSlotSavedState = function(saved) outfitSlotSaved = saved end
 
+    -- What the cards on screen are showing, so a pass that would draw the same
+    -- page again can leave them alone.
+    local paintedSignature
+
     local function refresh()
-        LuckysWardrobe.Perf:Begin("transmog page refresh")
         local entries = TransmogExtraSets.Entries()
         local visible = TransmogExtraSets.VisibleEntries(entries, filters, searchBox:GetText())
 
-        local elements = {}
-        for _, entry in ipairs(visible) do
-            elements[#elements + 1] = { templateKey = "EXTRA_SET", entry = entry, page = page }
-        end
-        local retainCurrentPage = true
-        pagedContent:SetDataProvider(CreateDataProvider({ { elements = elements } }), retainCurrentPage)
-
+        -- Why the page has nothing on it can change while the page itself does
+        -- not: an empty page whose catalogue has finished building is an answer
+        -- rather than a wait, so the line is told before the cards are asked.
         if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then
             noEntriesText:SetText(S.building)
         elseif #entries == 0 then
@@ -596,32 +653,44 @@ function TransmogExtraSets:CreatePage(wardrobe)
         else
             noEntriesText:SetText(S.noResults)
         end
-        noEntriesText:SetShown(#elements == 0)
-        LuckysWardrobe.Perf:End("transmog page refresh")
+        noEntriesText:SetShown(#visible == 0)
+
+        local signature = TransmogExtraSets.PageSignature(visible)
+        if signature == paintedSignature then
+            LuckysWardrobe.Perf:Count("transmog page unchanged")
+            return
+        end
+        paintedSignature = signature
+
+        LuckysWardrobe.Perf:Begin("transmog page painted")
+        local elements = {}
+        for _, entry in ipairs(visible) do
+            elements[#elements + 1] = { templateKey = "EXTRA_SET", entry = entry, page = page }
+        end
+        local retainCurrentPage = true
+        pagedContent:SetDataProvider(CreateDataProvider({ { elements = elements } }), retainCurrentPage)
+        LuckysWardrobe.Perf:End("transmog page painted")
     end
 
-    -- A set is only kept off the page once the client has refused it, and the
-    -- client will not judge a set whose items it has not loaded. So each rebuild
-    -- asks for what it is missing and reads the answers a moment later, which is
-    -- what settles the page onto the sets this character can really wear.
-    local warmRun = 0
-    local function warmVerdicts(run, pass)
-        if not requestUnjudgedItems(TransmogExtraSets.Entries()) then return end
-
-        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
-            -- A rebuild since this pass started has a warm-up of its own.
-            if run ~= warmRun or not page:IsShown() then return end
-            TransmogExtraSets.RejudgeEntries()
-            refresh()
-            if pass < Utils.ITEM_LOAD_PASSES then warmVerdicts(run, pass + 1) end
-        end)
+    -- The page drawn again whether or not it would come out any different,
+    -- which is what a rebuilt player model calls for: the cards are wearing the
+    -- old one until the grid dresses them from scratch.
+    local function repaint()
+        paintedSignature = nil
+        refresh()
     end
 
     local function rebuildNow()
         TransmogExtraSets.InvalidateEntries()
         refresh()
-        warmRun = warmRun + 1
-        warmVerdicts(warmRun, 1)
+        warmItemData()
+    end
+
+    -- A round of item answers is what moves the client's verdicts, and a verdict
+    -- is what keeps a set off the page, so the page reads them again each time a
+    -- round lands. Off screen it reads nothing: coming back reads everything.
+    afterItemsLoaded = function()
+        if page:IsShown() then refresh() end
     end
 
     local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
@@ -701,7 +770,7 @@ function TransmogExtraSets:CreatePage(wardrobe)
                 local _hasAlternateForm, inAlternateForm = C_PlayerInfo.GetAlternateFormInfo()
                 if self.inAlternateForm ~= inAlternateForm then
                     self.inAlternateForm = inAlternateForm
-                    refresh()
+                    repaint()
                 end
             end
         end
@@ -774,6 +843,11 @@ end
 function TransmogExtraSets:Init()
     filters.collected = true
     filters.uncollected = true
+    -- The catalogue is built at the first entry into the world, so the sets are
+    -- there to ask the client about hours before anyone stands at a
+    -- transmogrifier. Asking then is what has the tab open on the sets this
+    -- character can wear rather than settle onto them while the player watches.
+    LuckysWardrobe.ExtraSetsCatalog:OnReady(warmItemData)
     -- Blizzard_Transmog loads on demand at the first transmogrifier visit, and
     -- the catalogue takes about a second to build, so starting it here has the
     -- sets ready by the time a player can reach the tab.

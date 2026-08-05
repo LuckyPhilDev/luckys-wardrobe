@@ -132,6 +132,41 @@ visible = TransmogExtraSets.VisibleEntries(
     { emptySet, partialSet, completeSet }, { collected = false, uncollected = true }, "")
 assert(#visible == 2 and visible[1] == partialSet, "filters narrow before the sort orders")
 
+-- What the page has drawn, so a pass that would draw the same thing again is
+-- left alone rather than reloading every model on screen.
+
+local everything = { completeSet, partialSet, emptySet }
+
+assert(TransmogExtraSets.PageSignature(everything) == TransmogExtraSets.PageSignature(everything),
+    "the same cards in the same order are the same page")
+
+assert(TransmogExtraSets.PageSignature({ completeSet, partialSet })
+    ~= TransmogExtraSets.PageSignature({ partialSet, completeSet }),
+    "the same cards in another order are another page")
+
+assert(TransmogExtraSets.PageSignature(everything)
+    ~= TransmogExtraSets.PageSignature({ completeSet, partialSet }),
+    "a card dropped from the page is another page")
+
+-- Rebuilding the entries makes new tables holding the same answers, and the
+-- cards on screen are already showing those answers. Comparing what they say
+-- rather than which table said it is what keeps the page from being redrawn
+-- every time it is reopened.
+local rebuiltComplete = entry("Full Regalia", 10, pieces({ "HEAD", 2001 }, { "CHEST", 2002 }))
+assert(rebuiltComplete ~= completeSet, "fixture: a rebuild really is another table")
+assert(TransmogExtraSets.PageSignature({ rebuiltComplete })
+    == TransmogExtraSets.PageSignature({ completeSet }),
+    "a rebuilt entry saying the same thing draws the same card")
+
+-- Collecting a piece changes what the card prints on itself, so the page has to
+-- be drawn again even though the same sets are on it in the same order.
+sourceStates[2003] = { appearanceID = 9003, collected = true }
+local collectedMore = entry("Half Garb", 11, pieces({ "HEAD", 2001 }, { "CHEST", 2003 }))
+sourceStates[2003] = { appearanceID = 9003, collected = false }
+assert(collectedMore.collected == 2, "fixture: the set gained a piece")
+assert(TransmogExtraSets.PageSignature({ collectedMore }) ~= TransmogExtraSets.PageSignature({ partialSet }),
+    "a set that gained a piece draws a different card")
+
 -- Whether the outfit on show is wearing a set.
 
 local wornComplete = {
