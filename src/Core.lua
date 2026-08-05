@@ -10,6 +10,7 @@ local function initialize()
         return LuckysWardrobeDB.devMode
     end)
 
+    LuckysWardrobe.AddonConflicts:Init()
     LuckysWardrobe.Settings:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetsBrowser:Init()
     LuckysWardrobe.ExtraSets:Init()

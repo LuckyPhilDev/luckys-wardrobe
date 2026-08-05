@@ -14,6 +14,19 @@ LuckysWardrobe.Strings = {
         prefix = "|cffc8902aLucky's Wardrobe:|r",
         initialized = "Initialized.",
     },
+    addonConflicts = {
+        title = "Addon Conflict",
+        betterWardrobe = "Better Wardrobe",
+        luckysBetterWardrobe = "Lucky's Better Wardrobe",
+        oneEnabled = "%s is also enabled.",
+        bothEnabled = "%s and %s are also enabled.",
+        explain = "They change the same collection and transmog windows Lucky's Wardrobe does, so running them together causes errors. Which would you like to disable?",
+        oldFolder = "Lucky's Wardrobe replaced Lucky's Better Wardrobe, and the update left the old folder behind. Delete Interface\\AddOns\\LuckysBetterWardrobe to be rid of it for good.",
+        reloadHint = "(Disabling reloads your interface)",
+        disableOne = "Disable %s",
+        disableBoth = "Disable Both",
+        disableSelf = "Disable Lucky's Wardrobe",
+    },
     settings = {
         groups = {
             general = "General",

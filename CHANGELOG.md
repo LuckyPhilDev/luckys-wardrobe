@@ -17,3 +17,4 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Situations at a glance**: see an outfit's selected situation values on the list itself, or its full list in a tooltip when you hover it.
 - **Keep your transmog tab**: switching outfits at the transmog NPC no longer throws you back to Items.
 - **Minimap button**: shift-click for the set list, right-click for settings.
+- **Conflict warning**: a dialog at login if Better Wardrobe or the old Lucky's Better Wardrobe is still enabled, with a button to turn either one off and reload on the spot.
