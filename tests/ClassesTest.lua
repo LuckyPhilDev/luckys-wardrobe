@@ -40,7 +40,13 @@ local all = Classes:All()
 assert(#all == 5, "the unplayable IDs in the range were counted")
 assert(all[1].name == "Druid" and all[#all].name == "Warrior", "classes came back unsorted")
 
--- One bit per class, counting from the first.
+-- One bit per class, counting from the first. Reading a single bit is what the
+-- catalogue and both Extra Sets pages ask for, so it answers on its own too.
+assert(Classes:MaskHas(2 ^ (4 - 1), 4), "the bit a mask was built from did not read back")
+assert(not Classes:MaskHas(2 ^ (4 - 1), 5), "a neighbouring class read as named")
+assert(Classes:MaskHas(2 ^ (4 - 1) + 2 ^ (11 - 1), 11), "a mask naming two classes lost the higher one")
+assert(not Classes:MaskHas(0, 1), "a mask naming nobody in particular named a class")
+
 local rogue = Classes:FromMask(2 ^ (4 - 1))
 assert(#rogue == 1 and rogue[1].file == "ROGUE")
 

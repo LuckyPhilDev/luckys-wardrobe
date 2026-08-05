@@ -143,10 +143,11 @@ function ExtraSets.ValidateRecord(record)
     return true
 end
 
+-- A mask of zero names every class at once, which is how the game marks the
+-- sets that are nobody's in particular.
 function ExtraSets.ClassAllowed(classMask, classID)
     if classMask == 0 or not classID then return true end
-    local classBit = 2 ^ (classID - 1)
-    return math.floor(classMask / classBit) % 2 == 1
+    return LuckysWardrobe.Classes:MaskHas(classMask, classID)
 end
 
 -- What one class has any use for: the sets named for it, plus the sets named
