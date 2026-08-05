@@ -69,6 +69,24 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
 
+    local tooltips = panel:Group(S.settings.groups.tooltips)
+    tooltips:Toggle({
+        label = S.settings.tooltipAppearanceCollected.label,
+        desc = S.settings.tooltipAppearanceCollected.desc,
+        checked = db.tooltipAppearanceCollected,
+        onToggle = function(checked)
+            db.tooltipAppearanceCollected = checked
+        end,
+    })
+    tooltips:Toggle({
+        label = S.settings.tooltipSetProgress.label,
+        desc = S.settings.tooltipSetProgress.desc,
+        checked = db.tooltipSetProgress,
+        onToggle = function(checked)
+            db.tooltipSetProgress = checked
+        end,
+    })
+
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({
         label = S.settings.hideUnwearableSets.label,

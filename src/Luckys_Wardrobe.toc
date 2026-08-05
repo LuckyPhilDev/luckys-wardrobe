@@ -23,6 +23,7 @@ SetsBrowser.lua
 SetTracking.lua
 TrackedAppearances.lua
 WowheadLink.lua
+ItemTooltips.lua
 Catalyst.lua
 SetCompletion.lua
 LootAlerts.lua

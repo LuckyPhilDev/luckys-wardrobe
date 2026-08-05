@@ -31,6 +31,7 @@ LuckysWardrobe.Strings = {
         groups = {
             general = "General",
             appearances = "Appearances",
+            tooltips = "Tooltips",
             transmog = "Transmog",
             setTracker = "Set Tracker",
         },
@@ -103,6 +104,14 @@ LuckysWardrobe.Strings = {
             label = "Wowhead Address on Ctrl-Click",
             desc = "Ctrl-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy. This takes ctrl-click off the dressing room preview.",
         },
+        tooltipAppearanceCollected = {
+            label = "Say Whether You Have the Appearance",
+            desc = "Adds a line to an item's tooltip saying whether its appearance is one you have already collected. A look counts as yours whichever item taught it to you, so an item you have never seen can still say you have it.",
+        },
+        tooltipSetProgress = {
+            label = "Say Which Set It Belongs To",
+            desc = "Adds a line to an item's tooltip naming the set the piece belongs to and how much of that set you have collected, so a drop says what it is worth before you decide what to do with it.",
+        },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
@@ -144,6 +153,9 @@ LuckysWardrobe.Strings = {
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
+    },
+    tooltips = {
+        setProgress = "%s %d/%d",
     },
     tracking = {
         hovered = "You are tracking this appearance.",
