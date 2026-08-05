@@ -269,6 +269,112 @@ function ExtraSets.VariantLabel(name)
     return name:match("%(([^()]*)%)%s*$") or name:match(":%s+(.+)$") or name
 end
 
+-- What a colourway is called in the picker: the one word that tells it from its
+-- siblings where the family was found that way, and otherwise the qualifier the
+-- set's own name carries.
+function ExtraSets.VariantLabelFor(variant)
+    return variant.variantLabel or ExtraSets.VariantLabel(variant.name)
+end
+
+-- A set named like another but for a single word is that set in another colour:
+-- "Midnight Sweatsuit" beside "Azure Sweatsuit", "Vagabond's Brick Threads"
+-- beside "Vagabond's Camo Threads". The client says nothing about this. Asked
+-- directly, through GetBaseSetID and GetVariantSets, it answers nothing for
+-- every one of them, so the only place the relationship is written down is the
+-- names, and reading it there is an inference rather than a fact the way the
+-- rest of this catalogue is.
+--
+-- Three things keep the inference narrow.
+--
+-- It is held to the ensembles, because they are the listing where the
+-- relationship is written down nowhere else. The armour lists say it themselves,
+-- with "(Recolor)" after a shared set name, and the grouping above already reads
+-- that. Turned loose on them this rule joins "Mystic's Regalia (Recolor)" to
+-- "Pagan Regalia (Recolor)", which are two sets rather than two colours.
+--
+-- A family agrees on piece count, class mask, and armour, which is what stops
+-- the armour types of one PvP set folding together: "Gladiator's Leather Armor"
+-- and "Gladiator's Silk Armor" differ by one word too, and are not one garment
+-- in two colours.
+--
+-- And it is held to small sets, because the Trading Post sells these in twos and
+-- threes while a tier or a PvP season runs to dozens, and those are sets people
+-- work through separately even where they do share a model.
+local MAX_COLOUR_FAMILY_PIECES = 4
+
+-- Every word is a candidate for the one that varies, so a set belongs to as
+-- many possible families as it has words and joins the largest of them. That is
+-- what keeps "Vagabond's * Threads" whole rather than split across whichever
+-- other position happens to match a set somewhere else in the list. A tie goes
+-- to the earlier word, so the same list always groups the same way.
+local function colourCandidates(row)
+    if row.isGroup or not row.fromEnsemble then return nil end
+    if #row.pieces > MAX_COLOUR_FAMILY_PIECES then return nil end
+
+    local words = {}
+    for word in row.name:gmatch("%S+") do words[#words + 1] = word end
+    if #words < 2 then return nil end
+
+    local candidates = {}
+    for index = 1, #words do
+        local varying = table.remove(words, index)
+        candidates[index] = {
+            key = table.concat(words, " ") .. "@" .. index
+                .. "|" .. #row.pieces .. "|" .. row.classMask .. "|" .. tostring(row.armorType),
+            name = table.concat(words, " "),
+            label = varying,
+        }
+        table.insert(words, index, varying)
+    end
+    return candidates
+end
+
+-- Rows gathered into colourway families, in the order they were already in: a
+-- family becomes one row where its first member stood, and the rest go with it.
+local function colourFamilies(rows)
+    local counts, candidatesOf = {}, {}
+    for _, row in ipairs(rows) do
+        candidatesOf[row] = colourCandidates(row)
+        for _, candidate in ipairs(candidatesOf[row] or {}) do
+            counts[candidate.key] = (counts[candidate.key] or 0) + 1
+        end
+    end
+
+    local chosen, members = {}, {}
+    for _, row in ipairs(rows) do
+        local best
+        for _, candidate in ipairs(candidatesOf[row] or {}) do
+            if counts[candidate.key] > 1 and (not best or counts[candidate.key] > counts[best.key]) then
+                best = candidate
+            end
+        end
+        if best then
+            chosen[row] = best
+            members[best.key] = members[best.key] or {}
+            table.insert(members[best.key], row)
+        end
+    end
+
+    local grouped, built = {}, {}
+    for _, row in ipairs(rows) do
+        local candidate = chosen[row]
+        -- A candidate two sets shared can still end up holding one of them, when
+        -- the other found a larger family to join. One member is no family.
+        if not candidate or #members[candidate.key] == 1 then
+            grouped[#grouped + 1] = row
+        elseif not built[candidate.key] then
+            built[candidate.key] = true
+            for _, member in ipairs(members[candidate.key]) do
+                member.variantLabel = chosen[member].label
+            end
+            local group = ExtraSets.BuildGroup(members[candidate.key], candidate.name)
+            group.isColourFamily = true
+            grouped[#grouped + 1] = group
+        end
+    end
+    return grouped
+end
+
 -- Sets gathered by the name they share, in the order they first appear, so
 -- whatever sort produced the list still decides where each set lands.
 local function families(entries)
@@ -440,8 +546,12 @@ end
 -- every look across them so the row says how much of the whole set is collected.
 -- It carries the first colourway's pieces, which is what the details pane shows
 -- when the row is picked.
-function ExtraSets.BuildGroup(variants)
+-- name is what the family is called where the caller worked it out for itself,
+-- as the colourway families do; otherwise the row takes the set name its
+-- colourways share.
+function ExtraSets.BuildGroup(variants, name)
     local first = variants[1]
+    name = name or ExtraSets.BaseName(first.name)
     local collected, total, unavailable, loading = 0, 0, 0, false
     local appearances, ensembles = {}, nil
     for _, variant in ipairs(variants) do
@@ -458,10 +568,10 @@ function ExtraSets.BuildGroup(variants)
     end
 
     return {
-        key = "group:" .. first.armorType .. "|" .. ExtraSets.BaseName(first.name),
+        key = "group:" .. first.armorType .. "|" .. name,
         isGroup = true,
         variants = variants,
-        name = ExtraSets.BaseName(first.name),
+        name = name,
         label = LuckysWardrobe.Strings.extraSets.colours:format(#variants),
         expansionID = first.expansionID,
         armorType = first.armorType,
@@ -483,12 +593,16 @@ end
 -- with several is one row standing for them, and the details pane picks between
 -- them the way the Sets tab does. Filters can leave a set with a single
 -- colourway, and it goes back to being that plain row.
+--
+-- Sets that share a name gather first, since that qualifier is one the listing
+-- itself supplies. Whatever is left over is offered to the colourway rule,
+-- which reads the same relationship off names that differ by a single word.
 function ExtraSets.BuildRows(entries)
     local rows = {}
     for _, family in ipairs(families(entries)) do
         rows[#rows + 1] = #family == 1 and family[1] or ExtraSets.BuildGroup(family)
     end
-    return rows
+    return colourFamilies(rows)
 end
 
 -- Which colourway of a set is on show. Defaults to the first, and falls back to
@@ -1365,12 +1479,12 @@ function ExtraSets:CreatePage(wardrobe)
 
         local chosen = ExtraSets.VariantOf(row, selectedVariants[row.key])
         variantDropdown:SetText(S.variantOption:format(
-            ExtraSets.VariantLabel(chosen.name), chosen.collected, chosen.total))
+            ExtraSets.VariantLabelFor(chosen), chosen.collected, chosen.total))
         variantDropdown:SetupMenu(function(_, menu)
             for _, variant in ipairs(row.variants) do
                 menu:CreateRadio(
                     S.variantOption:format(
-                        ExtraSets.VariantLabel(variant.name), variant.collected, variant.total),
+                        ExtraSets.VariantLabelFor(variant), variant.collected, variant.total),
                     function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
                     function()
                         selectedVariants[row.key] = variant.key
@@ -1766,6 +1880,50 @@ end
 -- Sets tab counts for its own same-named sets. Dev dump for when a fold, or
 -- the lack of one, surprises someone: two lines that share most of their IDs
 -- name a fold, two that share none name a genuine recolour.
+-- Every family the colourway rule gathered, and what it put in each. This is an
+-- inference rather than a fact the client supplied, so it is worth being able to
+-- read the whole of it in one go: a family that has taken in a set it should not
+-- have shows up here as a colour name that is not a colour.
+--
+-- Read off the rows the page builds for the class it is listing, before search
+-- or filters, so it says what the list would hold rather than what it happens to
+-- be showing.
+function ExtraSets:PrintColourFamilies()
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local say = Utils.Say
+    local catalog = LuckysWardrobe.ExtraSetsCatalog
+    if not catalog:GetReport() then
+        say(S.notStarted)
+        return
+    end
+    if not catalog:IsReady() then
+        say(S.building)
+        return
+    end
+
+    local formed = {}
+    for _, row in ipairs(ExtraSets.BuildRows(ExtraSets.Entries())) do
+        if row.isColourFamily then formed[#formed + 1] = row end
+    end
+    if #formed == 0 then
+        say(S.coloursNone)
+        return
+    end
+
+    say(S.coloursHeader:format(#formed))
+    local grouped = 0
+    for _, family in ipairs(formed) do
+        local labels = {}
+        for index, variant in ipairs(family.variants) do
+            labels[index] = ExtraSets.VariantLabelFor(variant)
+        end
+        grouped = grouped + #family.variants
+        say(S.coloursLine:format(
+            family.name, #family.variants, #family.pieces, table.concat(labels, ", ")))
+    end
+    say(S.coloursTotal:format(grouped, #formed))
+end
+
 -- What the client itself says about a set's colourways. Blizzard marks the
 -- difficulty tints of a tier as variants of one base set, and the Sets tab shows
 -- them behind one row with a dropdown rather than as rows of their own. Whether
