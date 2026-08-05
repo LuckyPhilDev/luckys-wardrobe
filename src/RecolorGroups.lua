@@ -151,21 +151,7 @@ function RecolorGroups.Group(appearances)
     return families, rejections
 end
 
--- Every armour appearance the client will enumerate, with the name of a
--- representative source, plus what that enumeration covers.
---
--- GetCategoryAppearances answers through the player's wardrobe filters, so the
--- result is only as complete as the Items tab is unfiltered. Collected and
--- uncollected visibility are opened and restored around the sweep. Filters that
--- cannot be restored exactly are left alone; instead the client's own filtered
--- and unfiltered totals come back alongside, so a short enumeration is reported
--- rather than quietly producing fewer families.
-function RecolorGroups.LiveAppearances()
-    local shownCollected = C_TransmogCollection.GetCollectedShown()
-    local shownUncollected = C_TransmogCollection.GetUncollectedShown()
-    C_TransmogCollection.SetCollectedShown(true)
-    C_TransmogCollection.SetUncollectedShown(true)
-
+local function sweepAppearances()
     local appearances = {}
     local coverage = { enumerated = 0, filtered = 0, total = 0, items = {} }
     for categoryID = 1, #SLOT_ORDER do
@@ -205,8 +191,31 @@ function RecolorGroups.LiveAppearances()
         end
     end
 
+    return appearances, coverage
+end
+
+-- Every armour appearance the client will enumerate, with the name of a
+-- representative source, plus what that enumeration covers.
+--
+-- GetCategoryAppearances answers through the player's wardrobe filters, so the
+-- result is only as complete as the Items tab is unfiltered. Collected and
+-- uncollected visibility are opened and restored around the sweep, whether it
+-- finishes or throws: a sweep that gave up halfway must not leave the player's
+-- Items tab showing something they did not choose. Filters that cannot be
+-- restored exactly are left alone; instead the client's own filtered and
+-- unfiltered totals come back alongside, so a short enumeration is reported
+-- rather than quietly producing fewer families.
+function RecolorGroups.LiveAppearances()
+    local shownCollected = C_TransmogCollection.GetCollectedShown()
+    local shownUncollected = C_TransmogCollection.GetUncollectedShown()
+    C_TransmogCollection.SetCollectedShown(true)
+    C_TransmogCollection.SetUncollectedShown(true)
+
+    local swept, appearances, coverage = pcall(sweepAppearances)
+
     C_TransmogCollection.SetCollectedShown(shownCollected)
     C_TransmogCollection.SetUncollectedShown(shownUncollected)
+    if not swept then error(appearances, 0) end
     return appearances, coverage
 end
 
