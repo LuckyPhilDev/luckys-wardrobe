@@ -470,9 +470,9 @@ local function cardMouseDown(card, buttonName)
     if not card.elementData or buttonName ~= "LeftButton" then return end
     local entry = card.elementData.entry
 
-    -- The same shift-click the Collections page answers: track everything the
-    -- set is still missing.
-    if IsShiftKeyDown() then
+    -- The same shift-click the Collections page answers, down to the setting
+    -- that turns it off: track everything the set is still missing.
+    if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) then
         LuckysWardrobe.ExtraSets:TrackMissing(entry)
         return
     end

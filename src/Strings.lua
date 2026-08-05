@@ -92,8 +92,8 @@ LuckysWardrobe.Strings = {
             enabled = "Dev mode enabled.",
         },
         trackSets = {
-            label = "Track Sets on Shift-Click",
-            desc = "Shift-click a set in Blizzard's Sets collection to track every appearance you are still missing from it.",
+            label = "Track on Shift-Click",
+            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one. Works in Blizzard's Sets tab, in the Extra Sets tab, and on the Extra Sets cards at the transmogrifier.",
         },
         markTracked = {
             label = "Mark Tracked Pieces",
@@ -143,6 +143,7 @@ LuckysWardrobe.Strings = {
     },
     tracking = {
         hovered = "You are tracking this appearance.",
+        hint = "Shift-click to track this appearance.",
         tracked = "Tracking %d missing appearance(s) from %s.",
         failed = "%d could not be tracked.",
         nothing = "Nothing new to track from %s.",
@@ -198,7 +199,6 @@ LuckysWardrobe.Strings = {
         -- Indexed by the client's own armour subclass ID, as the sets themselves
         -- are, and written to read inside a sentence rather than as a heading.
         armourTypes = { "cloth", "leather", "mail", "plate" },
-        trackHint = "Shift-click to track this appearance.",
         report = {
             notStarted = "The Extra Sets catalogue has not been built yet. Open Collections, Appearances first.",
             building = "The Extra Sets catalogue is still building. Try again in a moment.",

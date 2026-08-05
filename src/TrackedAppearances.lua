@@ -106,9 +106,14 @@ function TrackedAppearances:Init(database)
         end)
 
         -- Every drawing of a piece's tooltip lands here, the first hover and
-        -- each press of Tab that cycles to another item with the same look.
+        -- each press of Tab that cycles to another item with the same look. A
+        -- piece already tracked is told so; one that is not is offered the
+        -- shift-click that would track it.
         hooksecurefunc(setsCollection, "RefreshAppearanceTooltip", function(self)
-            TrackedAppearances:AddTooltipLine(GameTooltip, self.tooltipPrimarySourceID)
+            local sourceID = self.tooltipPrimarySourceID
+            if not TrackedAppearances:AddTooltipLine(GameTooltip, sourceID) then
+                LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, sourceID)
+            end
         end)
     end)
 end

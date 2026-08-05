@@ -33,10 +33,15 @@ function CreateFrame()
 end
 
 local tracked = {}
+local hintedSource
 LuckysWardrobe = {
     Strings = { tracking = { hovered = "You are tracking this appearance." } },
     SetTracking = {
         IsTracking = function(_, sourceID) return tracked[sourceID] == true end,
+        AddTrackHint = function(_, _, sourceID)
+            hintedSource = sourceID
+            return false
+        end,
     },
 }
 
@@ -115,10 +120,13 @@ setsCollection:RefreshAppearanceTooltip()
 assert(GameTooltip.lines[#GameTooltip.lines]:find(LuckysWardrobe.Strings.tracking.hovered, 1, true),
     "told the hovered piece's tooltip it is being tracked")
 
+-- A piece nobody is hunting yet is handed on to be offered the shift-click that
+-- would start, rather than told it is being tracked.
 local said = #GameTooltip.lines
 setsCollection.tooltipPrimarySourceID = 101
 setsCollection:RefreshAppearanceTooltip()
-assert(#GameTooltip.lines == said, "said nothing over a piece nobody is hunting")
+assert(#GameTooltip.lines == said, "said nothing itself over a piece nobody is hunting")
+assert(hintedSource == 101, "handed that piece on to be offered the shift-click")
 
 -- The same texture answers every update rather than a fresh one stacking up.
 local texture = crosshair(setPieces[2])

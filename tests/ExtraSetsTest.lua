@@ -900,9 +900,18 @@ C_Item = {
 }
 
 local trackedSources, trackedName
+local shiftClickTracks = true
 LuckysWardrobe.SetTracking = {
     TrackSources = function(_, sourceIDs, setName)
         trackedSources, trackedName = sourceIDs, setName
+    end,
+    HandlesShiftClick = function(_, buttonName)
+        return shiftClickTracks and shiftDown and buttonName == "LeftButton"
+    end,
+    AddTrackHint = function(_, target, sourceID)
+        if not sourceID then return false end
+        target:AddLine(LuckysWardrobe.Strings.tracking.hint)
+        return true
     end,
 }
 
@@ -1286,6 +1295,15 @@ shiftDown = true
 capturedView.initializer(button, scrollBox.dataProvider[1])
 button.scripts.OnClick(button, "LeftButton")
 assert(#trackedSources == 2, "both missing sources are tracked")
+
+-- Shift-click tracking is one setting across every page that offers it, so
+-- turning it off hands the click back to selecting the set.
+shiftClickTracks = false
+trackedSources = nil
+playedSound = nil
+button.scripts.OnClick(button, "LeftButton")
+assert(trackedSources == nil and playedSound, "selected the set instead when tracking is turned off")
+shiftClickTracks = true
 shiftDown = false
 
 -- Piece tooltips. The details frame has to sit above the model or the model
@@ -1335,7 +1353,7 @@ assert(collectedPiece.border.alpha == 1 and missingPiece.border.alpha < 1,
     "faded the border with the piece it holds, rather than framing nothing brightly")
 missingPiece.scripts.OnEnter(missingPiece)
 assert(tooltip.appearanceData, "missing pieces still get the native tooltip")
-assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.extraSets.trackHint,
+assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.tracking.hint,
     "missing pieces mention shift-click tracking")
 
 -- Telling someone to track what they are already tracking is no help, so the

@@ -1,11 +1,13 @@
--- luacheck: globals EventUtil
+-- luacheck: globals EventUtil WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
 
--- Lucky's Wardrobe: Shift-click tracking for Blizzard's stock set list.
+-- Lucky's Wardrobe: Shift-click tracking for Blizzard's stock set list, whole
+-- sets from the list itself and single pieces from the set on show.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.SetTracking = {}
 
 local SetTracking = LuckysWardrobe.SetTracking
 local APPEARANCE = Enum.ContentTrackingType.Appearance
+local db
 
 local function getCandidates(sourceID)
     local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
@@ -103,17 +105,61 @@ function SetTracking:TrackSources(sourceIDs, setName)
     reportTracking(setName or "?", trackAll(sourceIDs))
 end
 
-function SetTracking:Init(db)
+-- Every place that answers a shift-click asks here, which is also where turning
+-- the setting off hands the click back.
+function SetTracking:HandlesShiftClick(button)
+    return button == "LeftButton" and IsShiftKeyDown() and db.trackSetsOnShiftClick or false
+end
+
+-- Says the shift-click is there, on a piece it would actually track. The Sets
+-- tab says nothing about tracking of its own, so a piece there is silent about
+-- the one thing you can do with it.
+function SetTracking:AddTrackHint(tooltip, sourceID)
+    if not db.trackSetsOnShiftClick or not sourceID then return false end
+
+    local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+    if not sourceInfo or sourceInfo.isCollected then return false end
+
+    tooltip:AddLine(LuckysWardrobe.Strings.tracking.hint, 0.5, 0.8, 1)
+    tooltip:Show()
+    return true
+end
+
+-- One piece of the set on show, for someone hunting a single item rather than
+-- the whole thing. The set names it so the report reads the same either way.
+local function trackPiece(itemFrame)
+    if itemFrame.collected or not itemFrame.sourceID then return end
+
+    local setID = WardrobeCollectionFrame.SetsCollectionFrame:GetSelectedSetID()
+    local setInfo = setID and C_TransmogSets.GetSetInfo(setID)
+    SetTracking:TrackSources({ itemFrame.sourceID }, setInfo and setInfo.name)
+end
+
+function SetTracking:Init(database)
+    db = database
+
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         local stockOnClick = WardrobeSetsScrollFrameButtonMixin.OnClick
         function WardrobeSetsScrollFrameButtonMixin:OnClick(mouseButton, ...)
-            if db.trackSetsOnShiftClick and mouseButton == "LeftButton" and IsShiftKeyDown() then
+            if SetTracking:HandlesShiftClick(mouseButton) then
                 local setID = WardrobeCollectionFrame.SetsCollectionFrame:GetDefaultSetIDForBaseSet(self.setID)
                 SetTracking:TrackSet(setID or self.setID)
                 return
             end
 
             return stockOnClick(self, mouseButton, ...)
+        end
+
+        -- The details pane stamps its piece frames from this mixin on demand, so
+        -- wrapping it reaches every one of them. Shift-click adds to the stock
+        -- click here rather than taking it, the way the Items tab does, so a
+        -- shift-click with chat open still links the item as well.
+        local stockPieceMouseDown = WardrobeSetsDetailsItemMixin.OnMouseDown
+        function WardrobeSetsDetailsItemMixin:OnMouseDown(button, ...)
+            stockPieceMouseDown(self, button, ...)
+            if SetTracking:HandlesShiftClick(button) then
+                trackPiece(self)
+            end
         end
     end)
 end
