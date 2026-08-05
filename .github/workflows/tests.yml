@@ -1,11 +1,10 @@
 name: Tests
 
 on:
-  # Branches only: a tag push runs these through the release workflow instead.
+  # Branches only: tagging a release does not run the suite.
   push:
     branches: ["**"]
   pull_request:
-  workflow_call:
 
 jobs:
   lua:
