@@ -50,6 +50,7 @@ local CLOTH_CLASS, LEATHER_CLASS = 5, 4
 -- catalogue module is stubbed so the page logic can be driven directly.
 local catalogRecords = {}
 local catalogLooks = {}
+local catalogReport
 local catalogReady = true
 local catalogBuildStarted = false
 local catalogReadyCallback
@@ -57,6 +58,7 @@ LuckysWardrobe.ExtraSetsCatalog = {
     StartBuild = function() catalogBuildStarted = true end,
     IsReady = function() return catalogReady end,
     GetRecords = function() return catalogRecords end,
+    GetReport = function() return catalogReport end,
     OfficialLooks = function() return catalogLooks end,
     OnReady = function(_, callback) catalogReadyCallback = callback end,
 }
@@ -409,22 +411,29 @@ assert(nativeFolds[1].name == "Charm Vestments (Heroic Recolor)"
 assert(#nativeRows[1].alternateNames == 2, "the page's own folds are undisturbed beside the tab's")
 assert(nativeRows[1].alternateNames[1] == "Charm Vestments (Normal Lookalike)", "and keep their names")
 
--- Containment against the tab's looks follows the same name rule as the page's
--- own: a listing missing a piece of the tab's set folds only under that set's
--- name, and one holding a look the tab does not show keeps its row.
+-- Under the tab's own set name the bar is most of the looks, not all of them:
+-- the old five-piece tiers get their empty slots padded with off-set
+-- accessories, each side picks its own, and three stray accessories should
+-- not keep a tier's worth of looks listed twice. A set sharing nothing with
+-- the tab's set, a true recolour, stays whatever it is called, and any
+-- overlap under another name proves nothing at all.
 local nearMissRecords = {
     colourway(621, "Charm Vestments (Dungeon Recolor)", { 5101, 5102 }),
     colourway(622, "Unrelated Garb (Recolor)", { 5101, 5103 }),
     colourway(623, "Charm Vestments (Grand Recolor)", { 5101, 5102, 5103, 5104 }),
+    colourway(624, "Charm Vestments (Azure Recolor)", { 5201, 5202, 5203 }),
+    colourway(625, "Charm Vestments (Padded Recolor)", { 5101, 5102, 5203 }),
 }
 local nearMissRows, nearMissFolds = ExtraSets.CollapseDuplicates(
     ExtraSets.BuildEntries(nearMissRecords, stubResolver(CLOTH_CLASS)), tierLooks)
-assert(#nearMissFolds == 1 and nearMissFolds[1].setID == 621,
-    "a listing the tab's set contains folds away under the set's own name")
-assert(#nearMissRows == 2 and nearMissRows[1].setID == 622 and nearMissRows[2].setID == 623,
-    "a contained look under another name stays, and so does one with a look the tab lacks")
-assert(nearMissRows[2].alternateNames == nil,
-    "the tab's set claimed the contained listing before any larger row here could")
+assert(#nearMissFolds == 3, "every listing mostly made of the tab's looks folded away")
+assert(nearMissFolds[1].setID == 621, "a listing the tab's set wholly contains folds")
+assert(nearMissFolds[2].setID == 623, "so does one carrying a look the tab lacks beside mostly its looks")
+assert(nearMissFolds[3].setID == 625, "and one the same size as the tab's set with an odd accessory")
+assert(#nearMissRows == 2 and nearMissRows[1].setID == 622 and nearMissRows[2].setID == 624,
+    "overlap under another name proves nothing, and a true recolour keeps its row")
+assert(nearMissRows[1].alternateNames == nil and nearMissRows[2].alternateNames == nil,
+    "the tab's set claimed its listings before any larger row here could absorb them")
 
 -- A chain is folded away whole: the twin of a listing the tab's set contains
 -- goes with it, leaving nothing behind.
@@ -756,11 +765,14 @@ EventUtil = {
 
 -- The class the Sets tab is showing, which both set pages read.
 local setsClassFilter = CLOTH_CLASS
+-- The looks the client counts for the Sets tab's own sets, for the looks dump.
+local setPrimaryAppearances = {}
 C_TransmogSets = {
     GetCameraIDs = function() return nil end,
     GetSetInfo = function(setID) return setID == 20 and { name = "Live Name" } or nil end,
     GetTransmogSetsClassFilter = function() return setsClassFilter end,
     SetTransmogSetsClassFilter = function(classID) setsClassFilter = classID end,
+    GetSetPrimaryAppearances = function(setID) return setPrimaryAppearances[setID] end,
 }
 -- Item data arrives from the server, so the client holds it only once asked.
 local loadedItems = {}
@@ -1582,5 +1594,29 @@ collectionUpdated()
 assert(#scrollBox.dataProvider == 2 and scrollBox.dataProvider[1].isGroup,
     "a tab that stops listing the look hands the row back")
 assert(#ExtraSets.NativeFolds() == 0, "and nothing is folded behind it any more")
+
+-- The looks dump, which is what says why a set did or did not fold: every
+-- bundled set matching the query as the client resolves it, beside every
+-- same-named set the Sets tab lists, all as plain appearance IDs.
+
+catalogReport = { official = { [901] = "Charm Vestments", [902] = "Charm Vestments", [903] = "Elsewhere Garb" } }
+setPrimaryAppearances[901] = {
+    { appearanceID = 9501, collected = true },
+    { appearanceID = 9502, collected = true },
+    { appearanceID = 9503, collected = true },
+}
+local looksPrinted = {}
+local realPrint = print
+print = function(line) looksPrinted[#looksPrinted + 1] = line end
+ExtraSets:PrintLooks("charm vestments")
+print = realPrint
+local looksText = table.concat(looksPrinted, "\n")
+assert(looksText:find("set 601: Charm Vestments %(Heroic Recolor%): 9501,9502,9503", 1, false),
+    "a bundled set's line carries the appearance IDs the client resolved for it")
+assert(looksText:find("Sets tab set 901: Charm Vestments: 9501,9502,9503", 1, false),
+    "a Sets tab set's line carries the appearance IDs the client counts for it")
+assert(looksText:find("Sets tab set 902: Charm Vestments: nothing resolved yet", 1, false),
+    "a Sets tab set the client answers no looks for says so rather than vanishing")
+assert(not looksText:find("Elsewhere"), "only names matching the query are dumped")
 
 print("Lucky's Wardrobe extra sets tests passed")

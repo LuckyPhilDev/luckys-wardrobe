@@ -240,13 +240,32 @@ local function containsLookOf(larger, smaller)
     return true
 end
 
--- The first set in the family whose looks include all of this one's and more,
--- meaning this set adds nothing there is left to collect.
+-- Whether the Sets tab's set already shows most of this set's looks. All of
+-- them would be the natural bar, but the old five-piece tiers make it too
+-- high: Blizzard's listing and the bundled one each pad the tier out with
+-- off-set accessories for the empty slots, they rarely pick the same ones,
+-- and three stray accessories should not keep a tier's worth of looks listed
+-- twice. Most-of agreement is the standard SameSet already applies to set
+-- identity. A true recolour stays listed either way: its tinted pieces are
+-- the majority of it, and they are exactly what the tab's set does not hold.
+local function nativeHolds(rival, entry)
+    local matched = 0
+    for id in pairs(entry.appearances) do
+        if rival.appearances[id] ~= nil then matched = matched + 1 end
+    end
+    return matched * 2 >= entry.total
+end
+
+-- The first set in the family this one adds nothing worth a row to: a native
+-- look holding most of it, or an earlier row whose looks include all of this
+-- one's and more.
 local function containedIn(entry, family)
     if not entry.appearanceKey then return nil end
 
     for _, other in ipairs(family) do
-        if other.appearanceKey and other.total > entry.total and containsLookOf(other, entry) then
+        if other.native then
+            if nativeHolds(other, entry) then return other end
+        elseif other.appearanceKey and other.total > entry.total and containsLookOf(other, entry) then
             return other
         end
     end
@@ -290,9 +309,11 @@ end
 -- The surviving row keeps the names it absorbed, so searching for one still
 -- finds it.
 --
--- The Sets tab's own looks fold by the same two rules, which is what keeps a
--- tier's "(... Recolor)" listings off this page: different items, but the very
--- looks the tab already shows under the tier's difficulty dropdown. A set
+-- The Sets tab's own looks fold the same way, only with a lower bar inside a
+-- name: identical looks fold whatever they are called, and under the tab's own
+-- set name a set folds once the tab already shows most of its looks, which is
+-- what keeps a tier's "(... Recolor)" listings off this page even where the
+-- two sides padded the tier's empty slots with different accessories. A set
 -- folded into a native look leaves no row and no absorbed name, because the
 -- place to see it is the Sets tab; it is answered for in the second return,
 -- which is what the report and the find command read.
@@ -1510,6 +1531,60 @@ function ExtraSets:PrintPieceReport()
         ))
         if row.useError then say(S.pieceUseErrorLine:format(row.useError)) end
     end
+end
+
+-- The client's own answer to why a set did or did not fold: the appearance IDs
+-- behind every bundled set matching the query, beside the appearance IDs the
+-- Sets tab counts for its own same-named sets. Dev dump for when a fold, or
+-- the lack of one, surprises someone: two lines that share most of their IDs
+-- name a fold, two that share none name a genuine recolour.
+function ExtraSets:PrintLooks(query)
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local catalog = LuckysWardrobe.ExtraSetsCatalog
+    local report = catalog:GetReport()
+    if not report then
+        say(S.notStarted)
+        return
+    end
+    if not catalog:IsReady() then
+        say(S.building)
+        return
+    end
+
+    local normalized = (query or ""):lower()
+    local resolver = ExtraSets.LiveResolver()
+    local lines = {}
+    for _, record in ipairs(ExtraSets.Records()) do
+        if record.name:lower():find(normalized, 1, true) then
+            local entry = ExtraSets.BuildEntry(record, resolver)
+            lines[#lines + 1] = S.lookLine:format(
+                record.setID, record.name, entry.appearanceKey or S.lookUnresolved)
+        end
+    end
+
+    local natives = {}
+    for setID, name in pairs(report.official or {}) do
+        if name ~= "" and name:lower():find(normalized, 1, true) then
+            natives[#natives + 1] = { setID = setID, name = name }
+        end
+    end
+    table.sort(natives, function(left, right) return left.setID < right.setID end)
+    for _, native in ipairs(natives) do
+        local appearances = {}
+        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(native.setID) or {}) do
+            if appearance.appearanceID then appearances[appearance.appearanceID] = true end
+        end
+        lines[#lines + 1] = S.lookNativeLine:format(
+            native.setID, native.name, ExtraSets.AppearanceKey(appearances) or S.lookUnresolved)
+    end
+
+    if #lines == 0 then
+        say(S.findNone:format(query))
+        return
+    end
+    say(S.looksHeader:format(query))
+    for _, line in ipairs(lines) do say(line) end
 end
 
 -- Shift-clicking a set tracks everything left in it, across every colourway it
