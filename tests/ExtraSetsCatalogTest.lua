@@ -51,9 +51,25 @@ local itemAppearances = {
 local transmogSetInfos = {
     [10] = { name = "Fixture Official Regalia", classMask = 0 },
     [20] = { name = "Fixture Hidden Garb", label = "Fixture Quest", classMask = 8, expansionID = 5 },
+    -- The client numbers a different set 23, which is what a snapshot taken
+    -- from another numbering runs into. Nothing about the answer says so: it is
+    -- a well-formed set, just not this one.
+    [23] = { name = "Fixture Someone Else's Set", label = "Fixture Elsewhere", classMask = 16, expansionID = 9 },
 }
 
-local allSetsByClass = { [1] = { 10 }, [2] = {} }
+-- setID -> the sources the client counts towards its own set of that number.
+local clientSetSources = {
+    [10] = { 1001, 1002 },
+    -- The client counts the tier pieces; the snapshot carries the off-set
+    -- pieces too, so its list is the longer of the two and still the same set.
+    [20] = { 2001, 2003 },
+    [23] = { 5501, 5502, 5503 },
+}
+
+-- The client's Sets tab lists its own 23, which is not the snapshot's 23. A
+-- count of overlap that goes by the number alone counts it as one the player
+-- can already see.
+local allSetsByClass = { [1] = { 10 }, [2] = { 23 } }
 
 LuckysWardrobe.ExtraSetsData = {
     snapshot = "2026-08-04",
@@ -93,6 +109,7 @@ C_TransmogSets = {
         return sets
     end,
     GetSetInfo = function(setID) return transmogSetInfos[setID] end,
+    GetAllSourceIDs = function(setID) return clientSetSources[setID] end,
     GetValidClassForSet = function(setID) return setID == 10 and 2 or nil end,
 }
 
@@ -202,10 +219,22 @@ assert(garb.unresolvedPieces == 0, "a fully resolved set has nothing missing")
 assert(garb.name == "Fixture Hidden Garb", "took the name from the client, not the snapshot")
 assert(garb.classMask == 8 and garb.expansionID == 5 and garb.label == "Fixture Quest",
     "took the class mask, expansion, and label from the client")
+-- The client knows a set 23, but not this one: it shares no source with the
+-- pieces the snapshot lists. Believing it would rename the set, refile it under
+-- another class, and date it to another expansion.
 local partly = recordFor(23)
-assert(partly.name == "Fixture Partly Missing", "kept the bundled name for a set the client does not list")
-assert(partly.classMask == 128 and partly.expansionID == nil,
-    "fell back to the bundled class mask for a set the client does not list")
+assert(partly.name == "Fixture Partly Missing", "kept the bundled name where the client means another set")
+assert(partly.classMask == 128 and partly.expansionID == nil and partly.label == nil,
+    "took nothing from a client set that is not this set")
+assert(Catalog:GetReport().identityMismatches == 1, "counted the set the two numberings disagree about")
+
+assert(Catalog.SameSet({ { sourceID = 1 }, { sourceID = 2 } }, { 1, 2 }), "the same sources are the same set")
+assert(Catalog.SameSet({ { sourceID = 1 }, { sourceID = 2 }, { sourceID = 3 } }, { 1, 2 }),
+    "a snapshot carrying off-set pieces the client does not count is still the same set")
+assert(not Catalog.SameSet({ { sourceID = 1 }, { sourceID = 2 } }, { 8, 9, 1 }),
+    "one shared piece among strangers is not identity")
+assert(not Catalog.SameSet({ { sourceID = 1 } }, {}), "a client that lists no sources settles nothing")
+assert(not Catalog.SameSet({ { sourceID = 1 } }, nil), "nor does one that answers nothing at all")
 
 local chestAndRobe = recordFor(21)
 assert(pieceKeys(chestAndRobe) == "HEAD=2103@62103,CHEST=2102@62102,CHEST=2101@62101",
@@ -234,7 +263,10 @@ assert(ghost.category == "no piece this client can resolve", "said why")
 -- exactly what a later pass would de-duplicate.
 
 assert(recordFor(10), "a set Blizzard already lists is still listed here")
-assert(Catalog:GetReport().alsoOfficial == 1, "counted the overlap with the Sets tab")
+-- The Sets tab lists a 10 and a 23. Only the 10 is the set the snapshot means,
+-- so only the 10 is a set the player can already see without this page.
+assert(Catalog:GetReport().alsoOfficial == 1,
+    "counted the set the Sets tab really holds, not the one that shares its number")
 
 -- Same client, same catalogue.
 
@@ -252,7 +284,10 @@ assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by re
 
 local listed, dropped, native = Catalog:FindCandidates("fixture")
 assert(#listed == 6 and #dropped == 1, "found both listed and left-out sets")
-assert(#native == 1 and native[1].setID == 10, "found the set Blizzard lists natively")
+-- Both sets the Sets tab lists are found by name, the collision among them:
+-- this list is the client's own, so it answers for the client's numbering.
+assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
+    "found the sets Blizzard lists natively, in set order")
 local none, alsoNone, stillNone = Catalog:FindCandidates("nothing named this")
 assert(#none == 0 and #alsoNone == 0 and #stillNone == 0, "an unknown name matches nothing")
 

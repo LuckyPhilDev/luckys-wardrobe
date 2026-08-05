@@ -115,6 +115,31 @@ local function buildPieces(itemIDs)
     return pieces, unresolved
 end
 
+-- Whether the set the client holds under an ID is the set the snapshot holds
+-- under it. The snapshot numbers its sets the way Wowhead does and the client
+-- numbers its own, and the two do not agree: a set the snapshot calls 513 can
+-- be an entirely different set on the client. Believing the client about a set
+-- that is not the same one renames it, refiles it under another class, and
+-- dates it to another expansion, all without a word of complaint.
+--
+-- Sources settle it, and settle it without language in the comparison, so a
+-- localised client answers the same as an English one. The client lists only
+-- the pieces it counts towards the set while the snapshot carries the off-set
+-- pieces too, so its list is expected to be the smaller: agreement on most of
+-- what the client does list is what identity looks like.
+function Catalog.SameSet(pieces, clientSourceIDs)
+    if not clientSourceIDs or #clientSourceIDs == 0 then return false end
+
+    local held = {}
+    for _, piece in ipairs(pieces) do held[piece.sourceID] = true end
+
+    local matched = 0
+    for _, sourceID in ipairs(clientSourceIDs) do
+        if held[sourceID] then matched = matched + 1 end
+    end
+    return matched * 2 >= #clientSourceIDs
+end
+
 local function buildRecord(setID, set, armorType)
     local pieces, unresolved = buildPieces(set.pieces)
     if #pieces == 0 then
@@ -122,11 +147,23 @@ local function buildRecord(setID, set, armorType)
     end
 
     report.unresolvedPieces = report.unresolvedPieces + unresolved
-    -- Where the client knows the set it is the authority: it names it in the
-    -- player's own language and says who may wear it and which expansion it
+    -- Where the client knows the same set it is the authority: it names it in
+    -- the player's own language and says who may wear it and which expansion it
     -- belongs to. The snapshot only fills the gaps. None of this changes while
     -- a session runs, so it is read here rather than every time the page does.
     local info = C_TransmogSets.GetSetInfo(setID)
+    if info and not Catalog.SameSet(pieces, C_TransmogSets.GetAllSourceIDs(setID)) then
+        report.identityMismatches = report.identityMismatches + 1
+        LuckysWardrobe.DevLog("Extra Sets: client set " .. setID .. " (" .. tostring(info.name)
+            .. ") is not the snapshot's " .. tostring(set.name) .. "; keeping the snapshot's own.")
+        info = nil
+    end
+    -- Sharing a number with a set the Sets tab lists is not appearing in the
+    -- Sets tab, which is the whole point of this count: it says how much of the
+    -- bundled list a player can already see without this page.
+    if info and report.official[setID] then
+        report.alsoOfficial = report.alsoOfficial + 1
+    end
     records[#records + 1] = {
         setID = setID,
         name = (info and info.name ~= "" and info.name) or set.name,
@@ -155,12 +192,6 @@ local function workList()
 end
 
 local function finalize()
-    for _, record in ipairs(records) do
-        if report.official[record.setID] then
-            report.alsoOfficial = report.alsoOfficial + 1
-        end
-    end
-
     state = nil
     stepFrame:SetScript("OnUpdate", nil)
 
@@ -203,6 +234,7 @@ function Catalog:StartBuild()
         snapshot = LuckysWardrobe.ExtraSetsData.snapshot,
         build = version .. "." .. buildNumber,
         alsoOfficial = 0,
+        identityMismatches = 0,
         unresolvedPieces = 0,
         rejections = {},
         official = snapshotOfficialSets(),
@@ -279,6 +311,9 @@ function Catalog:PrintReport(verbose)
     -- disagreeing about how much of it this character sees.
     say(S.shownLine:format(#LuckysWardrobe.ExtraSets.Entries()))
     say(S.officialLine:format(report.alsoOfficial))
+    if report.identityMismatches > 0 then
+        say(S.mismatchLine:format(report.identityMismatches))
+    end
     if report.unresolvedPieces > 0 then
         say(S.unresolvedLine:format(report.unresolvedPieces))
     end

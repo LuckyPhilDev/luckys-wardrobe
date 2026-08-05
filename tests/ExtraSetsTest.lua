@@ -205,13 +205,84 @@ local function validity(unwearableSourceID)
     end
 end
 
-assert(not ExtraSets.Wearable(loadingSet, 1, validity()), "a set named for another class is not wearable")
-assert(ExtraSets.Wearable(loadingSet, CLOTH_CLASS, validity()), "the class it is named for can wear it")
-assert(ExtraSets.Wearable(garb, 1, validity()), "an unrestricted set is wearable")
-assert(not ExtraSets.Wearable(garb, 1, validity(2003)),
-    "a set with a piece this character cannot use is not wearable")
-assert(ExtraSets.Wearable(garb, 1, function() return nil end),
+assert(ExtraSets.UnwearableReason(loadingSet, 1, validity()) == "class",
+    "a set named for another class is out of reach over the name on it")
+assert(ExtraSets.UnwearableReason(loadingSet, CLOTH_CLASS, validity()) == nil,
+    "the class it is named for can wear it")
+assert(ExtraSets.UnwearableReason(garb, 1, validity()) == nil, "an unrestricted set is wearable")
+-- Class 1 wears plate and the set is cloth, so armour is what the client is
+-- refusing over even though the set is named for nobody.
+assert(ExtraSets.UnwearableReason(garb, 1, validity(2003)) == "armour",
+    "a set in armour the character does not wear is out of reach over that")
+assert(ExtraSets.UnwearableReason(garb, CLOTH_CLASS, validity(2003)) == "other",
+    "a set in the character's own armour is refused for a reason only the client knows")
+assert(ExtraSets.UnwearableReason(garb, 1, function() return nil end) == nil,
     "a set the client will not judge is left wearable rather than called otherwise")
+
+-- Browsing another class's sets. The client only answers about the character
+-- being played, so it is not asked, and what is left is the record itself.
+assert(ExtraSets.UnwearableReason(garb, 1, nil) == nil,
+    "with no source check to make, an unrestricted set says nothing")
+assert(ExtraSets.UnwearableReason(garb, CLOTH_CLASS, nil) == nil,
+    "a set the chosen class can wear says nothing either")
+assert(ExtraSets.UnwearableReason(loadingSet, 1, nil) == "class",
+    "the name on a set still answers for a class that is only being browsed")
+
+-- What the details panel says once it has a reason.
+
+local S = LuckysWardrobe.Strings.extraSets
+
+assert(ExtraSets.UnwearableNotice(loadingSet, "class", 1)
+    == "This set is not one your character can wear. It belongs to <CLASS5>Class 5.",
+    "named the class the set was made for")
+assert(ExtraSets.UnwearableNotice(garb, "armour", 1)
+    == "This set is not one your character can wear. It is a cloth set, and your character wears plate.",
+    "named the armour the set is and the armour the character wears")
+assert(ExtraSets.UnwearableNotice(garb, "other", 1) == S.notUsable,
+    "a refusal with nothing to explain says only that the set is out of reach")
+
+local unknownClassEntry = ExtraSets.BuildEntry(validRecord({ classMask = 2 ^ (20 - 1) }), stubResolver(1))
+assert(ExtraSets.UnwearableNotice(unknownClassEntry, "class", 1) == S.notUsable,
+    "a set named for a class this client has never heard of names nobody")
+local unarmouredEntry = ExtraSets.BuildEntry(validRecord({ armorType = 0 }), stubResolver(1))
+assert(ExtraSets.UnwearableNotice(unarmouredEntry, "armour", 1) == S.notUsable,
+    "a set in no armour type at all names no armour")
+
+-- The dev dump: one row per piece, carrying the client's answers rather than a
+-- verdict drawn from them.
+
+local function detailResolver(unwearableSourceID)
+    return {
+        sourceValidity = validity(unwearableSourceID),
+        sourceDetail = function(sourceID)
+            if not sourceStates[sourceID] then return nil end
+            local refused = sourceID == unwearableSourceID
+            return {
+                itemID = sourceID + 90000,
+                itemLoaded = true,
+                wardrobe = not refused,
+                valid = not refused,
+                useError = refused and "You cannot use this appearance" or nil,
+            }
+        end,
+    }
+end
+
+local diagnosis, diagnosedReason = ExtraSets.PieceDiagnosis(garb, CLOTH_CLASS, detailResolver(2003), true)
+assert(#diagnosis == 3, "one row per piece of the set")
+assert(diagnosedReason == "other", "reported the same reason the details panel shows")
+assert(diagnosis[1].slot == "HEAD" and diagnosis[1].state == "collected", "rows carry the piece as the page has it")
+assert(diagnosis[1].valid == true and diagnosis[1].useError == nil, "a piece the client accepts says so")
+assert(diagnosis[2].valid == false and diagnosis[2].useError ~= nil,
+    "the one refused piece is named, with the client's own words for it")
+assert(diagnosis[2].itemID == 92003, "a record carrying no item ID falls back to the one the source reports")
+
+-- A piece the client will not answer for at all has to read differently from
+-- one it refuses, or the dump cannot tell a cold cache from a real refusal.
+local unanswered = ExtraSets.PieceDiagnosis(loadingSet, CLOTH_CLASS, detailResolver(), true)
+assert(unanswered[3].valid == nil and unanswered[3].itemLoaded == false,
+    "a source this client has no data for is unanswered, not refused")
+assert(unanswered[3].itemID == nil, "an unresolvable piece reports no item")
 
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")

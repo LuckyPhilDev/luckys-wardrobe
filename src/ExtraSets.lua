@@ -232,13 +232,24 @@ function ExtraSets.BuildEntry(record, resolver)
     }
 end
 
--- Whether this character could wear the set, which is what the details panel
--- says when they could not. Armour type is what keeps most sets off a
--- character and the class mask does not encode it, so the answer comes from
--- the sources themselves. Worked out for the set on screen rather than for
--- every set in the list, because only the one on screen ever says so.
-function ExtraSets.Wearable(entry, classID, sourceValidity)
-    if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return false end
+-- Why the chosen class could not wear the set, or nil when it could, which is
+-- what the details panel says when it could not. Armour type is what keeps
+-- most sets off a character and the class mask does not encode it, so the
+-- refusal comes from the sources themselves and only then is it worth asking
+-- what the class wears. Anything the client turns down for a reason of its
+-- own, a race or faction lock among them, answers "other": there is nothing
+-- more to tell the player than that it turned it down. Worked out for the set
+-- on screen rather than for every set in the list, because only the one on
+-- screen ever says so.
+--
+-- sourceValidity is the client's answer about the character being played, so it
+-- is passed only while the chosen class is that character's own. Browsing
+-- another class's sets is left with what the record itself says, which is the
+-- honest limit: nothing here can ask the client how a class nobody is playing
+-- would fare.
+function ExtraSets.UnwearableReason(entry, classID, sourceValidity)
+    if not ExtraSets.ClassAllowed(entry.classMask or 0, classID) then return "class" end
+    if not sourceValidity then return nil end
 
     local judged, valid = 0, 0
     for _, piece in ipairs(entry.pieces) do
@@ -248,7 +259,54 @@ function ExtraSets.Wearable(entry, classID, sourceValidity)
             if isValid then valid = valid + 1 end
         end
     end
-    return judged == 0 or valid == judged
+    if judged == 0 or valid == judged then return nil end
+
+    local wornArmour = LuckysWardrobe.Classes:ArmourType(classID)
+    if wornArmour and entry.armorType and entry.armorType ~= wornArmour then return "armour" end
+    return "other"
+end
+
+-- The line the details panel shows for a set out of reach, naming the reason
+-- where there is one to name. A set whose mask holds no class this client has,
+-- or an armour type it has no name for, falls back to saying only that the set
+-- is out of reach rather than to a sentence with a hole in it.
+function ExtraSets.UnwearableNotice(entry, reason, classID)
+    local S = LuckysWardrobe.Strings.extraSets
+    if reason == "class" then
+        local classes = LuckysWardrobe.Classes:FromMask(entry.classMask)
+        if #classes > 0 then return S.notUsableClass:format(LuckysWardrobe.Classes:Names(classes)) end
+    elseif reason == "armour" then
+        local setArmour = S.armourTypes[entry.armorType]
+        local wornArmour = S.armourTypes[LuckysWardrobe.Classes:ArmourType(classID)]
+        if setArmour and wornArmour then return S.notUsableArmour:format(setArmour, wornArmour) end
+    end
+    return S.notUsable
+end
+
+-- One row per piece of a set, saying what the client answers about its source,
+-- alongside the reason the set as a whole was called out of reach. A refusal
+-- the set-level notice can only call "other" is one piece answering no, and
+-- this is what says which piece and, where the client offers one, in what
+-- words. The rows are the client's answers about the character being played
+-- whoever the reason speaks for, so ownClass decides only whether the reason
+-- was allowed to weigh them. Dev dump only: the page never asks this of a set
+-- it is not showing.
+function ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
+    local rows = {}
+    for index, piece in ipairs(entry.pieces) do
+        local detail = resolver.sourceDetail(piece.sourceID)
+        rows[index] = {
+            slot = piece.slot,
+            state = piece.state,
+            sourceID = piece.sourceID,
+            itemID = piece.itemID or (detail and detail.itemID),
+            itemLoaded = detail ~= nil and detail.itemLoaded,
+            wardrobe = detail ~= nil and detail.wardrobe,
+            valid = detail and detail.valid,
+            useError = detail and detail.useError,
+        }
+    end
+    return rows, ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
 end
 
 function ExtraSets.IsComplete(entry)
@@ -385,6 +443,24 @@ function ExtraSets.LiveResolver()
             if not sourceInfo.itemID or not C_Item.GetItemInfo(sourceInfo.itemID) then return nil end
             return sourceInfo.isValidSourceForPlayer and true or false
         end,
+        -- Everything the client will say about one source, gathered for the dev
+        -- dump. Each question is one the page already asks somewhere; what the
+        -- dump adds is asking them together, so a refusal can be read against
+        -- the state it was made in. wardrobe is whether the appearance API
+        -- claimed the source at all, which it declines to do for looks outside
+        -- the player's own wardrobe context.
+        sourceDetail = function(sourceID)
+            local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+            if not sourceInfo then return nil end
+            local itemID = sourceInfo.itemID
+            return {
+                itemID = itemID,
+                itemLoaded = itemID ~= nil and C_Item.GetItemInfo(itemID) ~= nil,
+                wardrobe = C_TransmogCollection.GetAppearanceInfoBySource(sourceID) ~= nil,
+                valid = sourceInfo.isValidSourceForPlayer and true or false,
+                useError = sourceInfo.useError,
+            }
+        end,
         playerClassID = function()
             local _, _, classID = UnitClass("player")
             return classID
@@ -417,6 +493,11 @@ function ExtraSets.SyncClassFilter()
     selectedClassID = classID
     ExtraSets.InvalidateEntries()
     return true
+end
+
+--- The class the page is listing, which every answer about a set is about.
+function ExtraSets.SelectedClassID()
+    return selectedClassID
 end
 
 function ExtraSets.Entries()
@@ -670,15 +751,23 @@ function ExtraSets:CreatePage(wardrobe)
         return wrap and longNameText or nameText
     end
 
+    -- The page lists one class at a time, so the class on the dropdown is the
+    -- one the notice speaks for. The client will only answer about the
+    -- character being played, so its per-source verdict is asked for while that
+    -- character's own class is the one on show and left alone otherwise: a set
+    -- the player cannot use says nothing about the class they are browsing.
     local function showNotice(entry)
         local resolver = ExtraSets.LiveResolver()
-        local wearable = ExtraSets.Wearable(entry, resolver.playerClassID(), resolver.sourceValidity)
+        local classID = ExtraSets.SelectedClassID() or resolver.playerClassID()
+        local ownClass = classID == resolver.playerClassID()
+        local unwearable =
+            ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
         if entry.unavailable > 0 then
             noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
-        elseif not wearable then
-            noticeText:SetText(S.notUsable)
+        elseif unwearable then
+            noticeText:SetText(ExtraSets.UnwearableNotice(entry, unwearable, classID))
         end
-        noticeText:SetShown(entry.unavailable > 0 or not wearable)
+        noticeText:SetShown(entry.unavailable > 0 or unwearable ~= nil)
     end
 
     -- Asking for a set's items is what starts them loading, and the answers
@@ -999,6 +1088,7 @@ function ExtraSets:CreatePage(wardrobe)
     end)
     page.Refresh = rebuildNow
     page.RefreshCameras = refreshCamera
+    page.SelectedEntry = function() return selectedEntry end
     page.OnSearchUpdate = function() end
     -- What the wardrobe calls on the frame that owns the tooltip once Tab has
     -- moved the index along.
@@ -1027,6 +1117,46 @@ function ExtraSets:CreatePage(wardrobe)
     LuckysWardrobe.DevLog("Extra Sets page built; model level=" .. model:GetFrameLevel()
         .. " details level=" .. detailsFrame:GetFrameLevel())
     return page
+end
+
+-- The client answers yes, no, or nothing at all, and the third is worth telling
+-- apart from the second: a piece it has not judged is not a piece it refused.
+local function answer(value)
+    local S = LuckysWardrobe.Strings.extraSets.report
+    if value == nil then return S.pieceUnanswered end
+    return value and S.pieceYes or S.pieceNo
+end
+
+function ExtraSets:PrintPieceReport()
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+
+    local entry = extraPage and extraPage.SelectedEntry()
+    if not entry then
+        say(S.piecesNoSelection)
+        return
+    end
+
+    -- The verdict is read for the class on the dropdown, as the panel reads it,
+    -- while the per-piece rows below stay the client's raw answers about the
+    -- character being played. The two disagreeing is worth seeing, not hiding.
+    local resolver = ExtraSets.LiveResolver()
+    local classID = ExtraSets.SelectedClassID() or resolver.playerClassID()
+    local ownClass = classID == resolver.playerClassID()
+    local rows, reason = ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
+    say(S.piecesHeader:format(entry.setID, entry.name, reason or S.piecesWearable))
+    for _, row in ipairs(rows) do
+        say(S.pieceLine:format(
+            row.slot,
+            row.state,
+            row.sourceID,
+            row.itemID or S.pieceNoItem,
+            answer(row.itemLoaded),
+            answer(row.wardrobe),
+            answer(row.valid)
+        ))
+        if row.useError then say(S.pieceUseErrorLine:format(row.useError)) end
+    end
 end
 
 function ExtraSets:TrackMissing(entry)
