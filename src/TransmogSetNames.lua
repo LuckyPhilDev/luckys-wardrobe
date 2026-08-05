@@ -14,6 +14,9 @@ LuckysWardrobe.TransmogSetNames = {}
 local TransmogSetNames = LuckysWardrobe.TransmogSetNames
 
 local NAME_PADDING = 8
+-- A name that wraps is worth more of the card than the gap above it, so the
+-- second line is bought with padding rather than taken from the model.
+local NAME_PADDING_TWO_LINES = 4
 -- A favourited set wears a star in the corner the name starts from, so the name
 -- is given room to clear it. Both edges pull in by the same amount rather than
 -- just the near one, which keeps the name centred on the card.
@@ -40,6 +43,11 @@ local NAME_LEVEL_OFFSET = 5
 local db
 local labels = {}
 
+local function anchorName(text, padding, topPadding)
+    text:SetPoint("TOPLEFT", padding, -topPadding)
+    text:SetPoint("TOPRIGHT", -padding, -topPadding)
+end
+
 local function nameLabel(card)
     if card.luckysSetName then return card.luckysSetName end
 
@@ -48,8 +56,7 @@ local function nameLabel(card)
     overlay:SetFrameLevel(card:GetFrameLevel() + NAME_LEVEL_OFFSET)
 
     local text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline")
-    text:SetPoint("TOPLEFT", NAME_PADDING, -NAME_PADDING)
-    text:SetPoint("TOPRIGHT", -NAME_PADDING, -NAME_PADDING)
+    anchorName(text, NAME_PADDING, NAME_PADDING)
     text:SetJustifyH("CENTER")
     text:SetSpacing(NAME_LINE_SPACING)
     text:SetMaxLines(MAX_LINES)
@@ -84,13 +91,20 @@ end
 -- The star is drawn by the card's own update, which runs before this does.
 function TransmogSetNames:Apply(card, name, collected)
     local overlay = nameLabel(card)
-    overlay.Text:SetText(name or "")
-    local colour = collected and COLLECTED_COLOUR or INCOMPLETE_COLOUR
-    overlay.Text:SetTextColor(colour.r, colour.g, colour.b)
+    local text = overlay.Text
 
+    -- The width the name has to run in is settled before it is set, so the
+    -- shrinking measures against the room the name will really have.
     local padding = card.Favorite.Icon:IsShown() and NAME_PADDING_PAST_STAR or NAME_PADDING
-    overlay.Text:SetPoint("TOPLEFT", padding, -NAME_PADDING)
-    overlay.Text:SetPoint("TOPRIGHT", -padding, -NAME_PADDING)
+    anchorName(text, padding, NAME_PADDING)
+
+    text:SetText(name or "")
+    local colour = collected and COLLECTED_COLOUR or INCOMPLETE_COLOUR
+    text:SetTextColor(colour.r, colour.g, colour.b)
+
+    -- A name that wraps starts higher, so two lines sit no further down the
+    -- card than one line and its gap do.
+    if text:GetNumLines() > 1 then anchorName(text, padding, NAME_PADDING_TWO_LINES) end
 
     overlay:SetShown(db.showSetNames and (name or "") ~= "")
 end

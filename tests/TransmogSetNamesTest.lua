@@ -35,6 +35,7 @@ local function newRegion(kind)
     function region:GetText() return self.text end
     function region:SetShown(shown) self.shown = shown and true or false end
     function region:IsShown() return self.shown end
+    function region:GetNumLines() return self.lines or 1 end
     function region:SetFrameLevel(level) self.level = level end
     function region:GetFrameLevel() return self.level or 1 end
     function region:SetColorTexture(r, g, b, a) self.colour = { r, g, b, a } end
@@ -186,6 +187,22 @@ assert(#plate.points.TOPLEFT == 0 and #plate.points.TOPRIGHT == 0,
     "ran the plate into the card's own top corners rather than stopping short of them")
 assert(plate.points.BOTTOM[1] == text, "took the plate's depth from the name, so a name that wraps still sits on it")
 assert(setCard.Favorite.level > overlay.level, "kept the favourite star over the plate")
+
+-- A name that wraps starts higher up the card.
+
+local wrappingCard = newCard({ set = { setID = 7, collected = true } })
+TransmogSetModelMixin.UpdateSet(wrappingCard)
+local wrappingText = wrappingCard.luckysSetName.fontString
+local oneLineTop = wrappingText.points.TOPLEFT[2]
+
+wrappingText.lines = 2
+TransmogSetModelMixin.UpdateSet(wrappingCard)
+assert(wrappingText.points.TOPLEFT[2] > oneLineTop, "lifted a name that wraps to two lines")
+assert(wrappingText.points.TOPRIGHT[2] == wrappingText.points.TOPLEFT[2], "lifted both of its edges together")
+
+wrappingText.lines = 1
+TransmogSetModelMixin.UpdateSet(wrappingCard)
+assert(wrappingText.points.TOPLEFT[2] == oneLineTop, "put a name back down when the card next held one line")
 
 -- A favourited set wears a star in the corner the name starts from.
 
