@@ -21,6 +21,43 @@ local ExtraSets = LuckysWardrobe.ExtraSets
 local TransmogExtraSets = LuckysWardrobe.TransmogExtraSets
 local CLOTH = 1
 
+-- Where the tab sits in the strip.
+
+-- Blizzard's own numbering, Sets second: the seat is between Sets and Custom
+-- Sets, and nothing else is asked to move.
+assert(TransmogExtraSets.LayoutIndexAfter(2, { 1, 2, 3, 4 }) == 2.5,
+    "took the seat directly after Sets")
+
+-- W2 Transmog Studio renumbers the strip to Items, Studio, Sets, Custom Sets,
+-- Situations. Reading the strip as it stands is what keeps this tab behind Sets
+-- rather than in front of it, which a number worked out before the renumber did.
+assert(TransmogExtraSets.LayoutIndexAfter(3, { 1, 2, 3, 4, 5 }) == 3.5,
+    "followed Sets to its new number rather than keeping the old seat")
+
+-- Asking again once seated gives the same answer: this runs on every layout, so
+-- an answer that drifted would walk the tab across the strip.
+assert(TransmogExtraSets.LayoutIndexAfter(3, { 1, 2, 3, 4, 5 })
+    == TransmogExtraSets.LayoutIndexAfter(3, { 1, 2, 3, 4, 5 }),
+    "asking twice against the same strip seats the tab in the same place")
+
+-- Gaps in the numbering are somebody else's arrangement, so the seat is taken
+-- against the tab that actually follows Sets rather than against Sets plus one.
+assert(TransmogExtraSets.LayoutIndexAfter(10, { 1, 10, 20 }) == 15,
+    "seated between Sets and whatever follows it, however far apart they are")
+
+-- Sets last in the strip: there is no tab to sit in front of.
+assert(TransmogExtraSets.LayoutIndexAfter(5, { 1, 2, 5 }) == 6,
+    "with nothing after Sets, the seat is simply the next one along")
+
+-- The seat lands strictly between Sets and the next tab, so it can never be the
+-- number another tab is already holding.
+local occupied = { 1, 2, 3, 4, 5 }
+local seat = TransmogExtraSets.LayoutIndexAfter(3, occupied)
+for _, index in ipairs(occupied) do
+    assert(seat ~= index, "the seat is never one another tab already holds")
+end
+assert(seat > 3 and seat < 4, "the seat sits between Sets and the tab after it")
+
 -- Entries are built through the real entry builder so the fixtures carry
 -- everything the page reads: states, counts, and the look behind each piece.
 
