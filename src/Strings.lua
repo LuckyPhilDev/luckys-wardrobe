@@ -220,10 +220,21 @@ LuckysWardrobe.Strings = {
         ascending = "Ascending",
         descending = "Descending",
         expansion = "Expansion",
+        source = "Source",
         byName = "Name",
         byCompletion = "Completion",
         byPieces = "Pieces",
         byVariants = "Variants",
+    },
+    -- Where the bundled snapshot says a set comes from. These are the Extra Sets
+    -- page's own, and separate from setSources below, which reads a category off
+    -- the sets Blizzard lists natively.
+    snapshotSources = {
+        crafted = "Crafted",
+        drop = "Drop",
+        pvp = "PvP",
+        quest = "Quest",
+        vendor = "Vendor",
     },
     setSources = {
         raid = "Raid",

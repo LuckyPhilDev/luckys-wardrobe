@@ -919,6 +919,53 @@ filterState.expansions = { false, false }
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 0, "unchecking every expansion empties the list")
 filterState.expansions = { true, true }
 
+-- Source filter. The snapshot's bits are 1 crafted, 2 drop, 4 PvP, 8 quest,
+-- 16 vendor, and Wowhead sets undocumented ones above them.
+
+assert(ExtraSets.MaskHas(18, 2) and ExtraSets.MaskHas(18, 16), "read both bits out of a mask")
+assert(not ExtraSets.MaskHas(18, 1) and not ExtraSets.MaskHas(18, 4), "and left the rest alone")
+assert(not ExtraSets.MaskHas(nil, 2), "a set with no mask carries no source")
+assert(ExtraSets.MaskHas(32770, 2), "read a bit out from under the ones Wowhead does not document")
+
+do
+local droppedEntry = { loading = false, total = 2, collected = 1, sourceMask = 2, armorType = CLOTH }
+local craftedEntry = { loading = false, total = 2, collected = 1, sourceMask = 1, armorType = CLOTH }
+local bothEntry = { loading = false, total = 2, collected = 1, sourceMask = 3, armorType = CLOTH }
+-- No source at all, and only bits Wowhead does not document. The ensembles are
+-- the first of these; their listing carries no source field.
+local sourcelessEntry = { loading = false, total = 2, collected = 1, armorType = CLOTH }
+local undocumentedEntry = { loading = false, total = 2, collected = 1, sourceMask = 32768, armorType = CLOTH }
+local sourceEntries = { droppedEntry, craftedEntry, bothEntry, sourcelessEntry, undocumentedEntry }
+local allSources = { [1] = true, [2] = true, [4] = true, [8] = true, [16] = true }
+
+local function withSources(sources)
+    return { collected = true, uncollected = true, expansions = { true, true }, sources = sources }
+end
+
+assert(#ExtraSets.ApplyFilters(sourceEntries, withSources(allSources)) == 5,
+    "every source checked keeps everything")
+
+local dropsOnly = ExtraSets.ApplyFilters(sourceEntries, withSources({ [2] = true }))
+assert(#dropsOnly == 4, "checking one source keeps the sets that carry it")
+assert(dropsOnly[1] == droppedEntry and dropsOnly[2] == bothEntry,
+    "a set carrying several sources answers to each of them")
+assert(dropsOnly[3] == sourcelessEntry and dropsOnly[4] == undocumentedEntry,
+    "a set no box describes stays on screen rather than hiding behind one")
+
+local craftedOnly = ExtraSets.ApplyFilters(sourceEntries, withSources({ [1] = true }))
+assert(#craftedOnly == 4 and craftedOnly[1] == craftedEntry,
+    "and the same holds for the other way round")
+assert(not ExtraSets.MaskHas(craftedEntry.sourceMask, 2), "which is not the drop bit")
+
+assert(#ExtraSets.ApplyFilters(sourceEntries, withSources({})) == 0,
+    "unchecking every source empties the list, the undescribed sets included")
+
+-- A page that has never opened the menu has no source state at all, which must
+-- filter nothing rather than everything.
+assert(#ExtraSets.ApplyFilters(sourceEntries, { collected = true, uncollected = true,
+    expansions = { true, true } }) == 5, "no source state filters nothing")
+end
+
 -- UI harness: enough of the client to run CreatePage and Attach for real.
 
 local createdFrames = {}
