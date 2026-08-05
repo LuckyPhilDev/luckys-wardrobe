@@ -17,7 +17,7 @@ local NAME_PADDING = 8
 -- A favourited set wears a star in the corner the name starts from, so the name
 -- is given room to clear it. Both edges pull in by the same amount rather than
 -- just the near one, which keeps the name centred on the card.
-local NAME_PADDING_PAST_STAR = 22
+local NAME_PADDING_PAST_STAR = 16
 local NAME_LINE_SPACING = 2
 -- Two lines of a card's width take almost every set name Blizzard has written.
 -- A name past that shrinks to fit rather than wrapping down over the model, and
