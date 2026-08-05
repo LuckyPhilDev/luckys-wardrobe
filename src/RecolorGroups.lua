@@ -28,18 +28,10 @@ local MIN_PREFIX_LENGTH = 5
 -- where a set's pieces are not perfectly consecutive.
 local MAX_UI_ORDER_SPAN = 5000
 
--- Collection type IDs 1 to 11 are exactly the armour slots, so a member's slot
--- is read from Blizzard's own category rather than derived from inventory type.
-local SLOT_BY_CATEGORY = {
-    [1] = "HEAD", [2] = "SHOULDER", [3] = "BACK", [4] = "CHEST", [5] = "BODY",
-    [6] = "TABARD", [7] = "WRIST", [8] = "HANDS", [9] = "WAIST", [10] = "LEGS",
-    [11] = "FEET",
-}
-
-local SLOT_ORDER = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
+-- Collection category IDs 1 to 11 are exactly the armour slots in order, so a
+-- member's slot is read from Blizzard's own category rather than derived from
+-- inventory type.
+local SLOT_ORDER = LuckysWardrobe.Utils.ARMOUR_SLOTS
 local SLOT_INDEX = {}
 for index, slot in ipairs(SLOT_ORDER) do SLOT_INDEX[slot] = index end
 
@@ -76,7 +68,7 @@ end
 function RecolorGroups.Group(appearances)
     local buckets, keys = {}, {}
     for _, appearance in ipairs(appearances) do
-        local slot = SLOT_BY_CATEGORY[appearance.categoryID]
+        local slot = SLOT_ORDER[appearance.categoryID]
         local nameWords = appearance.name and words(appearance.name) or {}
         if slot and nameWords[1] then
             local key = nameWords[1]:lower()

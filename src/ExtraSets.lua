@@ -41,20 +41,8 @@ local PROGRESS_BAR_BORDER_MARGIN = 9
 
 -- Blizzard's localized slot-name globals, for the tooltip's slot line. A slot
 -- with no entry here is one the page could not label, so records are held to
--- the slots named below.
-local SLOT_TOOLTIP_GLOBALS = {
-    HEAD = "HEADSLOT",
-    SHOULDER = "SHOULDERSLOT",
-    BACK = "BACKSLOT",
-    CHEST = "CHESTSLOT",
-    BODY = "SHIRTSLOT",
-    TABARD = "TABARDSLOT",
-    WRIST = "WRISTSLOT",
-    HANDS = "HANDSSLOT",
-    WAIST = "WAISTSLOT",
-    LEGS = "LEGSSLOT",
-    FEET = "FEETSLOT",
-}
+-- the slots the addon knows.
+local SLOT_TOOLTIP_GLOBALS = LuckysWardrobe.Utils.SLOT_TOOLTIP_GLOBALS
 
 local expansionNames = {
     EXPANSION_NAME0,

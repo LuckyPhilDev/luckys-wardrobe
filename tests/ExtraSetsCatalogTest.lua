@@ -151,6 +151,7 @@ C_Item = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Classes.lua")
 -- The build measures how much of a frame each step takes, so the real stopwatch
 -- runs here, wound by hand rather than by the clock the client would provide.

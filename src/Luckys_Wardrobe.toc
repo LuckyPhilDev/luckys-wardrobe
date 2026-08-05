@@ -11,6 +11,7 @@
 
 Strings.lua
 Defaults.lua
+Utils.lua
 Perf.lua
 Data\ExtraSetsData.lua
 Data\ClothSets.lua

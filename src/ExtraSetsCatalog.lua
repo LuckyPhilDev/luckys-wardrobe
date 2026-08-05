@@ -36,12 +36,9 @@ local ARMOUR_SLOTS = {
     INVTYPE_FEET = "FEET",
 }
 
--- Locale-free slot keys in display order, head to feet. Records leave here
--- already ordered, so nothing downstream has to know what a slot means.
-local SLOT_ORDER = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
+-- Records leave here already ordered, so nothing downstream has to know what a
+-- slot means.
+local SLOT_ORDER = LuckysWardrobe.Utils.ARMOUR_SLOTS
 
 local REJECT = {
     unresolvable = "no piece this client can resolve",

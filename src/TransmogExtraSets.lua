@@ -30,11 +30,8 @@ local ITEM_LOAD_BUDGET = 200
 local CARD_GRID_X_PADDING = 27
 local CARD_GRID_Y_PADDING = 19
 
--- The record slots, head to feet, in the order the viewed outfit is read.
-local SLOT_KEYS = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
+-- The record slots, in the order the viewed outfit is read.
+local SLOT_KEYS = LuckysWardrobe.Utils.ARMOUR_SLOTS
 
 -- Session-only state behind the filter button, mirroring the native Sets tab
 -- menu: fully collected sets and everything short of that.

@@ -14,6 +14,7 @@ function CreateFrame()
     }
 end
 
+dofile("src/Utils.lua")
 dofile("src/RecolorGroups.lua")
 local RecolorGroups = LuckysWardrobe.RecolorGroups
 

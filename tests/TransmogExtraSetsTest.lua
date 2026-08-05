@@ -8,6 +8,7 @@ LuckysWardrobe.DevLog = function(message) devLogs[#devLogs + 1] = message end
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Perf.lua")
 local clock = 0
 LuckysWardrobe.Perf.Clock = function()
