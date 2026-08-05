@@ -14,6 +14,9 @@ LuckysWardrobe.TransmogSetNames = {}
 local TransmogSetNames = LuckysWardrobe.TransmogSetNames
 
 local NAME_PADDING = 8
+-- A favourited set wears a star in the corner the name starts from, so the name
+-- begins past it rather than under it.
+local NAME_PADDING_PAST_STAR = 22
 local NAME_LINE_SPACING = 2
 -- Two lines of a card's width take almost every set name Blizzard has written.
 -- A name past that shrinks to fit rather than wrapping down over the model, and
@@ -74,11 +77,19 @@ end
 
 -- Names one card. The name is kept on the card even while the setting is off,
 -- so turning it back on has every card on screen answer at once.
+--
+-- Cards are pooled and a favourited set can hand its card to an ordinary one a
+-- page later, so where the name starts is decided every time rather than once.
+-- The star is drawn by the card's own update, which runs before this does.
 function TransmogSetNames:Apply(card, name, collected)
     local overlay = nameLabel(card)
     overlay.Text:SetText(name or "")
     local colour = collected and COLLECTED_COLOUR or INCOMPLETE_COLOUR
     overlay.Text:SetTextColor(colour.r, colour.g, colour.b)
+
+    local starred = card.Favorite.Icon:IsShown()
+    overlay.Text:SetPoint("TOPLEFT", starred and NAME_PADDING_PAST_STAR or NAME_PADDING, -NAME_PADDING)
+
     overlay:SetShown(db.showSetNames and (name or "") ~= "")
 end
 

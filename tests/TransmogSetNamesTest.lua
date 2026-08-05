@@ -34,6 +34,7 @@ local function newRegion(kind)
     function region:SetText(value) self.text = value or "" end
     function region:GetText() return self.text end
     function region:SetShown(shown) self.shown = shown and true or false end
+    function region:IsShown() return self.shown end
     function region:SetFrameLevel(level) self.level = level end
     function region:GetFrameLevel() return self.level or 1 end
     function region:SetColorTexture(r, g, b, a) self.colour = { r, g, b, a } end
@@ -59,9 +60,12 @@ local function newCard(elementData)
     local card = newRegion("card")
     card.level = CARD_LEVEL
     card.elementData = elementData
-    -- The template's favourite star, a frame of its own over the card.
+    -- The template's favourite star, a frame of its own over the card, whose
+    -- icon shows only for a set the player has favourited.
     card.Favorite = newRegion("frame")
     card.Favorite.level = CARD_LEVEL + 1
+    card.Favorite.Icon = newRegion("texture")
+    card.Favorite.Icon:SetShown(false)
     return card
 end
 
@@ -182,6 +186,22 @@ assert(#plate.points.TOPLEFT == 0 and #plate.points.TOPRIGHT == 0,
     "ran the plate into the card's own top corners rather than stopping short of them")
 assert(plate.points.BOTTOM[1] == text, "took the plate's depth from the name, so a name that wraps still sits on it")
 assert(setCard.Favorite.level > overlay.level, "kept the favourite star over the plate")
+
+-- A favourited set wears a star in the corner the name starts from.
+
+local favouriteCard = newCard({ set = { setID = 7, collected = true } })
+favouriteCard.Favorite.Icon:SetShown(true)
+TransmogSetModelMixin.UpdateSet(favouriteCard)
+
+local favouriteText = favouriteCard.luckysSetName.fontString
+assert(favouriteText.points.TOPLEFT[1] > left[1], "started the name past the star rather than under it")
+assert(favouriteText.points.TOPRIGHT[1] == right[1], "left the name's other edge where it was")
+
+-- Cards are pooled, so the one that carried a favourite carries an ordinary set
+-- a page later.
+favouriteCard.Favorite.Icon:SetShown(false)
+TransmogSetModelMixin.UpdateSet(favouriteCard)
+assert(favouriteText.points.TOPLEFT[1] == left[1], "took the name back to the edge once the star went")
 
 -- Blizzard's Custom Sets tab.
 
