@@ -20,14 +20,16 @@ SetSources.MISC = 7
 -- Menu order for the Sources submenu. Every category the classifier can return
 -- has an entry here, so each set on screen has a checkbox that can hide it and
 -- Uncheck All really does empty the list.
+local S = LuckysWardrobe.Strings.setSources
+
 SetSources.Categories = {
-    { id = SetSources.RAID, label = "Raid" },
-    { id = SetSources.PVP, label = "PvP" },
-    { id = SetSources.COVENANT, label = "Covenants" },
-    { id = SetSources.HERITAGE, label = "Heritage" },
-    { id = SetSources.COSMETIC, label = "Cosmetic" },
-    { id = SetSources.TRADING_POST, label = "Trading Post" },
-    { id = SetSources.MISC, label = "Miscellaneous" },
+    { id = SetSources.RAID, label = S.raid },
+    { id = SetSources.PVP, label = S.pvp },
+    { id = SetSources.COVENANT, label = S.covenants },
+    { id = SetSources.HERITAGE, label = S.heritage },
+    { id = SetSources.COSMETIC, label = S.cosmetic },
+    { id = SetSources.TRADING_POST, label = S.tradingPost },
+    { id = SetSources.MISC, label = S.miscellaneous },
 }
 
 -- Covenant armour sets sit in one contiguous set ID range.

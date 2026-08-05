@@ -42,11 +42,12 @@ local function initialize()
             end
         end,
         tooltip = function(tooltip)
+            local S = LuckysWardrobe.Strings.minimap
             tooltip:AddLine(LuckysWardrobe.Strings.addon.title)
             tooltip:AddLine(" ")
-            tooltip:AddLine("Shift-click: Sets you can finish here", 0.91, 0.86, 0.78)
-            tooltip:AddLine("Right-click: Open settings", 0.91, 0.86, 0.78)
-            tooltip:AddLine("Drag: Move button", 0.54, 0.49, 0.42)
+            tooltip:AddLine(S.shiftClick, 0.91, 0.86, 0.78)
+            tooltip:AddLine(S.rightClick, 0.91, 0.86, 0.78)
+            tooltip:AddLine(S.drag, 0.54, 0.49, 0.42)
         end,
     })
     LuckysWardrobe.DevLog(LuckysWardrobe.Strings.addon.initialized)

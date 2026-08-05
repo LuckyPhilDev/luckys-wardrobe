@@ -269,8 +269,9 @@ function SetsBrowser:SetupFilterMenu(frame)
         end, LE_TRANSMOG_SET_FILTER_PVP)
         root:CreateDivider()
 
-        local sort = root:CreateButton("Sort By")
-        for _, option in ipairs({ { key = "default", label = DEFAULT }, { key = "completion", label = "Completion" } }) do
+        local S = LuckysWardrobe.Strings.filterMenu
+        local sort = root:CreateButton(S.sortBy)
+        for _, option in ipairs({ { key = "default", label = DEFAULT }, { key = "completion", label = S.byCompletion } }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return state.sortMode == mode.key end, function()
                 state.sortMode = mode.key
@@ -280,8 +281,8 @@ function SetsBrowser:SetupFilterMenu(frame)
             end)
         end
 
-        local direction = root:CreateButton("Sort Direction")
-        for _, option in ipairs({ { key = "ascending", label = "Ascending" }, { key = "descending", label = "Descending" } }) do
+        local direction = root:CreateButton(S.sortDirection)
+        for _, option in ipairs({ { key = "ascending", label = S.ascending }, { key = "descending", label = S.descending } }) do
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return state.sortDirection == sortDirection.key end, function()
                 state.sortDirection = sortDirection.key
@@ -291,7 +292,7 @@ function SetsBrowser:SetupFilterMenu(frame)
             end)
         end
 
-        local expansions = root:CreateButton("Expansion")
+        local expansions = root:CreateButton(S.expansion)
         expansions:CreateButton(CHECK_ALL, function()
             setAllExpansions(true)
             refresh(setsFrame)

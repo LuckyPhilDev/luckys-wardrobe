@@ -6,6 +6,7 @@ LuckysWardrobe = {}
 -- A localised difficulty global must classify alongside the English fallbacks.
 PLAYER_DIFFICULTY6 = "Mythisch"
 
+dofile("src/Strings.lua")
 dofile("src/SetSources.lua")
 
 local SetSources = LuckysWardrobe.SetSources

@@ -1452,12 +1452,13 @@ function ExtraSets:CreatePage(wardrobe)
         end)
         root:CreateDivider()
 
-        local sort = root:CreateButton("Sort By")
+        local menu = LuckysWardrobe.Strings.filterMenu
+        local sort = root:CreateButton(menu.sortBy)
         for _, option in ipairs({
             { key = "default", label = DEFAULT },
-            { key = "name", label = "Name" },
-            { key = "completion", label = "Completion" },
-            { key = "pieces", label = "Pieces" },
+            { key = "name", label = menu.byName },
+            { key = "completion", label = menu.byCompletion },
+            { key = "pieces", label = menu.byPieces },
         }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return filters.sortMode == mode.key end, function()
@@ -1466,8 +1467,8 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        local direction = root:CreateButton("Sort Direction")
-        for _, option in ipairs({ { key = "ascending", label = "Ascending" }, { key = "descending", label = "Descending" } }) do
+        local direction = root:CreateButton(menu.sortDirection)
+        for _, option in ipairs({ { key = "ascending", label = menu.ascending }, { key = "descending", label = menu.descending } }) do
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return filters.sortDirection == sortDirection.key end, function()
                 filters.sortDirection = sortDirection.key
@@ -1475,7 +1476,7 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        local expansions = root:CreateButton("Expansion")
+        local expansions = root:CreateButton(menu.expansion)
         expansions:CreateButton(CHECK_ALL, function()
             setAllExpansions(true)
             refresh()

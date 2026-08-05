@@ -14,6 +14,11 @@ LuckysWardrobe.Strings = {
         prefix = "|cffc8902aLucky's Wardrobe:|r",
         initialized = "Initialized.",
     },
+    minimap = {
+        shiftClick = "Shift-click: Sets you can finish here",
+        rightClick = "Right-click: Open settings",
+        drag = "Drag: Move button",
+    },
     addonConflicts = {
         title = "Addon Conflict",
         betterWardrobe = "Better Wardrobe",
@@ -193,6 +198,28 @@ LuckysWardrobe.Strings = {
     },
     setNames = {
         filter = "Show Set Names",
+    },
+    -- Shared by both filter menus, the Sets tab's and the Extra Sets tab's, so
+    -- the same choice reads the same on either. The game supplies the rest of
+    -- what these menus say, Collected and Default among them.
+    filterMenu = {
+        sortBy = "Sort By",
+        sortDirection = "Sort Direction",
+        ascending = "Ascending",
+        descending = "Descending",
+        expansion = "Expansion",
+        byName = "Name",
+        byCompletion = "Completion",
+        byPieces = "Pieces",
+    },
+    setSources = {
+        raid = "Raid",
+        pvp = "PvP",
+        covenants = "Covenants",
+        heritage = "Heritage",
+        cosmetic = "Cosmetic",
+        tradingPost = "Trading Post",
+        miscellaneous = "Miscellaneous",
     },
     extraSets = {
         tab = "Extra Sets",
