@@ -1,40 +1,43 @@
--- luacheck: globals C_TransmogCollection C_TransmogSets CreateFrame Enum GameTooltip ItemRefTooltip LuckysWardrobe TooltipDataProcessor TooltipUtil TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN
+-- luacheck: globals C_TransmogCollection C_TransmogSets CreateColor CreateFrame Enum GameTooltip ItemRefTooltip LuckysWardrobe TooltipDataProcessor TooltipUtil
 
--- Covers what an item's tooltip says about it: whether the look is already yours,
--- which set it belongs to and how far along that set is, which settings silence
--- each half, and which tooltips the lines are put on at all.
+-- Covers what an item's tooltip says about it: which set the piece belongs to and
+-- how far along that set is, how the line is coloured, what silences it, and which
+-- tooltips it is put on at all.
 
 LuckysWardrobe = {}
 
-_G.TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN = "You've collected this appearance"
-_G.TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN = "You haven't collected this appearance"
-
 _G.Enum = { TooltipDataType = { Item = 10 } }
 
--- Two pieces of one set, a piece of no set whose look another item taught, and an
--- item carrying no appearance at all.
+-- Colour codes are what the line carries its colours in, so the test reads them
+-- back the way the client would rather than pretending they are not there.
+_G.CreateColor = function(r, g, b)
+    return {
+        WrapTextInColorCode = function(_, text)
+            return ("[%.2f,%.2f,%.2f]%s[/]"):format(r, g, b, text)
+        end,
+    }
+end
+
+local WHITE = "[1.00,1.00,1.00]"
+local COUNT = "[0.91,0.69,0.25]"
+local COMPLETE = "[0.41,0.86,0.49]"
+
+-- Two pieces of one set, a piece of no set, a piece two sets share, and an item
+-- carrying no appearance at all.
 local ITEMS = {
     ["|Hitem:100|h[Helm]|h"] = { visualID = 501, sourceID = 1 },
     ["|Hitem:200|h[Gloves]|h"] = { visualID = 502, sourceID = 2 },
-    ["|Hitem:300|h[Lookalike]|h"] = { visualID = 503, sourceID = 3 },
+    ["|Hitem:300|h[Trinket]|h"] = { visualID = 503, sourceID = 3 },
     ["|Hitem:400|h[Shared Piece]|h"] = { visualID = 504, sourceID = 4 },
     ["|Hitem:900|h[Potion]|h"] = {},
     [900] = {},
 }
-
--- Source 33 teaches the same look as source 3, and is the one actually collected.
-local collectedSources = { [2] = true, [33] = true }
-local appearanceSources = { [503] = { 3, 33 } }
 
 _G.C_TransmogCollection = {
     GetItemInfo = function(itemInfo)
         local entry = ITEMS[itemInfo] or {}
         return entry.visualID, entry.sourceID
     end,
-    PlayerHasTransmogItemModifiedAppearance = function(sourceID)
-        return collectedSources[sourceID] == true
-    end,
-    GetAllAppearanceSources = function(visualID) return appearanceSources[visualID] end,
 }
 
 -- The set is missing only its helm. The other-class set shares the fourth piece,
@@ -99,112 +102,85 @@ _G.TooltipUtil = {
 dofile("src/Strings.lua")
 dofile("src/ItemTooltips.lua")
 
-local settings = { tooltipAppearanceCollected = true, tooltipSetProgress = true }
+local settings = { tooltipSetProgress = true }
 LuckysWardrobe.ItemTooltips:Init(settings)
 assert(events.TRANSMOG_COLLECTION_UPDATED, "the collection was never listened to")
 assert(#postCalls == 1 and postCalls[1].dataType == Enum.TooltipDataType.Item,
     "the item tooltip was never hooked")
 
-local function linesFor(itemInfo)
-    return LuckysWardrobe.ItemTooltips:Lines(itemInfo) or {}
+local function lineFor(itemInfo)
+    return LuckysWardrobe.ItemTooltips:Line(itemInfo)
 end
 
-local function texts(lines)
-    local said = {}
-    for index, line in ipairs(lines) do said[index] = line.text end
-    return table.concat(said, " | ")
-end
+-- Something in no set, or with no appearance at all, is most of what passes through
+-- a bag and has nothing to do with a wardrobe.
+assert(lineFor("|Hitem:900|h[Potion]|h") == nil, "an item with no appearance was talked about")
+assert(lineFor("|Hitem:300|h[Trinket]|h") == nil, "a piece in no set claimed one")
+assert(lineFor(nil) == nil, "a tooltip with no item at all was answered")
 
--- Something with no appearance is most of what passes through a bag, and has
--- nothing to do with a wardrobe.
-assert(#linesFor("|Hitem:900|h[Potion]|h") == 0, "an item with no appearance was talked about")
-assert(#linesFor(nil) == 0, "a tooltip with no item at all was answered")
+-- The label names the set and counts it, with the name and the count each carrying
+-- their own colour and the label left in the line's own muted one.
+local helm = lineFor("|Hitem:100|h[Helm]|h")
+assert(helm.text == "From set: " .. WHITE .. "Glyphed Garb[/] " .. COUNT .. "7/8[/]",
+    "got: " .. helm.text)
+assert(helm.colour[1] == 0.54, "the label was not left in the muted colour")
 
--- A piece still to collect says so, and names the set it would go towards.
-local helm = linesFor("|Hitem:100|h[Helm]|h")
-assert(#helm == 2, "the helm should say both things, got: " .. texts(helm))
-assert(helm[1].text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN)
-assert(helm[2].text == "Glyphed Garb 7/8", "got: " .. helm[2].text)
-assert(helm[1].colour[1] == 1 and helm[2].colour[1] == 0.91, "an uncollected piece read as collected")
-
--- A piece already collected says so in the collected colour, and the set line is
--- the same either way: it is the set's progress, not the piece's.
-local gloves = linesFor("|Hitem:200|h[Gloves]|h")
-assert(gloves[1].text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN)
-assert(gloves[1].colour[1] == 0.41, "a collected piece was not coloured as one")
-assert(gloves[2].text == "Glyphed Garb 7/8")
-
--- A look is yours whichever item taught it, so an item you have never owned still
--- says you have the appearance. Belonging to no set leaves it at that one line.
-local lookalike = linesFor("|Hitem:300|h[Lookalike]|h")
-assert(#lookalike == 1, "a piece in no set claimed one, got: " .. texts(lookalike))
-assert(lookalike[1].text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN,
-    "a look collected from another item read as missing")
+-- A piece already collected reads the same: it is the set's progress, not the
+-- piece's.
+assert(lineFor("|Hitem:200|h[Gloves]|h").text == helm.text)
 
 -- A piece two sets share is named by the one this character could actually wear,
 -- whichever order the client lists them in.
-local shared = linesFor("|Hitem:400|h[Shared Piece]|h")
-assert(shared[2].text == "Glyphed Garb 7/8", "the unwearable set was named, got: " .. shared[2].text)
+assert(lineFor("|Hitem:400|h[Shared Piece]|h").text:find("Glyphed Garb", 1, true),
+    "the unwearable set was named")
 
 -- Set membership cannot change while a client runs, so it is asked once per piece.
 local lookupsBefore = membershipLookups
-linesFor("|Hitem:100|h[Helm]|h")
-linesFor("|Hitem:100|h[Helm]|h")
+lineFor("|Hitem:100|h[Helm]|h")
+lineFor("|Hitem:100|h[Helm]|h")
 assert(membershipLookups == lookupsBefore, "the same piece was looked up again")
 
--- What is collected does change, and the answer is thrown away when the collection
--- says so rather than being believed for the rest of the session.
-collectedSources[1] = true
+-- What is collected does change, and the count is thrown away when the collection
+-- says so rather than being believed for the rest of the session. A finished set
+-- says so in the colour the tracker finishes one in.
 setPieces[100][1].collected = true
-assert(linesFor("|Hitem:100|h[Helm]|h")[1].text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN,
-    "a stale answer should stand until the collection says otherwise")
+assert(lineFor("|Hitem:100|h[Helm]|h").text:find("7/8", 1, true),
+    "a stale count should stand until the collection says otherwise")
 events.handler()
-local finished = linesFor("|Hitem:100|h[Helm]|h")
-assert(finished[1].text == TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN, "the new appearance was not noticed")
-assert(finished[2].text == "Glyphed Garb 8/8", "the set count did not move")
-assert(finished[2].colour[1] == 0.41, "a finished set was not coloured as done")
-collectedSources[1] = nil
+local finished = lineFor("|Hitem:100|h[Helm]|h")
+assert(finished.text == "From set: " .. WHITE .. "Glyphed Garb[/] " .. COMPLETE .. "8/8[/]",
+    "got: " .. finished.text)
 setPieces[100][1].collected = false
 events.handler()
 
 -- A set this client lists no pieces for has no progress to report, and "0/0" is a
 -- worse answer than saying nothing.
 setsBySource[3] = { 300 }
-assert(#linesFor("|Hitem:300|h[Lookalike]|h") == 1, "an empty set was counted")
+assert(lineFor("|Hitem:300|h[Trinket]|h") == nil, "an empty set was counted")
 setsBySource[3] = nil
 
--- Each half is a setting of its own, and turning both off leaves the tooltip as the
--- game drew it.
+-- Turning it off leaves the tooltip as the game drew it.
 settings.tooltipSetProgress = false
-assert(#linesFor("|Hitem:100|h[Helm]|h") == 1, "the set line survived being turned off")
+assert(lineFor("|Hitem:100|h[Helm]|h") == nil, "the line survived being turned off")
 settings.tooltipSetProgress = true
 
-settings.tooltipAppearanceCollected = false
-local setOnly = linesFor("|Hitem:100|h[Helm]|h")
-assert(#setOnly == 1 and setOnly[1].text == "Glyphed Garb 7/8", "the collected line survived being turned off")
-settings.tooltipAppearanceCollected = true
-
-settings.tooltipAppearanceCollected, settings.tooltipSetProgress = false, false
-assert(#linesFor("|Hitem:100|h[Helm]|h") == 0, "both lines off should say nothing at all")
-settings.tooltipAppearanceCollected, settings.tooltipSetProgress = true, true
-
--- The lines land on the tooltips someone reads an item on. The shopping tooltips
+-- The line lands on the tooltips someone reads an item on. The shopping tooltips
 -- beside them are there to be compared against what is worn.
-local addLines = postCalls[1].handler
+local addLine = postCalls[1].handler
 displayedLink = "|Hitem:100|h[Helm]|h"
-addLines(GameTooltip)
-assert(#GameTooltip.lines == 2, "the item tooltip was left alone")
+addLine(GameTooltip)
+assert(#GameTooltip.lines == 1, "the item tooltip was left alone")
 
-addLines(ItemRefTooltip)
-assert(#ItemRefTooltip.lines == 2, "a linked item said nothing")
+addLine(ItemRefTooltip)
+assert(#ItemRefTooltip.lines == 1, "a linked item said nothing")
 
-addLines(ShoppingTooltip)
-assert(#ShoppingTooltip.lines == 0, "a comparison tooltip repeated the lines")
+addLine(ShoppingTooltip)
+assert(#ShoppingTooltip.lines == 0, "a comparison tooltip repeated the line")
 
 -- A tooltip with no link to offer still has the item ID the data carries.
 displayedLink = nil
 GameTooltip.lines = {}
-addLines(GameTooltip, { id = 900 })
+addLine(GameTooltip, { id = 900 })
 assert(#GameTooltip.lines == 0, "a potion was talked about by ID")
 
 print("Lucky's Wardrobe item tooltips test passed")

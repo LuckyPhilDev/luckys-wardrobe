@@ -223,7 +223,6 @@ assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory 
 assert(LuckysWardrobeDB.hideUnwearableSets == true, "hid sets this character cannot wear by default")
 assert(LuckysWardrobeDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(LuckysWardrobeDB.markTrackedAppearances == true, "marked tracked appearances by default")
-assert(LuckysWardrobeDB.tooltipAppearanceCollected == true, "said whether an appearance is collected by default")
 assert(LuckysWardrobeDB.tooltipSetProgress == true, "said which set a piece belongs to by default")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSWARDROBE1 == "/wardrobe", "registered slash command")

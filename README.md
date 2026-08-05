@@ -10,7 +10,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 - **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
   - **One row per set.** Sets listed twice under two names are folded into a single row, and a set that comes in several colourways is one row with a picker in the details pane to switch between them, the same way the Sets tab handles its variants. A folded name still finds the row that holds it.
-- **Item tooltips**: Hover an item anywhere in the game and its tooltip says whether you have already collected the appearance, then names the set the piece belongs to and how far along that set is, as in "Glyphed Garb 7/8". Either line can be turned off on its own.
+- **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8".
 - **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
 - **Settings access**: Open the addon settings with `/wardrobe`.
 
@@ -85,7 +85,7 @@ Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 
 - **General**: Turn on dev mode for troubleshooting, and see version info.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
-- **Tooltips**: Choose whether an item's tooltip says you have collected its appearance, and whether it names the set the piece belongs to with your progress through it.
+- **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it.
 - **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, and choose how much situation detail appears on saved outfits.
 - **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both.
 

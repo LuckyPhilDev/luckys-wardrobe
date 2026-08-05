@@ -71,14 +71,6 @@ function LuckysWardrobe.Settings:Init(db)
 
     local tooltips = panel:Group(S.settings.groups.tooltips)
     tooltips:Toggle({
-        label = S.settings.tooltipAppearanceCollected.label,
-        desc = S.settings.tooltipAppearanceCollected.desc,
-        checked = db.tooltipAppearanceCollected,
-        onToggle = function(checked)
-            db.tooltipAppearanceCollected = checked
-        end,
-    })
-    tooltips:Toggle({
         label = S.settings.tooltipSetProgress.label,
         desc = S.settings.tooltipSetProgress.desc,
         checked = db.tooltipSetProgress,
