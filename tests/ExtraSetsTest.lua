@@ -442,6 +442,17 @@ assert(byName[1].name == "Live Name" and byName[2].name == "Loading Set",
 assert(ExtraSets.SortEntries(entries, "name", "descending")[1].name == "Test Garb",
     "descending inverts the name order")
 
+-- Big sets and small ones are worth telling apart, so piece count is its own
+-- mode, sized by the same total the row displays.
+local mixedSizes = ExtraSets.SortEntries({ colourwayEntries[1], entries[1] }, "pieces", "ascending")
+assert(mixedSizes[1].total == 2 and mixedSizes[2].total == 3, "fewer pieces sort ahead of more")
+local bySize = ExtraSets.SortEntries(entries, "pieces", "ascending")
+assert(bySize[1].key == 21, "a set with nothing resolvable shows no pieces and leads ascending")
+assert(bySize[2].key == 20 and bySize[3].key == 500, "equal sizes keep their catalogue order")
+assert(ExtraSets.SortEntries(entries, "pieces", "descending")[1].key == 500,
+    "descending puts the biggest sets first")
+assert(entries[1].key == 20, "piece sorting never mutates the source list either")
+
 -- Collected, armour type, and expansion filters.
 
 assert(ExtraSets.IsComplete({ loading = false, total = 2, collected = 2 }), "a full set counts as complete")

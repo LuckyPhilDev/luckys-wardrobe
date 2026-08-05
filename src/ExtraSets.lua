@@ -579,10 +579,12 @@ end
 -- "default" keeps catalogue order: armour type, then set ID, which puts a set's
 -- recolours next to each other. "name" is alphabetical. "completion" puts the
 -- fewest missing pieces first; sets with nothing resolvable sort last because
--- there is nothing left to finish there. Descending inverts any of them.
+-- there is nothing left to finish there. "pieces" puts the smallest sets first,
+-- sized by the same total the row displays, so the order can be read off the
+-- list. Descending inverts any of them.
 function ExtraSets.SortEntries(entries, mode, direction)
     local descending = direction == "descending"
-    if mode ~= "completion" and mode ~= "name" then
+    if mode ~= "completion" and mode ~= "name" and mode ~= "pieces" then
         if not descending then return entries end
         local reversed = {}
         for index = #entries, 1, -1 do reversed[#reversed + 1] = entries[index] end
@@ -598,6 +600,12 @@ function ExtraSets.SortEntries(entries, mode, direction)
         if mode == "name" then
             if left.entry.name ~= right.entry.name then
                 before = left.entry.name < right.entry.name
+            else
+                before = left.order < right.order
+            end
+        elseif mode == "pieces" then
+            if left.entry.total ~= right.entry.total then
+                before = left.entry.total < right.entry.total
             else
                 before = left.order < right.order
             end
@@ -1273,6 +1281,7 @@ function ExtraSets:CreatePage(wardrobe)
             { key = "default", label = DEFAULT },
             { key = "name", label = "Name" },
             { key = "completion", label = "Completion" },
+            { key = "pieces", label = "Pieces" },
         }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return filters.sortMode == mode.key end, function()
