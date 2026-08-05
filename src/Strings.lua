@@ -32,6 +32,18 @@ LuckysWardrobe.Strings = {
         disableBoth = "Disable Both",
         disableSelf = "Disable Lucky's Wardrobe",
     },
+    welcome = {
+        title = "Welcome to Lucky's Wardrobe",
+        headline = "Lucky's Wardrobe is a brand new addon, written from the ground up.",
+        body = "It is early days, so there is functionality it does not have yet. More of it lands with every release.",
+        ask = "If something is broken, or there is a feature you want, come and say so on the Discord. It is the fastest way to reach me, and it is where I decide what to build next.",
+        linkLabel = "Discord",
+        discordURL = "https://discord.gg/ptTtYyAjdZ",
+        copyHint = "Click the address, then press Ctrl+C to copy it.",
+        signoff = "And most of all, enjoy!",
+        close = "Close",
+        reset = "The welcome note is owed again. It arrives a moment after your next login.",
+    },
     settings = {
         groups = {
             general = "General",

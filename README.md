@@ -1,4 +1,4 @@
-[Join the Discord](https://discord.gg/87HRHcAYP)
+[Join the Discord](https://discord.gg/ptTtYyAjdZ)
 
 # Lucky's Wardrobe
 
@@ -63,6 +63,8 @@ Lucky's Better Wardrobe is the addon Lucky's Wardrobe replaced, and the update l
 | `/wardrobe` | Open addon settings |
 | `/lw` | Short form of `/wardrobe` |
 | `/wardrobe sets` | Show the sets you can finish where you are standing |
+| `/wardrobe welcome` | Show the welcome note again, with the Discord address |
+| `/wardrobe welcome reset` | Owe the welcome note again, so it arrives at the next login |
 | `/wardrobe replay` | Reopen the set list as if you had just walked in, for checking your settings |
 | `/wardrobe scan` | Report what the addon can see about the instance you are in, for troubleshooting |
 | `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |

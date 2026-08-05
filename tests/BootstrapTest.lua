@@ -64,6 +64,20 @@ LuckysWardrobe.AddonConflicts = {
     end,
 }
 
+local welcomeDB
+local welcomeShown, welcomeReset = false, false
+LuckysWardrobe.Welcome = {
+    Init = function(_, db)
+        welcomeDB = db
+    end,
+    Show = function()
+        welcomeShown = true
+    end,
+    Reset = function()
+        welcomeReset = true
+    end,
+}
+
 LuckysWardrobe.Settings = {
     Init = function(_, db)
         initializedDB = db
@@ -204,6 +218,8 @@ assert(LuckysWardrobeDB == nil, "ignored another addon's load event")
 
 eventHandler(nil, "ADDON_LOADED", "Luckys_Wardrobe")
 assert(conflictsChecked, "looked for conflicting wardrobe addons")
+assert(welcomeDB == LuckysWardrobeDB, "initialized the first-run note with saved variables")
+assert(LuckysWardrobeDB.welcomeShown == false, "owed the first-run note by default")
 assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved variables")
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
@@ -264,6 +280,14 @@ setListToggled = false
 opened = false
 SlashCmdList.LUCKYSWARDROBE("sets")
 assert(setListToggled and not opened, "/wardrobe sets opened the set list rather than settings")
+
+opened = false
+SlashCmdList.LUCKYSWARDROBE("welcome")
+assert(welcomeShown and not opened, "/wardrobe welcome brought the note back rather than opening settings")
+
+welcomeShown = false
+SlashCmdList.LUCKYSWARDROBE("  WELCOME   Reset  ")
+assert(welcomeReset and not welcomeShown, "/wardrobe welcome reset put it back on the slate, whatever the spacing and case")
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("scan")

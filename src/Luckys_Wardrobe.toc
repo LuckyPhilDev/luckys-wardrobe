@@ -39,5 +39,6 @@ Transmog.lua
 SituationLabels.lua
 SituationPresets.lua
 AddonConflicts.lua
+Welcome.lua
 Settings.lua
 Core.lua
