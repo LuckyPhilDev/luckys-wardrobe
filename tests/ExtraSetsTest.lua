@@ -852,6 +852,44 @@ assert(ExtraSets.SortEntries(entries, "pieces", "descending")[1].key == 500,
     "descending puts the biggest sets first")
 assert(entries[1].key == 20, "piece sorting never mutates the source list either")
 
+-- A set that comes in several colourways is one row saying how many, so the
+-- number of them is worth sorting on. Colourways of one set share a count and
+-- travel together, which is what leaves the row where they land.
+do
+local byVariants = ExtraSets.SortEntries(collapsed, "variants", "ascending")
+assert(byVariants[1].setID == 605, "the set with a single colourway leads ascending")
+assert(byVariants[2].setID == 601 and byVariants[3].setID == 603,
+    "and the colourways of the set with two follow together")
+local variantRows = ExtraSets.BuildRows(ExtraSets.SortEntries(collapsed, "variants", "descending"))
+assert(#variantRows == 2 and variantRows[1].isGroup and #variantRows[1].variants == 2,
+    "descending puts the set with the most colourways first")
+assert(variantRows[2].setID == 605, "leaving the single-colourway set behind it")
+assert(collapsed[1].setID == 601, "variant sorting never mutates the source list either")
+
+-- The count is taken over the list being sorted, which is the list the rows are
+-- built from, so a filter that leaves a set showing one colourway sorts it as
+-- the plain row it becomes.
+local thinned = ExtraSets.SortEntries({ collapsed[1], collapsed[3] }, "variants", "ascending")
+assert(thinned[1].setID == 601 and thinned[2].setID == 605,
+    "one colourway left of a set counts as one, so the two tie and keep their order")
+
+-- There is more than one way to be a colourway of another set, and the row is
+-- where they all come out as a single number, so the count is taken from the
+-- rows themselves: a family read off the names alone is counted like any other.
+local familyRecords = {
+    colourway(661, "Midnight Sweatsuit", { 7001, 7002 }),
+    colourway(662, "Azure Sweatsuit", { 7003, 7004 }),
+    colourway(663, "Lone Vestments", { 5101, 5102 }),
+}
+for at, record in ipairs(familyRecords) do record.ensembles = { 79100 + at } end
+local named = ExtraSets.SortEntries(
+    ExtraSets.BuildEntries(familyRecords, stubResolver(CLOTH_CLASS)), "variants", "ascending")
+assert(named[1].setID == 663, "the set belonging to no family leads ascending")
+assert(named[2].setID == 661 and named[3].setID == 662,
+    "and the two the names alone made a family of follow, counted as the two they become")
+assert(#ExtraSets.BuildRows(named) == 2, "which is the pair of rows the list goes on to show")
+end
+
 -- Collected, armour type, and expansion filters.
 
 assert(ExtraSets.IsComplete({ loading = false, total = 2, collected = 2 }), "a full set counts as complete")

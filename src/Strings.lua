@@ -223,6 +223,7 @@ LuckysWardrobe.Strings = {
         byName = "Name",
         byCompletion = "Completion",
         byPieces = "Pieces",
+        byVariants = "Variants",
     },
     setSources = {
         raid = "Raid",
