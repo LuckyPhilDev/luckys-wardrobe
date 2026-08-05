@@ -40,12 +40,7 @@ local all = Classes:All()
 assert(#all == 5, "the unplayable IDs in the range were counted")
 assert(all[1].name == "Druid" and all[#all].name == "Warrior", "classes came back unsorted")
 
--- One bit per class, counting from the first. Read on its own by anything that
--- knows the class ID it is asking about and has no use for the class list.
-assert(Classes:MaskHasClass(2 ^ (4 - 1), 4), "the bit a mask sets names its class")
-assert(not Classes:MaskHasClass(2 ^ (4 - 1), 5), "a neighbouring bit is another class")
-assert(not Classes:MaskHasClass(0, 4), "a mask naming nobody names no class in particular")
-
+-- One bit per class, counting from the first.
 local rogue = Classes:FromMask(2 ^ (4 - 1))
 assert(#rogue == 1 and rogue[1].file == "ROGUE")
 

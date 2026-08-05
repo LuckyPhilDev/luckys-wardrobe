@@ -1,100 +1,159 @@
--- luacheck: globals C_TransmogSets LuckysWardrobe TransmogFrame UnitClass
+-- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum LuckysWardrobe TransmogFrame UnitClass
 
 -- Covers narrowing Blizzard's Sets tab at the transmogrifier to the sets this
--- character could put on, and the setting that turns the narrowing off.
+-- character could dress in, and the setting that turns the narrowing off.
 
 LuckysWardrobe = {}
 
-local MONK, WARRIOR, PRIEST = 10, 1, 5
+local CLOTH, LEATHER, MAIL, PLATE = 1, 2, 3, 4
+local COSMETIC = 5
+local MONK = 10
 
-local function maskFor(...)
-    local mask = 0
-    for _, classID in ipairs({ ... }) do mask = mask + 2 ^ (classID - 1) end
-    return mask
-end
+Enum = {
+    ItemClass = { Armor = 4, Weapon = 2 },
+}
 
--- Only the mask arithmetic is wanted here, so the class list the rest of the
--- module builds from the client is left out of the fixture.
+-- Only the armour lookup is wanted here, so the class list the real module
+-- builds from the client is left out of the fixture.
 LuckysWardrobe.Classes = {
-    MaskHasClass = function(_, classMask, classID)
-        local flag = 2 ^ (classID - 1)
-        return classMask % (flag + flag) >= flag
-    end,
+    ArmourType = function(_, classID) return classID == MONK and LEATHER or nil end,
 }
 
-local monkSet = { setID = 1, classMask = maskFor(MONK), validForCharacter = true }
-local warriorSet = { setID = 2, classMask = maskFor(WARRIOR), validForCharacter = false }
-local sharedSet = { setID = 3, classMask = maskFor(MONK, PRIEST), validForCharacter = true }
-local cosmeticSet = { setID = 4, classMask = 0, validForCharacter = true }
--- A set the client turns down for a reason other than class: the Kul Tiran
--- quest sets read this way to a Horde character.
-local factionSet = { setID = 5, classMask = 0, validForCharacter = false }
--- The client only ever leaves the mask out on older builds, and a set naming
--- nothing belongs to everybody.
-local masklessSet = { setID = 6, validForCharacter = true }
-
-local availableSets = {
-    monkSet, warriorSet, sharedSet, cosmeticSet, factionSet, masklessSet,
-}
-
-local nativeCalls = 0
-C_TransmogSets = {
-    GetAvailableSets = function()
-        nativeCalls = nativeCalls + 1
-        return availableSets
-    end,
-}
-
-UnitClass = function() return "Monk", "MONK", MONK end
+local function piece(armour, slot)
+    return { armour = armour, slot = slot or "INVTYPE_CHEST" }
+end
 
 dofile("src/TransmogSets.lua")
 
 local TransmogSets = LuckysWardrobe.TransmogSets
 
--- Which sets a character could put on.
+-- Which sets a character could dress in.
 
-assert(TransmogSets.CanWear(monkSet, MONK), "a set naming this class is one to wear")
-assert(not TransmogSets.CanWear(warriorSet, MONK), "another class's set is not")
-assert(TransmogSets.CanWear(sharedSet, MONK),
-    "a set naming several classes is wearable by every one of them")
-assert(TransmogSets.CanWear(cosmeticSet, MONK),
-    "a set naming no class at all belongs to everybody")
-assert(TransmogSets.CanWear(masklessSet, MONK),
-    "a set with no mask at all is not read as another class's")
+assert(TransmogSets.WearsArmourOf({ piece(LEATHER), piece(LEATHER) }, LEATHER),
+    "a set of the armour this class wears is one to dress in")
 
--- The client's own verdict covers the locks a class mask says nothing about.
-assert(not TransmogSets.CanWear(factionSet, MONK),
-    "a set the client refuses is not offered, whatever its mask says")
+-- The monk's own complaint: another leather class's set goes on just the same,
+-- so class is the wrong thing to judge a set by.
+assert(TransmogSets.WearsArmourOf({ piece(LEATHER, "INVTYPE_HEAD"), piece(LEATHER) }, LEATHER),
+    "leather is leather whoever the set was built for")
 
--- A set carrying this character's class is kept even where the client has not
--- answered: the tab is narrowed by what it can prove, not by silence.
-assert(TransmogSets.CanWear({ setID = 7, classMask = maskFor(MONK) }, MONK),
-    "a set the client says nothing about is judged on its mask alone")
+assert(not TransmogSets.WearsArmourOf({ piece(PLATE, "INVTYPE_HEAD"), piece(PLATE) }, LEATHER),
+    "another armour type's set is not one to dress in")
+assert(not TransmogSets.WearsArmourOf({ piece(CLOTH), piece(MAIL) }, LEATHER),
+    "a set of armour types this class never wears is left out whichever they are")
 
-local wearable = TransmogSets.WearableSets(availableSets, MONK)
-assert(#wearable == 4, "kept only the sets this character could put on")
-assert(wearable[1] == monkSet and wearable[2] == sharedSet
-    and wearable[3] == cosmeticSet and wearable[4] == masklessSet,
+-- The whole reason the tab offers these sets at all: a cloak fits anybody, and
+-- one cloak is not a set.
+assert(not TransmogSets.WearsArmourOf({ piece(PLATE), piece(CLOTH, "INVTYPE_CLOAK") }, LEATHER),
+    "a plate set is still a plate set when its cloak would go on")
+assert(not TransmogSets.WearsArmourOf({
+    piece(PLATE),
+    piece(CLOTH, "INVTYPE_CLOAK"),
+    piece(COSMETIC, "INVTYPE_TABARD"),
+    piece(COSMETIC, "INVTYPE_BODY"),
+}, LEATHER), "several pieces anybody could wear still do not make a set this class can dress in")
+
+-- Sets nobody is held out of.
+assert(TransmogSets.WearsArmourOf({ piece(COSMETIC), piece(COSMETIC, "INVTYPE_LEGS") }, LEATHER),
+    "a cosmetic set belongs to everybody")
+assert(TransmogSets.WearsArmourOf({ piece(CLOTH, "INVTYPE_CLOAK") }, LEATHER),
+    "a set of nothing but cloaks holds nobody out")
+assert(TransmogSets.WearsArmourOf({}, LEATHER),
+    "a set the client has said nothing about is not judged on nothing")
+
+-- A class this version has no armour type for is held to none.
+assert(TransmogSets.WearsArmourOf({ piece(PLATE) }, nil),
+    "a class with no armour type of its own is offered every set")
+
+-- Narrowing the list itself.
+
+local kept = TransmogSets.WearableSets(
+    { { setID = 1 }, { setID = 2 }, { setID = 3 } },
+    function(setID) return setID ~= 2 end)
+assert(#kept == 2 and kept[1].setID == 1 and kept[2].setID == 3,
     "kept the sets in the order the tab already had them")
 
--- The tab reads its cards through the wrapped call.
+-- Reading a set through the client.
+
+local ARMOUR_ITEM = {
+    [101] = { equipLoc = "INVTYPE_CHEST", classID = Enum.ItemClass.Armor, subClassID = LEATHER },
+    [102] = { equipLoc = "INVTYPE_HEAD", classID = Enum.ItemClass.Armor, subClassID = LEATHER },
+    [201] = { equipLoc = "INVTYPE_CHEST", classID = Enum.ItemClass.Armor, subClassID = PLATE },
+    [202] = { equipLoc = "INVTYPE_CLOAK", classID = Enum.ItemClass.Armor, subClassID = CLOTH },
+    -- A weapon carries no armour type at all, so it decides nothing.
+    [301] = { equipLoc = "INVTYPE_2HWEAPON", classID = Enum.ItemClass.Weapon, subClassID = 8 },
+}
+
+local setSources = {
+    [1] = { 101, 102 },
+    [2] = { 201, 202 },
+    [3] = { 301 },
+    -- The client has nothing to say about this one yet.
+    [4] = {},
+}
+
+local primaryAppearanceCalls = {}
+C_TransmogSets = {
+    GetSetPrimaryAppearances = function(setID)
+        primaryAppearanceCalls[setID] = (primaryAppearanceCalls[setID] or 0) + 1
+        local appearances = {}
+        for index, sourceID in ipairs(setSources[setID] or {}) do
+            appearances[index] = { appearanceID = sourceID, collected = true }
+        end
+        return appearances
+    end,
+    GetAvailableSets = function()
+        return { { setID = 1 }, { setID = 2 }, { setID = 3 }, { setID = 4 } }
+    end,
+}
+
+C_TransmogCollection = {
+    GetSourceInfo = function(sourceID)
+        if not ARMOUR_ITEM[sourceID] then return nil end
+        return { itemID = sourceID }
+    end,
+}
+
+C_Item = {
+    GetItemInfoInstant = function(itemID)
+        local item = ARMOUR_ITEM[itemID]
+        if not item then return nil end
+        return itemID, nil, nil, item.equipLoc, nil, item.classID, item.subClassID
+    end,
+}
+
+UnitClass = function() return "Monk", "MONK", MONK end
 
 local db = { hideUnwearableSets = true }
 TransmogSets:Init(db)
 
 local narrowed = C_TransmogSets.GetAvailableSets()
-assert(nativeCalls == 1, "asked the client for its own list first")
-assert(#narrowed == 4 and narrowed[1] == monkSet, "the tab is handed the narrowed list")
+assert(#narrowed == 3, "kept the leather set, the weapon set and the one not yet described")
+assert(narrowed[1].setID == 1 and narrowed[2].setID == 3 and narrowed[3].setID == 4,
+    "dropped only the plate set the monk could take a cloak from")
+
+-- The verdict is worked out once. The tab asks about every set it lists on
+-- every refresh, so asking the client again each time would be hundreds of
+-- reads a keystroke.
+C_TransmogSets.GetAvailableSets()
+assert(primaryAppearanceCalls[1] == 1 and primaryAppearanceCalls[2] == 1,
+    "read what a set is made of once and remembered the answer")
+
+-- A set the client had nothing to say about is asked again rather than kept
+-- forever on the strength of an empty answer.
+assert(primaryAppearanceCalls[4] == 2, "asked again about the set with no pieces yet")
+setSources[4] = { 201 }
+narrowed = C_TransmogSets.GetAvailableSets()
+assert(#narrowed == 2, "judged the set once the client described it")
 
 db.hideUnwearableSets = false
-assert(C_TransmogSets.GetAvailableSets() == availableSets,
+assert(#C_TransmogSets.GetAvailableSets() == 4,
     "turning the setting off hands back the client's own list untouched")
 
 -- Wrapping twice would filter a filtered list and lose the original.
 TransmogSets:Init(db)
 db.hideUnwearableSets = true
-assert(#C_TransmogSets.GetAvailableSets() == 4, "a second init left the wrapper alone")
-assert(nativeCalls == 3, "every read still reaches the client exactly once")
+assert(#C_TransmogSets.GetAvailableSets() == 2, "a second init left the wrapper alone")
 
 -- Redrawing the tab after the setting changes.
 

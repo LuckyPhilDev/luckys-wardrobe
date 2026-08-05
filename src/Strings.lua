@@ -109,7 +109,7 @@ LuckysWardrobe.Strings = {
         },
         hideUnwearableSets = {
             label = "Hide Sets You Cannot Wear",
-            desc = "The Sets tab at the transmog NPC offers a set for every class, so most of what it shows is armour this character can never put on. Turn this off to browse them all again.",
+            desc = "The Sets tab at the transmog NPC lists a set the moment one piece of it would fit, and a cloak fits anybody, so it fills up with armour this character cannot wear. Sets in your own armour type are kept whichever class they were built for. Turn this off to browse the lot again.",
         },
         showSituationValues = {
             label = "Show Situation Values",
