@@ -73,7 +73,9 @@ function LuckysWardrobe.Settings:Init(db)
     transmog:Toggle({
         label = S.settings.hideUnwearableSets.label,
         desc = S.settings.hideUnwearableSets.desc,
-        checked = db.hideUnwearableSets,
+        -- The same switch sits in the Sets tab's own filter menu, so the panel
+        -- reads it afresh rather than showing what it was last time.
+        checked = function() return db.hideUnwearableSets end,
         onToggle = function(checked)
             db.hideUnwearableSets = checked
             LuckysWardrobe.TransmogSets:Refresh()

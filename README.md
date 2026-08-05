@@ -29,7 +29,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 ### Transmog Window
 
-- **Only the sets you can wear**: The Sets tab at the transmog NPC lists a set as soon as one piece of it would fit, and a cloak fits anybody, so it fills up with armour your character cannot wear. Those are hidden, leaving what you could actually dress in. Sets in your own armour type stay whichever class they were built for. Turn it off in settings to browse the lot again.
+- **Only the sets you can wear**: The Sets tab at the transmog NPC lists a set as soon as one piece of it would fit, and a cloak fits anybody, so it fills up with armour your character cannot wear. Those are hidden, leaving what you could actually dress in. Sets in your own armour type stay whichever class they were built for. Turn it off from the tab's own Filter button, or in settings, to browse the lot again.
 - **Extra Sets tab**: A tab beside Sets at the transmog NPC showing the hidden sets your class can wear, drawn as the same preview cards as the Sets tab. Click a set to apply every piece you have collected, shift-click to track what you are missing, and right-click for its Wowhead address. The cards run from closest to complete down to untouched, with search and a collected filter to narrow them.
 - **Random outfit**: Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Situation presets**: Save the situations you have picked for an outfit under a name, then apply the whole lot to another outfit in one click. Delete them from the same menu.

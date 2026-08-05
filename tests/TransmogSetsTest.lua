@@ -1,7 +1,8 @@
--- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum LuckysWardrobe TransmogFrame UnitClass
+-- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum EventUtil LuckysWardrobe Menu TransmogFrame UnitClass
 
 -- Covers narrowing Blizzard's Sets tab at the transmogrifier to the sets this
--- character could dress in, and the setting that turns the narrowing off.
+-- character could dress in, and the setting that turns the narrowing off, in
+-- the tab's own filter menu as well as the settings panel.
 
 LuckysWardrobe = {}
 
@@ -23,6 +24,18 @@ local function piece(armour, slot)
     return { armour = armour, slot = slot or "INVTYPE_CHEST" }
 end
 
+-- The tab's filter menu is Blizzard's, appended to by tag rather than rebuilt.
+local menuModifiers = {}
+Menu = {
+    ModifyMenu = function(tag, callback) menuModifiers[tag] = callback end,
+}
+
+local pendingAddOns = {}
+EventUtil = {
+    ContinueOnAddOnLoaded = function(addOn, callback) pendingAddOns[addOn] = callback end,
+}
+
+dofile("src/Strings.lua")
 dofile("src/TransmogSets.lua")
 
 local TransmogSets = LuckysWardrobe.TransmogSets
@@ -171,6 +184,62 @@ assert(refreshes == 1, "redrew the tab that was on screen")
 setsFrame.shown = false
 TransmogSets:Refresh()
 assert(refreshes == 1, "left a tab nobody is looking at to redraw when it opens")
+
+-- The same switch in the tab's own Filter button.
+
+local filterButton = {
+    SetIsDefaultCallback = function(self, callback) self.isDefault = callback end,
+    SetDefaultCallback = function(self, callback) self.restoreDefaults = callback end,
+}
+setsFrame.FilterButton = filterButton
+setsFrame.shown = true
+pendingAddOns["Blizzard_Transmog"]()
+
+local menuEntries = {}
+local rootDescription = {
+    CreateDivider = function() menuEntries[#menuEntries + 1] = { divider = true } end,
+    CreateCheckbox = function(_, label, isSelected, setSelected)
+        menuEntries[#menuEntries + 1] =
+            { label = label, isSelected = isSelected, setSelected = setSelected }
+    end,
+}
+menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, rootDescription)
+
+assert(#menuEntries == 2 and menuEntries[1].divider,
+    "appended one box, kept apart from the boxes Blizzard put there")
+
+local checkbox = menuEntries[2]
+assert(checkbox.label == LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
+    "the menu and the settings panel name the one switch the same way")
+assert(checkbox.isSelected(), "the box reads the setting as it stands rather than a copy of it")
+
+refreshes = 0
+checkbox.setSelected()
+assert(db.hideUnwearableSets == false and refreshes == 1,
+    "unticking the box turned the filter off and redrew the tab")
+checkbox.setSelected()
+assert(db.hideUnwearableSets == true, "ticking it again turned the filter back on")
+
+-- The button says whether anything is narrowing the list, and offers to put it
+-- back. Both have to count our filter or it is the one the reset walks past.
+local blizzardFiltersDefault = true
+C_TransmogSets.IsUsingDefaultSetsFilters = function() return blizzardFiltersDefault end
+local blizzardFiltersRestored = false
+C_TransmogSets.SetDefaultSetsFilters = function() blizzardFiltersRestored = true end
+
+assert(filterButton.isDefault(), "everything at its default reads as untouched")
+blizzardFiltersDefault = false
+assert(not filterButton.isDefault(), "one of Blizzard's own boxes still marks the button")
+blizzardFiltersDefault = true
+db.hideUnwearableSets = false
+assert(not filterButton.isDefault(), "our filter turned off marks the button too")
+
+refreshes = 0
+filterButton.restoreDefaults()
+assert(db.hideUnwearableSets == true and blizzardFiltersRestored and refreshes == 1,
+    "the reset put our filter back alongside Blizzard's own and redrew the tab")
+
+setsFrame.shown = false
 
 -- The transmogrifier has never been opened, so its frames do not exist yet.
 TransmogFrame = nil

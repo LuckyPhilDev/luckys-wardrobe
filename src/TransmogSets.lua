@@ -1,4 +1,4 @@
--- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum TransmogFrame UnitClass
+-- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum EventUtil Menu TransmogFrame UnitClass
 
 -- Lucky's Wardrobe: Blizzard's own Sets tab at the transmogrifier, narrowed to
 -- the sets this character could actually dress in. The tab lists a set the
@@ -114,8 +114,47 @@ function TransmogSets:Refresh()
     if frame and frame:IsShown() and type(frame.Refresh) == "function" then frame:Refresh() end
 end
 
+function TransmogSets:Toggle()
+    db.hideUnwearableSets = not db.hideUnwearableSets
+    self:Refresh()
+end
+
+-- The tab's own Filter button, where somebody narrowing the list is already
+-- looking. Blizzard tags the menu for exactly this, so the entry is appended to
+-- the menu they built rather than to one of ours built over the top: their
+-- boxes stay theirs, and a patch that adds another brings it along.
+local function addFilterEntry(_owner, rootDescription)
+    rootDescription:CreateDivider()
+    rootDescription:CreateCheckbox(
+        LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
+        function() return db.hideUnwearableSets end,
+        function() TransmogSets:Toggle() end)
+end
+
+-- The button marks itself as holding a filter, and offers to put it back. Left
+-- alone it would answer for Blizzard's own boxes and quietly ignore ours, so a
+-- list narrowed by this setting would look untouched and the reset would leave
+-- it narrowed.
+local function claimFilterDefaults()
+    local frame = setsFrame()
+    local button = frame and frame.FilterButton
+    if not button then return end
+
+    button:SetIsDefaultCallback(function()
+        return db.hideUnwearableSets and C_TransmogSets.IsUsingDefaultSetsFilters()
+    end)
+    button:SetDefaultCallback(function()
+        db.hideUnwearableSets = true
+        C_TransmogSets.SetDefaultSetsFilters()
+        TransmogSets:Refresh()
+    end)
+end
+
 function TransmogSets:Init(database)
     db = database
+
+    Menu.ModifyMenu("MENU_TRANSMOG_SETS_FILTER", addFilterEntry)
+    EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", claimFilterDefaults)
 
     -- The tab builds its cards from this one call, so narrowing the answer
     -- narrows the tab without touching a frame the client owns. Blizzard_Transmog
