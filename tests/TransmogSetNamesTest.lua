@@ -34,6 +34,13 @@ local function newRegion(kind)
     function region:SetShown(shown) self.shown = shown and true or false end
     function region:SetFrameLevel(level) self.level = level end
     function region:GetFrameLevel() return self.level or 1 end
+    function region:SetColorTexture(r, g, b, a) self.colour = { r, g, b, a } end
+    function region:CreateTexture(_, layer)
+        local texture = newRegion("texture")
+        texture.layer = layer
+        self.texture = texture
+        return texture
+    end
     function region:CreateFontString(_, layer, template)
         local fontString = newRegion("fontstring")
         fontString.layer = layer
@@ -134,6 +141,14 @@ local left, right, bottom = text.points.TOPLEFT, text.points.TOPRIGHT, text.poin
 assert(left and right and not bottom, "sat the name across the top of the card")
 assert(left[1] > 0 and left[2] < 0, "inset the name from the card's top left corner")
 assert(right[1] < 0 and right[2] < 0, "inset the name from the card's top right corner")
+
+local plate = overlay.texture
+assert(plate, "gave the name a plate to sit on")
+assert(plate.layer == "BACKGROUND", "drew the plate behind the name")
+assert(plate.colour[1] == 0 and plate.colour[2] == 0 and plate.colour[3] == 0, "made the plate black")
+assert(plate.colour[4] > 0.5 and plate.colour[4] < 1, "left the plate a little translucent")
+assert(plate.points.TOPLEFT[1] == text and plate.points.BOTTOMRIGHT[1] == text,
+    "sized the plate from the name, so a name that wraps still sits on it")
 
 -- Blizzard's Custom Sets tab.
 

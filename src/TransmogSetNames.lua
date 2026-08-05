@@ -24,6 +24,10 @@ local MAX_LINES = 2
 local MIN_LINE_HEIGHT = 10
 local COLLECTED_COLOUR = { r = 0.827, g = 0.776, b = 0.620 }
 local INCOMPLETE_COLOUR = { r = 0.612, g = 0.627, b = 0.690 }
+-- A near solid plate behind the name, since a card whose model is pale at the
+-- shoulders leaves the outline alone to hold the letters apart.
+local PLATE_PADDING = 4
+local PLATE_ALPHA = 0.8
 -- Above the card's own dimming and its transmogrified glow, so the name stays
 -- readable whatever state the card is in.
 local NAME_LEVEL_OFFSET = 5
@@ -48,6 +52,13 @@ local function nameLabel(card)
     -- inside the lines it is allowed rather than cutting it off.
     Mixin(text, AutoScalingFontStringMixin)
     text:SetMinLineHeight(MIN_LINE_HEIGHT)
+
+    -- The plate takes its size from the name, so one line and a name that wraps
+    -- to two both sit on a plate of their own height.
+    local plate = overlay:CreateTexture(nil, "BACKGROUND")
+    plate:SetColorTexture(0, 0, 0, PLATE_ALPHA)
+    plate:SetPoint("TOPLEFT", text, "TOPLEFT", -PLATE_PADDING, PLATE_PADDING)
+    plate:SetPoint("BOTTOMRIGHT", text, "BOTTOMRIGHT", PLATE_PADDING, -PLATE_PADDING)
 
     overlay.Text = text
     card.luckysSetName = overlay
