@@ -93,6 +93,13 @@ LuckysWardrobe.WowheadLink = {
     end,
 }
 
+local itemTooltipsDB
+LuckysWardrobe.ItemTooltips = {
+    Init = function(_, db)
+        itemTooltipsDB = db
+    end,
+}
+
 LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }
@@ -119,7 +126,11 @@ LuckysWardrobe.TransmogExtraSets = {
 }
 
 local reportedVerbose
+local catalogueStarted = false
 LuckysWardrobe.ExtraSetsCatalog = {
+    Init = function()
+        catalogueStarted = true
+    end,
     PrintReport = function(_, verbose)
         reportedVerbose = verbose
     end,
@@ -189,6 +200,8 @@ assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved varia
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
+assert(itemTooltipsDB == LuckysWardrobeDB, "initialized item tooltips with saved variables")
+assert(catalogueStarted, "set the Extra Sets catalogue building without waiting for Collections")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
@@ -215,6 +228,7 @@ assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory 
 assert(LuckysWardrobeDB.hideUnwearableSets == true, "hid sets this character cannot wear by default")
 assert(LuckysWardrobeDB.trackSetsOnShiftClick == true, "enabled set tracking by default")
 assert(LuckysWardrobeDB.markTrackedAppearances == true, "marked tracked appearances by default")
+assert(LuckysWardrobeDB.tooltipSetProgress == true, "said which set a piece belongs to by default")
 assert(logCreated, "created development logger")
 assert(SLASH_LUCKYSWARDROBE1 == "/wardrobe", "registered slash command")
 assert(SLASH_LUCKYSWARDROBE2 == "/lw", "registered short slash alias")
