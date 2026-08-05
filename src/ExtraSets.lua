@@ -19,6 +19,18 @@ local NATIVE_SETS_TAB_ID = 2
 -- wraps it instead.
 local NAME_MIN_LINE_HEIGHT = 16
 
+-- The row of piece icons, as the Sets tab draws it: one strip under the set's
+-- counts. The sets an ensemble teaches run to dozens of pieces where a tier
+-- runs to nine, so a set too wide for the pane wraps onto further strips, and
+-- one with more pieces than the pane has room for shows what fits and says how
+-- many it left off rather than burying the model it is describing.
+local PIECES_PER_ROW = 10
+local PIECE_SPACING = 37
+local PIECE_ROW_HEIGHT = 37
+local PIECE_ROW_TOP = -98
+local PIECE_ROW_BACKGROUND_TOP = -82
+local MAX_PIECE_ROWS = 4
+
 -- The offsets Blizzard gives the class dropdown above the Sets page.
 local CLASS_DROPDOWN_X = -9
 local CLASS_DROPDOWN_Y = 4
@@ -92,6 +104,16 @@ function ExtraSets.ValidateRecord(record)
     if type(record.armorType) ~= "number" then return nil, "armorType is required" end
     if type(record.classMask) ~= "number" or record.classMask < 0 then return nil, "classMask is required" end
     if type(record.pieces) ~= "table" or #record.pieces == 0 then return nil, "pieces are required" end
+    if record.ensembles ~= nil then
+        if type(record.ensembles) ~= "table" or #record.ensembles == 0 then
+            return nil, "ensembles must list at least one item"
+        end
+        for _, itemID in ipairs(record.ensembles) do
+            if type(itemID) ~= "number" or itemID <= 0 or itemID % 1 ~= 0 then
+                return nil, "ensemble item IDs must be positive integers"
+            end
+        end
+    end
 
     local seenSourceIDs = {}
     for _, piece in ipairs(record.pieces) do
@@ -103,6 +125,33 @@ function ExtraSets.ValidateRecord(record)
         seenSourceIDs[piece.sourceID] = true
     end
     return true
+end
+
+-- What tells one record from another. The bundled armour lists number their
+-- sets the way Wowhead does, while the ensembles carry the client's own
+-- numbering, so the same number stands for two unrelated sets across the two
+-- listings and the number alone cannot say which record is which.
+function ExtraSets.RecordKey(record)
+    if record.ensembles then return "ensemble:" .. record.setID end
+    return record.setID
+end
+
+-- The ensembles that teach a look, gathered without repeats. Merging never
+-- writes into either list it was given: the first belongs to a catalogue record
+-- that outlives every rebuild of the page.
+function ExtraSets.MergeEnsembles(into, from)
+    if not from then return into end
+
+    local merged, seen = {}, {}
+    for _, list in ipairs({ into or {}, from }) do
+        for _, itemID in ipairs(list) do
+            if not seen[itemID] then
+                seen[itemID] = true
+                merged[#merged + 1] = itemID
+            end
+        end
+    end
+    return merged
 end
 
 -- A mask of zero names every class at once, which is how the game marks the
@@ -121,7 +170,9 @@ function ExtraSets.MatchesClass(record, classID)
     if record.classMask ~= 0 then return ExtraSets.ClassAllowed(record.classMask, classID) end
 
     local armourType = LuckysWardrobe.Classes:ArmourType(classID)
-    return armourType == nil or record.armorType == armourType
+    -- A set of nothing but cloaks, tabards, shirts, and cosmetics is nobody's
+    -- armour in particular, which zero says, and anybody can wear it.
+    return armourType == nil or record.armorType == 0 or record.armorType == armourType
 end
 
 -- Both pages read one class dropdown, so a set Blizzard's Sets tab lists for
@@ -134,12 +185,35 @@ function ExtraSets.ListedNatively(record, classID)
     return ExtraSets.ClassAllowed(listedFor, classID)
 end
 
+-- Plenty of ensembles are one appearance rather than a set: a cloak sold on its
+-- own, a set of shoulders in four colours. A row here is a set to collect and,
+-- at the transmogrifier, an outfit to put on, and one slot is neither, so those
+-- are left off both pages. An item tooltip still names the set a piece belongs
+-- to, which is where a single appearance is worth answering for.
+--
+-- Only the ensembles are held to this. A set from the armour lists reaching one
+-- slot is one this client could only partly resolve rather than a set of one
+-- piece, and dropping it would hide the little of it there is left to collect.
+function ExtraSets.IsSingleSlotEnsemble(record)
+    if not record.ensembles then return false end
+
+    local slot
+    for _, piece in ipairs(record.pieces) do
+        if slot and piece.slot ~= slot then return false end
+        slot = piece.slot
+    end
+    return true
+end
+
 -- What is left for this page to show: the sets the class could wear, less the
--- ones the Sets tab is already showing them.
+-- ones the Sets tab is already showing them and the ensembles that are a single
+-- slot's worth of appearances rather than a set.
 function ExtraSets.RecordsForClass(records, classID)
     local matching = {}
     for _, record in ipairs(records) do
-        if ExtraSets.MatchesClass(record, classID) and not ExtraSets.ListedNatively(record, classID) then
+        if ExtraSets.MatchesClass(record, classID)
+            and not ExtraSets.ListedNatively(record, classID)
+            and not ExtraSets.IsSingleSlotEnsemble(record) then
             matching[#matching + 1] = record
         end
     end
@@ -193,6 +267,150 @@ end
 -- parenthetical, or the clause after the colon.
 function ExtraSets.VariantLabel(name)
     return name:match("%(([^()]*)%)%s*$") or name:match(":%s+(.+)$") or name
+end
+
+-- What a colourway is called in the picker: the one word that tells it from its
+-- siblings where the family was found that way, and otherwise the qualifier the
+-- set's own name carries.
+--
+-- The client names two sets of one family the same thing often enough to matter,
+-- and two rows reading alike is a picker that cannot be used. Where that
+-- happens the ensemble each is bought from stands in, since that is both what
+-- tells them apart and what the player would go after. It is only known once
+-- the client has loaded the item, so until then the repeated word stands.
+function ExtraSets.VariantLabelFor(variant, itemName)
+    local label = variant.variantLabel or ExtraSets.VariantLabel(variant.name)
+    if not (variant.ambiguousLabel and itemName) then return label end
+
+    local names = ExtraSets.EnsembleNames(variant, itemName)
+    return names[1] or label
+end
+
+-- A set named like another but for a single word is that set in another colour:
+-- "Midnight Sweatsuit" beside "Azure Sweatsuit", "Vagabond's Brick Threads"
+-- beside "Vagabond's Camo Threads". The client says nothing about this. Asked
+-- directly, through GetBaseSetID and GetVariantSets, it answers nothing for
+-- every one of them, so the only place the relationship is written down is the
+-- names, and reading it there is an inference rather than a fact the way the
+-- rest of this catalogue is.
+--
+-- Three things keep the inference narrow.
+--
+-- It is held to the ensembles, because they are the listing where the
+-- relationship is written down nowhere else. The armour lists say it themselves,
+-- with "(Recolor)" after a shared set name, and the grouping above already reads
+-- that. Turned loose on them this rule joins "Mystic's Regalia (Recolor)" to
+-- "Pagan Regalia (Recolor)", which are two sets rather than two colours.
+--
+-- A family agrees on piece count, class mask, and armour, which is what stops
+-- the armour types of one PvP set folding together: "Gladiator's Leather Armor"
+-- and "Gladiator's Silk Armor" differ by one word too, and are not one garment
+-- in two colours.
+--
+-- And it is held to small sets, because the Trading Post sells these in twos and
+-- threes while a tier or a PvP season runs to dozens, and those are sets people
+-- work through separately even where they do share a model.
+local MAX_COLOUR_FAMILY_PIECES = 4
+
+-- Every word is a candidate for the one that varies, so a set belongs to as
+-- many possible families as it has words and joins the largest of them. That is
+-- what keeps "Vagabond's * Threads" whole rather than split across whichever
+-- other position happens to match a set somewhere else in the list. A tie goes
+-- to the earlier word, so the same list always groups the same way.
+-- A row standing for several sets that share a name is a candidate like any
+-- other, and answers on the name they share. The client gives two of these sets
+-- one name often enough that leaving those rows out strands them beside the
+-- family they plainly belong to.
+local function colourCandidates(row)
+    if row.isColourFamily or not row.fromEnsemble then return nil end
+    if #row.pieces > MAX_COLOUR_FAMILY_PIECES then return nil end
+
+    local words = {}
+    for word in row.name:gmatch("%S+") do words[#words + 1] = word end
+    if #words < 2 then return nil end
+
+    local candidates = {}
+    for index = 1, #words do
+        local varying = table.remove(words, index)
+        candidates[index] = {
+            key = table.concat(words, " ") .. "@" .. index
+                .. "|" .. #row.pieces .. "|" .. row.classMask .. "|" .. tostring(row.armorType),
+            name = table.concat(words, " "),
+            label = varying,
+        }
+        table.insert(words, index, varying)
+    end
+    return candidates
+end
+
+-- One family, out of the rows that joined it. A row already standing for
+-- several sets that share a name brings them in one by one: the picker offers
+-- colourways, and a pair the client happens to call the same thing is two of
+-- those rather than one.
+--
+-- Which leaves two colourways under one word, since that is what the client
+-- named them. They are marked so the picker can fall back to naming the
+-- ensemble each is bought from, which is what really tells them apart.
+local function buildColourFamily(rows, chosen, name)
+    local variants, seen, repeated = {}, {}, {}
+    for _, row in ipairs(rows) do
+        local label = chosen[row].label
+        for _, variant in ipairs(row.variants or { row }) do
+            variant.variantLabel = label
+            variant.ambiguousLabel = nil
+            variants[#variants + 1] = variant
+            if seen[label] then repeated[label] = true end
+            seen[label] = true
+        end
+    end
+    for _, variant in ipairs(variants) do
+        if repeated[variant.variantLabel] then variant.ambiguousLabel = true end
+    end
+
+    local group = ExtraSets.BuildGroup(variants, name)
+    group.isColourFamily = true
+    return group
+end
+
+-- Rows gathered into colourway families, in the order they were already in: a
+-- family becomes one row where its first member stood, and the rest go with it.
+local function colourFamilies(rows)
+    local counts, candidatesOf = {}, {}
+    for _, row in ipairs(rows) do
+        candidatesOf[row] = colourCandidates(row)
+        for _, candidate in ipairs(candidatesOf[row] or {}) do
+            counts[candidate.key] = (counts[candidate.key] or 0) + 1
+        end
+    end
+
+    local chosen, members = {}, {}
+    for _, row in ipairs(rows) do
+        local best
+        for _, candidate in ipairs(candidatesOf[row] or {}) do
+            if counts[candidate.key] > 1 and (not best or counts[candidate.key] > counts[best.key]) then
+                best = candidate
+            end
+        end
+        if best then
+            chosen[row] = best
+            members[best.key] = members[best.key] or {}
+            table.insert(members[best.key], row)
+        end
+    end
+
+    local grouped, built = {}, {}
+    for _, row in ipairs(rows) do
+        local candidate = chosen[row]
+        -- A candidate two sets shared can still end up holding one of them, when
+        -- the other found a larger family to join. One member is no family.
+        if not candidate or #members[candidate.key] == 1 then
+            grouped[#grouped + 1] = row
+        elseif not built[candidate.key] then
+            built[candidate.key] = true
+            grouped[#grouped + 1] = buildColourFamily(members[candidate.key], chosen, candidate.name)
+        end
+    end
+    return grouped
 end
 
 -- Sets gathered by the name they share, in the order they first appear, so
@@ -327,7 +545,7 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
     -- containments to its end: each step holds strictly more looks than the
     -- last, so the walk always finishes. A chain ending at a native look has
     -- no row to gather against, so the whole chain is folded away with it.
-    local absorbedNames, nativeFolds = {}, {}
+    local absorbedNames, absorbedEnsembles, nativeFolds = {}, {}, {}
     for _, entry in ipairs(entries) do
         local survivor = survivorOf[entry]
         if survivor then
@@ -341,6 +559,12 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
             else
                 absorbedNames[survivor] = absorbedNames[survivor] or {}
                 table.insert(absorbedNames[survivor], entry.name)
+                -- The surviving row is the only place this look is shown, so
+                -- where a folded one could be bought as an ensemble that comes
+                -- with it. Losing it would fold away the one thing that says
+                -- how to get the look.
+                absorbedEnsembles[survivor] =
+                    ExtraSets.MergeEnsembles(absorbedEnsembles[survivor], entry.ensembles)
             end
         end
     end
@@ -349,6 +573,7 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
     for _, entry in ipairs(kept) do
         if not survivorOf[entry] then
             entry.alternateNames = absorbedNames[entry]
+            entry.ensembles = ExtraSets.MergeEnsembles(entry.ensembles, absorbedEnsembles[entry])
             rows[#rows + 1] = entry
         end
     end
@@ -359,13 +584,18 @@ end
 -- every look across them so the row says how much of the whole set is collected.
 -- It carries the first colourway's pieces, which is what the details pane shows
 -- when the row is picked.
-function ExtraSets.BuildGroup(variants)
+-- name is what the family is called where the caller worked it out for itself,
+-- as the colourway families do; otherwise the row takes the set name its
+-- colourways share.
+function ExtraSets.BuildGroup(variants, name)
     local first = variants[1]
+    name = name or ExtraSets.BaseName(first.name)
     local collected, total, unavailable, loading = 0, 0, 0, false
-    local appearances = {}
+    local appearances, ensembles = {}, nil
     for _, variant in ipairs(variants) do
         loading = loading or variant.loading
         unavailable = unavailable + variant.unavailable
+        ensembles = ExtraSets.MergeEnsembles(ensembles, variant.ensembles)
         for id, isCollected in pairs(variant.appearances) do
             if appearances[id] == nil then
                 appearances[id] = isCollected
@@ -376,14 +606,16 @@ function ExtraSets.BuildGroup(variants)
     end
 
     return {
-        key = "group:" .. first.armorType .. "|" .. ExtraSets.BaseName(first.name),
+        key = "group:" .. first.armorType .. "|" .. name,
         isGroup = true,
         variants = variants,
-        name = ExtraSets.BaseName(first.name),
+        name = name,
         label = LuckysWardrobe.Strings.extraSets.colours:format(#variants),
         expansionID = first.expansionID,
         armorType = first.armorType,
         classMask = first.classMask,
+        ensembles = ensembles,
+        fromEnsemble = first.fromEnsemble,
         pieces = first.pieces,
         appearances = appearances,
         collected = collected,
@@ -399,21 +631,25 @@ end
 -- with several is one row standing for them, and the details pane picks between
 -- them the way the Sets tab does. Filters can leave a set with a single
 -- colourway, and it goes back to being that plain row.
+--
+-- Sets that share a name gather first, since that qualifier is one the listing
+-- itself supplies. Whatever is left over is offered to the colourway rule,
+-- which reads the same relationship off names that differ by a single word.
 function ExtraSets.BuildRows(entries)
     local rows = {}
     for _, family in ipairs(families(entries)) do
         rows[#rows + 1] = #family == 1 and family[1] or ExtraSets.BuildGroup(family)
     end
-    return rows
+    return colourFamilies(rows)
 end
 
 -- Which colourway of a set is on show. Defaults to the first, and falls back to
 -- it when the one last picked has been filtered out from under the row.
-function ExtraSets.VariantOf(row, chosenSetID)
+function ExtraSets.VariantOf(row, chosenKey)
     if not row.isGroup then return row end
 
     for _, variant in ipairs(row.variants) do
-        if variant.setID == chosenSetID then return variant end
+        if variant.key == chosenKey then return variant end
     end
     return row.variants[1]
 end
@@ -426,13 +662,14 @@ function ExtraSets.BuildEntries(records, resolver)
     local seenSetIDs = {}
 
     for _, record in ipairs(records) do
+        local key = ExtraSets.RecordKey(record)
         local valid, problem = ExtraSets.ValidateRecord(record)
         if not valid then
             LuckysWardrobe.DevLog("Extra Sets record rejected: " .. tostring(problem))
-        elseif seenSetIDs[record.setID] then
-            LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate set " .. record.setID)
+        elseif seenSetIDs[key] then
+            LuckysWardrobe.DevLog("Extra Sets record rejected: duplicate set " .. key)
         else
-            seenSetIDs[record.setID] = true
+            seenSetIDs[key] = true
             entries[#entries + 1] = ExtraSets.BuildEntry(record, resolver)
         end
     end
@@ -478,13 +715,21 @@ function ExtraSets.BuildEntry(record, resolver)
     end
 
     return {
-        key = record.setID,
+        key = ExtraSets.RecordKey(record),
         setID = record.setID,
         name = record.name,
         label = record.label or "",
         expansionID = record.expansionID,
         armorType = record.armorType,
         classMask = record.classMask,
+        -- Where the set can simply be bought, for the sets that can be. Kept as
+        -- the record's own list until something folds into this row, which is
+        -- the only thing that ever gives a row a second one.
+        ensembles = record.ensembles,
+        -- Which listing the set came from, which is what its number can be read
+        -- against. Folding another row in gives this one more ensembles without
+        -- changing where the row itself came from.
+        fromEnsemble = record.ensembles ~= nil,
         pieces = pieces,
         -- Which looks this set is made of, and whether each is collected. What
         -- makes two sets the same set, and what lets one row speak for several.
@@ -597,6 +842,37 @@ function ExtraSets.PieceDiagnosis(entry, classID, resolver, ownClass)
     return rows, ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
 end
 
+-- The ensembles that teach a set, named the way the player reads them on the
+-- item itself. An ensemble whose item the client has not loaded yet is left out
+-- rather than named by its number, and asking for it is what starts it loading.
+function ExtraSets.EnsembleNames(entry, itemName)
+    local names = {}
+    for _, itemID in ipairs(entry.ensembles or {}) do
+        local name = itemName(itemID)
+        if name then names[#names + 1] = name end
+    end
+    return names
+end
+
+-- Where each piece icon sits in the block under the set's counts: filled left
+-- to right, each strip centred on the pane, and no more strips than the pane
+-- has room for. Answers the places and how many pieces were left off the end.
+function ExtraSets.PieceLayout(count)
+    local shown = math.min(count, MAX_PIECE_ROWS * PIECES_PER_ROW)
+    local places = {}
+    for index = 1, shown do
+        local row = math.ceil(index / PIECES_PER_ROW)
+        local column = index - (row - 1) * PIECES_PER_ROW
+        local acrossRow = math.min(shown - (row - 1) * PIECES_PER_ROW, PIECES_PER_ROW)
+        places[index] = {
+            row = row,
+            x = (column - 1) * PIECE_SPACING - math.floor((acrossRow - 1) * PIECE_SPACING / 2),
+            y = PIECE_ROW_TOP - (row - 1) * PIECE_ROW_HEIGHT,
+        }
+    end
+    return places, count - shown
+end
+
 function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
@@ -643,6 +919,9 @@ function ExtraSets.FilterEntries(entries, query)
         -- A collapsed row answers for the names it absorbed as well as its own,
         -- or folding "(Heroic Lookalike)" away would make it unsearchable.
         local words = { entry.name, entry.label }
+        -- A set that can simply be bought answers to the word too, so searching
+        -- for it lists everything there is an ensemble for.
+        if entry.ensembles then words[#words + 1] = LuckysWardrobe.Strings.extraSets.ensembleTerm end
         for _, name in ipairs(entry.alternateNames or {}) do words[#words + 1] = name end
         if table.concat(words, " "):lower():find(normalized, 1, true) then
             filtered[#filtered + 1] = entry
@@ -982,19 +1261,24 @@ function ExtraSets:CreatePage(wardrobe)
     countsText:SetPoint("TOP", labelText, "BOTTOM", 0, -2)
     countsText:SetWidth(380)
 
-    local iconRowBackground = detailsFrame:CreateTexture(nil, "BORDER")
-    iconRowBackground:SetAtlas("transmog-set-iconrow-background", true)
-    iconRowBackground:SetPoint("TOP", 0, -82)
-
     local modelFade = detailsFrame:CreateTexture(nil, "BACKGROUND")
     modelFade:SetAtlas("transmog-set-model-cutoff-fade")
     modelFade:SetHeight(178)
     modelFade:SetPoint("TOPLEFT", 2, 0)
     modelFade:SetPoint("TOPRIGHT")
 
+    -- Where a set can simply be bought, for the sets sold as ensembles. It
+    -- takes the bottom of the pane, and pushes the notice above it on the sets
+    -- that have something to say there as well.
+    local sourceText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sourceText:SetPoint("BOTTOM", 0, 12)
+    sourceText:SetWidth(380)
+
     local noticeText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    noticeText:SetPoint("BOTTOM", 0, 12)
     noticeText:SetWidth(380)
+
+    local overflowText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    overflowText:SetWidth(380)
 
     -- Where the Sets tab puts the same control: the top corner of the details
     -- pane, over the model rather than beside the list.
@@ -1009,7 +1293,22 @@ function ExtraSets:CreatePage(wardrobe)
     detailsText:SetText(S.select)
 
     local itemFrames = {}
+    local rowBackgrounds = {}
     local selectedEntry
+
+    -- One strip of Blizzard's icon-row art per row of pieces, built as the
+    -- rows are needed. The art is a single strip, so a set wide enough to wrap
+    -- gets another laid under each row rather than one row of pieces framed and
+    -- the rest floating over the model.
+    local function getRowBackground(index)
+        if rowBackgrounds[index] then return rowBackgrounds[index] end
+
+        local background = detailsFrame:CreateTexture(nil, "BORDER")
+        background:SetAtlas("transmog-set-iconrow-background", true)
+        background:SetPoint("TOP", 0, PIECE_ROW_BACKGROUND_TOP - (index - 1) * PIECE_ROW_HEIGHT)
+        rowBackgrounds[index] = background
+        return background
+    end
 
     local function refreshCamera()
         local detailsCameraID = C_TransmogSets.GetCameraIDs()
@@ -1150,18 +1449,49 @@ function ExtraSets:CreatePage(wardrobe)
         noticeText:SetShown(entry.unavailable > 0 or unwearable ~= nil)
     end
 
+    -- Which ensembles teach the set, for the sets there is one to buy. Nothing
+    -- else on the page says where a look comes from, and for these it is the
+    -- whole answer.
+    local function showSource(entry)
+        local names = ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)
+        sourceText:SetShown(#names > 0)
+        if #names > 0 then sourceText:SetFormattedText(S.ensembleSource, table.concat(names, ", ")) end
+
+        -- Both lines sit at the bottom edge, so the notice stands on top of the
+        -- source line when there is one and takes the edge itself when there is
+        -- not, rather than leaving a gap where the missing line would be.
+        noticeText:ClearAllPoints()
+        if #names > 0 then
+            noticeText:SetPoint("BOTTOM", sourceText, "TOP", 0, 2)
+        else
+            noticeText:SetPoint("BOTTOM", detailsFrame, "BOTTOM", 0, 12)
+        end
+    end
+
     -- Asking for a set's items is what starts them loading, and the answers
     -- land frames later. Sets this character can wear are the ones that arrive
     -- cold, since building the list only asks the client about pieces it will
     -- not judge, so without this pass the notice would be wrong exactly where
-    -- it matters and right only after leaving the set and coming back.
-    local function loadPieceItems(row, pass)
+    -- it matters and right only after leaving the set and coming back. The
+    -- ensembles ride along: their names come off the same item data, and every
+    -- colourway's is asked for rather than only the one on show, because two
+    -- that the client named alike are told apart in the picker by theirs.
+    local fillVariantDropdown
+
+    local function loadSetItems(row, pass)
         local waiting = false
-        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
-            if piece.itemID and not C_Item.GetItemInfo(piece.itemID) then
-                C_Item.RequestLoadItemDataByID(piece.itemID)
+        local function request(itemID)
+            if itemID and not C_Item.GetItemInfo(itemID) then
+                C_Item.RequestLoadItemDataByID(itemID)
                 waiting = true
             end
+        end
+
+        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
+            request(piece.itemID)
+        end
+        for _, variant in ipairs(row.variants or { row }) do
+            for _, itemID in ipairs(variant.ensembles or {}) do request(itemID) end
         end
         if not waiting or pass >= Utils.ITEM_LOAD_PASSES then return end
 
@@ -1169,8 +1499,11 @@ function ExtraSets:CreatePage(wardrobe)
             -- The row on screen may have moved on while the client answered, and
             -- the colourway on show may have changed under a row that has not.
             if selectedEntry ~= row then return end
-            showNotice(ExtraSets.VariantOf(row, selectedVariants[row.key]))
-            loadPieceItems(row, pass + 1)
+            local shown = ExtraSets.VariantOf(row, selectedVariants[row.key])
+            showNotice(shown)
+            showSource(shown)
+            fillVariantDropdown(row)
+            loadSetItems(row, pass + 1)
         end)
     end
 
@@ -1186,21 +1519,22 @@ function ExtraSets:CreatePage(wardrobe)
 
     -- The colourways of the set on screen, each with what it is worth
     -- collecting, the way the Sets tab offers its own variants.
-    local function fillVariantDropdown(row)
+    fillVariantDropdown = function(row)
         variantDropdown:SetShown(row.isGroup or false)
         if not row.isGroup then return end
 
         local chosen = ExtraSets.VariantOf(row, selectedVariants[row.key])
         variantDropdown:SetText(S.variantOption:format(
-            ExtraSets.VariantLabel(chosen.name), chosen.collected, chosen.total))
+            ExtraSets.VariantLabelFor(chosen, C_Item.GetItemInfo), chosen.collected, chosen.total))
         variantDropdown:SetupMenu(function(_, menu)
             for _, variant in ipairs(row.variants) do
                 menu:CreateRadio(
                     S.variantOption:format(
-                        ExtraSets.VariantLabel(variant.name), variant.collected, variant.total),
+                        ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
+                        variant.collected, variant.total),
                     function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
                     function()
-                        selectedVariants[row.key] = variant.setID
+                        selectedVariants[row.key] = variant.key
                         displayEntry(row)
                     end
                 )
@@ -1233,13 +1567,16 @@ function ExtraSets:CreatePage(wardrobe)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         showNotice(entry)
-        loadPieceItems(row, 1)
+        showSource(entry)
+        loadSetItems(row, 1)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
-        local spacing = 37
-        local xOffset = -math.floor((#entry.pieces - 1) * spacing / 2)
-        for index, piece in ipairs(entry.pieces) do
+        for _, background in ipairs(rowBackgrounds) do background:Hide() end
+        local places, leftOff = ExtraSets.PieceLayout(#entry.pieces)
+        for strip = 1, places[#places].row do getRowBackground(strip):Show() end
+        for index, place in ipairs(places) do
+            local piece = entry.pieces[index]
             local itemFrame = getItemFrame(index)
             local collected = piece.state == "collected"
             itemFrame.piece = piece
@@ -1255,14 +1592,25 @@ function ExtraSets:CreatePage(wardrobe)
             -- uncollected piece reads as a bright frame around nothing.
             itemFrame.border:SetAlpha(collected and 1 or 0.3)
             itemFrame:ClearAllPoints()
-            itemFrame:SetPoint("TOP", detailsFrame, "TOP", xOffset + (index - 1) * spacing, -98)
+            itemFrame:SetPoint("TOP", detailsFrame, "TOP", place.x, place.y)
             itemFrame:Show()
             LuckysWardrobe.TrackedAppearances:Mark(
                 itemFrame, piece.state ~= "unavailable" and piece.sourceID or nil)
 
+            -- The model wears what the icons show, so the two never describe
+            -- different outfits, and a set of dozens does not cost dozens of
+            -- redresses to say the same thing.
             if redress and piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
                 model:TryOn(piece.sourceID)
             end
+        end
+
+        overflowText:SetShown(leftOff > 0)
+        if leftOff > 0 then
+            overflowText:ClearAllPoints()
+            overflowText:SetPoint("TOP", detailsFrame, "TOP", 0,
+                places[#places].y - PIECE_ROW_HEIGHT + 8)
+            overflowText:SetFormattedText(S.piecesNotShown, leftOff)
         end
 
         if redress then refreshCamera() end
@@ -1332,6 +1680,9 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
             GameTooltip:AddLine(S.counts:format(entry.collected, entry.total), 1, 1, 1)
+            for _, name in ipairs(ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)) do
+                GameTooltip:AddLine(S.ensembleSource:format(name), 0.6, 0.8, 1)
+            end
             -- A row that folded other names in says so, or the set the player
             -- was looking for reads as missing from the list.
             for _, name in ipairs(entry.alternateNames or {}) do
@@ -1576,6 +1927,98 @@ end
 -- Sets tab counts for its own same-named sets. Dev dump for when a fold, or
 -- the lack of one, surprises someone: two lines that share most of their IDs
 -- name a fold, two that share none name a genuine recolour.
+-- Every family the colourway rule gathered, and what it put in each. This is an
+-- inference rather than a fact the client supplied, so it is worth being able to
+-- read the whole of it in one go: a family that has taken in a set it should not
+-- have shows up here as a colour name that is not a colour.
+--
+-- Read off the rows the page builds for the class it is listing, before search
+-- or filters, so it says what the list would hold rather than what it happens to
+-- be showing.
+function ExtraSets:PrintColourFamilies()
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local say = Utils.Say
+    local catalog = LuckysWardrobe.ExtraSetsCatalog
+    if not catalog:GetReport() then
+        say(S.notStarted)
+        return
+    end
+    if not catalog:IsReady() then
+        say(S.building)
+        return
+    end
+
+    local formed = {}
+    for _, row in ipairs(ExtraSets.BuildRows(ExtraSets.Entries())) do
+        if row.isColourFamily then formed[#formed + 1] = row end
+    end
+    if #formed == 0 then
+        say(S.coloursNone)
+        return
+    end
+
+    say(S.coloursHeader:format(#formed))
+    local grouped = 0
+    for _, family in ipairs(formed) do
+        local labels = {}
+        for index, variant in ipairs(family.variants) do
+            labels[index] = ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo)
+        end
+        grouped = grouped + #family.variants
+        say(S.coloursLine:format(
+            family.name, #family.variants, #family.pieces, table.concat(labels, ", ")))
+    end
+    say(S.coloursTotal:format(grouped, #formed))
+end
+
+-- What the client itself says about a set's colourways. Blizzard marks the
+-- difficulty tints of a tier as variants of one base set, and the Sets tab shows
+-- them behind one row with a dropdown rather than as rows of their own. Whether
+-- it marks a batch of recolours the same way decides whether this page has
+-- anything to infer: a set that names a base other than itself is already
+-- grouped, in the client's own words and the player's own language.
+--
+-- Dev dump, for settling that one family at a time. A record the client answers
+-- nothing for is the answer too, and is printed rather than skipped.
+function ExtraSets:PrintVariants(query)
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local say = Utils.Say
+    local catalog = LuckysWardrobe.ExtraSetsCatalog
+    if not catalog:GetReport() then
+        say(S.notStarted)
+        return
+    end
+    if not catalog:IsReady() then
+        say(S.building)
+        return
+    end
+
+    local normalized = (query or ""):lower()
+    local lines = {}
+    for _, record in ipairs(ExtraSets.Records()) do
+        if record.name:lower():find(normalized, 1, true) then
+            local baseSetID = C_TransmogSets.GetBaseSetID(record.setID)
+            local variants = {}
+            for _, variant in ipairs(C_TransmogSets.GetVariantSets(record.setID) or {}) do
+                variants[#variants + 1] = variant.setID
+            end
+            lines[#lines + 1] = S.variantLine:format(
+                record.setID,
+                record.name,
+                baseSetID or S.variantNoBase,
+                #variants > 0 and table.concat(variants, ", ") or S.variantNone
+            )
+        end
+    end
+
+    if #lines == 0 then
+        say(S.findNone:format(query))
+        return
+    end
+    say(S.variantsHeader:format(query))
+    for _, line in ipairs(lines) do say(line) end
+end
+
 function ExtraSets:PrintLooks(query)
     local S = LuckysWardrobe.Strings.extraSets.report
     local say = Utils.Say

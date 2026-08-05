@@ -84,6 +84,10 @@ LuckysWardrobe.ExtraSetsCatalog = {
 }
 
 LuckysWardrobe.ExtraSets = {
+    RecordKey = function(record)
+        if record.ensembles then return "ensemble:" .. record.setID end
+        return record.setID
+    end,
     LiveResolver = function() return "resolver" end,
     BuildEntry = function(record, resolver)
         assert(resolver == "resolver", "the live resolver should be the one asked")

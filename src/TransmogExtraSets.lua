@@ -482,7 +482,15 @@ local function cardMouseUp(card, buttonName)
 
     MenuUtil.CreateContextMenu(card, function(_owner, rootDescription)
         rootDescription:CreateButton(LuckysWardrobe.Strings.extraSets.wowheadMenu, function()
-            LuckysWardrobe.WowheadLink:ShowForTransmogSet(entry.setID)
+            -- Only the armour lists number their sets the way Wowhead's own set
+            -- pages do. A set that reached the page as an ensemble is numbered
+            -- the way the client numbers it, so the address that finds it is
+            -- the ensemble item's rather than a set page it does not have.
+            if entry.fromEnsemble then
+                LuckysWardrobe.WowheadLink:ShowForItem(entry.ensembles[1])
+            else
+                LuckysWardrobe.WowheadLink:ShowForTransmogSet(entry.setID)
+            end
         end)
     end)
 end

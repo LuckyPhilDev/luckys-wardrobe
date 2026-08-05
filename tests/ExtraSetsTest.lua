@@ -1,4 +1,5 @@
 -- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: ignore 121
 
 LuckysWardrobe = {}
 
@@ -109,6 +110,35 @@ assert(
     ExtraSets.ValidateRecord(validRecord({ pieces = pieces({ "CHEST", 7 }, { "CHEST", 8 }) })),
     "accepted two pieces in one slot, as a set with a chest and a robe has"
 )
+assert(ExtraSets.ValidateRecord(validRecord({ ensembles = { 70001 } })),
+    "accepted a set with an ensemble that teaches it")
+assert(not ExtraSets.ValidateRecord(validRecord({ ensembles = {} })),
+    "rejected an empty ensemble list, which says a set is sold as one without saying which")
+assert(not ExtraSets.ValidateRecord(validRecord({ ensembles = { "70001" } })),
+    "rejected ensembles that are not item IDs")
+assert(ExtraSets.ValidateRecord(validRecord({ armorType = 0 })),
+    "accepted a set of tabards and cloaks, which is nobody's armour in particular")
+
+-- The two listings number their sets differently, so a record's identity is the
+-- list it came from as well as the number.
+
+local wowheadNumbered = validRecord({ setID = 20 })
+local clientNumbered = validRecord({ setID = 20, ensembles = { 70001 } })
+assert(ExtraSets.RecordKey(wowheadNumbered) ~= ExtraSets.RecordKey(clientNumbered),
+    "one number in two listings is two records")
+assert(ExtraSets.RecordKey(validRecord({ setID = 20 })) == ExtraSets.RecordKey(wowheadNumbered),
+    "and the same number in one listing is one record")
+
+-- The ensembles that teach a look, gathered as rows fold into one another.
+
+local merged = ExtraSets.MergeEnsembles({ 1, 2 }, { 2, 3 })
+assert(#merged == 3 and merged[1] == 1 and merged[2] == 2 and merged[3] == 3,
+    "gathered both lists without repeating what they share")
+local kept = { 1 }
+assert(ExtraSets.MergeEnsembles(kept, nil) == kept, "nothing to add leaves the list alone")
+assert(ExtraSets.MergeEnsembles(kept, { 2 }) ~= kept,
+    "and a merge never writes into a list the catalogue owns")
+assert(#kept == 1, "so the record it came from is untouched")
 
 -- Class mask maths.
 
@@ -136,6 +166,10 @@ assert(ExtraSets.MatchesClass(anyoneLeather, LEATHER_CLASS), "the same set belon
 assert(ExtraSets.MatchesClass(validRecord({ classMask = clothBit, armorType = LEATHER }), CLOTH_CLASS),
     "armour never overrules a set named for the class")
 assert(ExtraSets.MatchesClass(anyoneLeather, nil), "no class chosen means no class narrowing")
+local anyoneAnything = validRecord({ classMask = 0, armorType = 0 })
+assert(ExtraSets.MatchesClass(anyoneAnything, CLOTH_CLASS)
+    and ExtraSets.MatchesClass(anyoneAnything, LEATHER_CLASS),
+    "a set of tabards and cloaks belongs to every class, since none of them is barred from it")
 
 local forCloth = ExtraSets.RecordsForClass(
     { lockedCloth, lockedLeather, anyoneCloth, anyoneLeather }, CLOTH_CLASS)
@@ -156,6 +190,35 @@ local deduped = ExtraSets.RecordsForClass({ anyoneCloth, nativeToCloth }, CLOTH_
 assert(#deduped == 1 and deduped[1] == anyoneCloth, "dropped the set the Sets tab already shows this class")
 assert(#ExtraSets.RecordsForClass({ anyoneCloth, nativeToCloth }, 8) == 2,
     "kept it for the class whose Sets tab has no such row")
+
+-- An ensemble that is one slot's worth of appearances is one appearance rather
+-- than a set, and neither page has a row for it.
+
+local cloakColours = validRecord({
+    setID = 30,
+    ensembles = { 70001 },
+    pieces = pieces({ "BACK", 8001 }, { "BACK", 8002 }, { "BACK", 8003 }),
+})
+local oneCloak = validRecord({ setID = 31, ensembles = { 70002 }, pieces = pieces({ "BACK", 8001 }) })
+local boughtOutfit = validRecord({
+    setID = 32,
+    ensembles = { 70003 },
+    pieces = pieces({ "HEAD", 8004 }, { "BACK", 8001 }),
+})
+-- The same three cloaks with no ensemble behind them: an armour list reaching
+-- one slot is a set this client could only partly resolve, and the little of it
+-- there is left to collect is still worth a row.
+local cloakSet = validRecord({ setID = 33, pieces = pieces({ "BACK", 8001 }, { "BACK", 8002 }) })
+
+assert(ExtraSets.IsSingleSlotEnsemble(cloakColours), "several colours of one slot is not a set")
+assert(ExtraSets.IsSingleSlotEnsemble(oneCloak), "nor is a single appearance sold on its own")
+assert(not ExtraSets.IsSingleSlotEnsemble(boughtOutfit), "an ensemble reaching two slots is a set")
+assert(not ExtraSets.IsSingleSlotEnsemble(cloakSet), "and a set from the armour lists is never held to this")
+
+local listed = ExtraSets.RecordsForClass(
+    { anyoneCloth, cloakColours, oneCloak, boughtOutfit, cloakSet }, CLOTH_CLASS)
+assert(#listed == 3 and listed[1] == anyoneCloth and listed[2] == boughtOutfit and listed[3] == cloakSet,
+    "the single-slot ensembles never reach either page")
 
 -- Entry building against a stub resolver.
 
@@ -201,6 +264,7 @@ assert(#devLogs == 2, "reported both rejected records")
 
 local garb = entries[1]
 assert(garb.key == 20 and garb.armorType == CLOTH, "keyed entries by set ID and kept the armour type")
+assert(garb.ensembles == nil and not garb.fromEnsemble, "a set from an armour list is not sold as an ensemble")
 assert(garb.name == "Live Name", "took the name the catalogue resolved")
 assert(garb.collected == 1 and garb.total == 2, "counted shared appearances once")
 assert(garb.missing == 1, "derived the missing count")
@@ -216,6 +280,25 @@ assert(loadingSet.loading, "unresolved appearance data marks the entry loading")
 assert(loadingSet.unavailable == 1, "unknown sources are counted unavailable")
 assert(loadingSet.pieces[3].state == "unavailable", "the invalid source is labelled, not hidden")
 assert(loadingSet.collected == 0 and loadingSet.total == 2, "unavailable pieces stay out of the totals")
+
+-- Sets an ensemble teaches. They arrive numbered the way the client numbers its
+-- own, so a number an armour list also uses is two sets rather than a clash.
+
+local soldAsEnsemble = validRecord({ ensembles = { 70001 } })
+local bothListings = ExtraSets.BuildEntries({ validRecord(), soldAsEnsemble }, stubResolver(1))
+assert(#bothListings == 2 and bothListings[1].key ~= bothListings[2].key,
+    "kept a set from each listing rather than dropping one as a duplicate")
+assert(bothListings[2].fromEnsemble and bothListings[2].ensembles[1] == 70001,
+    "an entry says it came from an ensemble and which one teaches it")
+assert(#ExtraSets.BuildEntries({ soldAsEnsemble, soldAsEnsemble }, stubResolver(1)) == 1,
+    "while the same set twice in one listing is still one row")
+
+assert(#ExtraSets.EnsembleNames(bothListings[2], function() return "Ensemble: Test Garb" end) == 1,
+    "an ensemble is named the way the client names the item")
+assert(#ExtraSets.EnsembleNames(bothListings[2], function() return nil end) == 0,
+    "and one the client has not loaded yet is left out rather than named by its number")
+assert(#ExtraSets.EnsembleNames(bothListings[1], error) == 0,
+    "a set no ensemble teaches asks the client nothing")
 
 -- Whether a character can wear a set is worked out for the one on screen, not
 -- for every row: it costs the client a table for every piece it is asked about.
@@ -428,6 +511,25 @@ assert(#ExtraSets.FilterEntries(collapsed, "Lookalike") == 2, "folded names are 
 assert(#ExtraSets.FilterEntries(collapsed, "Distinct Regalia") == 1,
     "a set folded under another name is found by the name it lost")
 
+-- An ensemble teaching a look an armour list already carries folds into that
+-- row like any other duplicate, and takes the one thing it knows with it.
+
+local ensembleRecord = colourway(602, "Charm Vestments", { 5101, 5102, 5103 })
+ensembleRecord.ensembles = { 70001 }
+local withEnsemble = ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
+    { colourwayRecords[1], ensembleRecord }, stubResolver(CLOTH_CLASS)))
+assert(#withEnsemble == 1 and withEnsemble[1].setID == 601,
+    "the armour list keeps the row, since it was listed first")
+assert(withEnsemble[1].ensembles[1] == 70001,
+    "and learns where the look can be bought from the row it folded away")
+assert(not withEnsemble[1].fromEnsemble,
+    "without becoming a row that came from the ensemble list, which its number is not read against")
+assert(colourwayRecords[1].ensembles == nil,
+    "the catalogue record the row was built from is left as it was")
+assert(#ExtraSets.FilterEntries(withEnsemble, "ensemble") == 1,
+    "a set there is an ensemble for answers to the word, so searching it lists what can be bought")
+assert(#ExtraSets.FilterEntries(collapsed, "ensemble") == 0, "and a set there is not does not")
+
 -- A set with a piece still loading cannot be told apart from a shorter set, so
 -- it waits for the rebuild that follows rather than folding into the wrong row.
 local pendingRecords = {
@@ -525,6 +627,38 @@ assert(ExtraSets.VariantOf(group, 603).setID == 603, "and shows the one that was
 assert(ExtraSets.VariantOf(group, 999).setID == 601, "falling back when that one is no longer there")
 assert(ExtraSets.VariantOf(rows[2], nil) == rows[2], "a plain row is its own colourway")
 
+-- A row standing for several colourways answers for every ensemble behind them,
+-- since the row is the only place any of those looks is shown.
+local boughtVariants = {
+    ExtraSets.BuildEntries({ colourway(661, "Bought Robes (Recolor)", { 5101 }) }, stubResolver(CLOTH_CLASS))[1],
+    ExtraSets.BuildEntries({ colourway(662, "Bought Robes (Heroic)", { 5102 }) }, stubResolver(CLOTH_CLASS))[1],
+}
+boughtVariants[1].ensembles = { 70001 }
+boughtVariants[2].ensembles = { 70002, 70001 }
+local boughtGroup = ExtraSets.BuildGroup(boughtVariants)
+assert(#boughtGroup.ensembles == 2 and boughtGroup.ensembles[1] == 70001 and boughtGroup.ensembles[2] == 70002,
+    "gathered the ensembles across the colourways, each named once")
+
+-- Where the piece icons go. A tier's nine pieces are one strip; the dozens an
+-- ensemble can teach wrap, and the ones past what the pane holds are counted.
+
+local oneStrip, noneLeft = ExtraSets.PieceLayout(3)
+assert(#oneStrip == 3 and noneLeft == 0, "a small set is placed whole")
+assert(oneStrip[1].row == 1 and oneStrip[2].row == 1, "in a single strip")
+assert(oneStrip[1].y == oneStrip[3].y, "sitting at one height")
+assert(oneStrip[1].x < oneStrip[2].x and oneStrip[2].x < oneStrip[3].x, "filled left to right")
+assert(oneStrip[1].x == -oneStrip[3].x, "centred on the pane")
+
+local wrapped = ExtraSets.PieceLayout(12)
+assert(#wrapped == 12 and wrapped[10].row == 1 and wrapped[11].row == 2, "a wider set wraps onto a second strip")
+assert(wrapped[11].y < wrapped[10].y, "which sits below the first")
+assert(wrapped[11].x > wrapped[1].x and wrapped[11].x < 0 and wrapped[12].x > 0,
+    "and is centred on the two it holds rather than spread across a full strip")
+
+local capped, leftOff = ExtraSets.PieceLayout(126)
+assert(#capped == 40 and leftOff == 86,
+    "a set with more pieces than the pane holds shows what fits and counts the rest")
+
 -- Filters can leave a set with one colourway, and it goes back to a plain row.
 local lastStanding = ExtraSets.BuildRows({ collapsed[1], collapsed[3] })
 assert(#lastStanding == 2 and not lastStanding[1].isGroup,
@@ -544,6 +678,138 @@ assert(#barkbloomRows == 1, "the four colon colourways became one row")
 assert(barkbloomRows[1].isGroup and barkbloomRows[1].name == "Barkbloom Warleathers",
     "named for the set, whichever spelling a colourway used")
 assert(#barkbloomRows[1].variants == 4, "holding every colourway")
+
+-- Colourway families read off the names. The Trading Post sells one garment in
+-- eighteen colours as eighteen sets, and the client says nothing about their
+-- being related, so the only place it is written down is the names.
+
+for id = 7001, 7052 do sourceStates[id] = { appearanceID = 8000 + id, collected = false } end
+
+do
+local colourRows
+-- The rule reads the ensemble listing only, so every fixture below arrives with
+-- an ensemble behind it the way a real Trading Post set does.
+local function rowsOf(family)
+    for at, record in ipairs(family) do record.ensembles = { 79000 + at } end
+    return ExtraSets.BuildRows(ExtraSets.BuildEntries(family, stubResolver(CLOTH_CLASS)))
+end
+
+colourRows = rowsOf({
+    colourway(701, "Midnight Sweatsuit", { 7001, 7002 }),
+    colourway(702, "Azure Sweatsuit", { 7003, 7004 }),
+    colourway(703, "Sepia Sweatsuit", { 7005, 7006 }),
+})
+assert(#colourRows == 1 and colourRows[1].isGroup and colourRows[1].isColourFamily,
+    "three names differing in one word became one row")
+assert(colourRows[1].name == "Sweatsuit", "named for the words the colourways share")
+assert(colourRows[1].label == "3 colours", "saying how many there are without opening it")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[1]) == "Midnight"
+    and ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Sepia",
+    "and each colourway offered under the word that tells it from the rest")
+assert(colourRows[1].total == 6, "the row counts every look across the colours")
+
+-- The word that varies is not always the first: the Trading Post's own sets put
+-- it in the middle as often as at the front.
+colourRows = rowsOf({
+    colourway(711, "Vagabond's Brick Threads", { 7007, 7008 }),
+    colourway(712, "Vagabond's Camo Threads", { 7009, 7010 }),
+})
+assert(#colourRows == 1 and colourRows[1].name == "Vagabond's Threads",
+    "a word differing in the middle groups as readily as one at the front")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[2]) == "Camo", "and is what the picker offers")
+
+-- What the rule refuses. A tier or a PvP season also differs by a word, and
+-- those are sets people work through separately even where they share a model.
+colourRows = rowsOf({
+    validRecord({ setID = 721, name = "Gladiator's Leather Armor", pieces = pieces(
+        { "HEAD", 7011 }, { "CHEST", 7012 }, { "LEGS", 7013 }, { "HANDS", 7014 }, { "FEET", 7015 }) }),
+    validRecord({ setID = 722, name = "Gladiator's Plate Armor", pieces = pieces(
+        { "HEAD", 7016 }, { "CHEST", 7017 }, { "LEGS", 7018 }, { "HANDS", 7019 }, { "FEET", 7020 }) }),
+})
+assert(#colourRows == 2, "a set with more pieces than the ceiling is never read as a colour of another")
+
+colourRows = rowsOf({
+    validRecord({ setID = 731, name = "Gladiator's Leather Armor", classMask = 8,
+        pieces = pieces({ "HEAD", 7021 }, { "CHEST", 7022 }) }),
+    validRecord({ setID = 732, name = "Gladiator's Silk Armor", classMask = 128,
+        pieces = pieces({ "HEAD", 7023 }, { "CHEST", 7024 }) }),
+})
+assert(#colourRows == 2, "the armour types of one set are not colours of each other, and their masks say so")
+
+colourRows = rowsOf({
+    validRecord({ setID = 741, name = "Short Robe", pieces = pieces({ "HEAD", 7025 }) }),
+    validRecord({ setID = 742, name = "Long Robe", pieces = pieces({ "HEAD", 7026 }, { "CHEST", 7027 }) }),
+})
+assert(#colourRows == 2, "nor are two sets of different sizes")
+
+-- The armour lists say this relationship themselves, with "(Recolor)" after a
+-- shared set name, and the grouping above already reads it. Turned loose on
+-- them the rule would join two different sets over a word they share.
+colourRows = ExtraSets.BuildRows(ExtraSets.BuildEntries({
+    validRecord({ setID = 771, name = "Mystic's Regalia (Recolor)",
+        pieces = pieces({ "HEAD", 7041 }, { "CHEST", 7042 }) }),
+    validRecord({ setID = 772, name = "Pagan Regalia (Recolor)",
+        pieces = pieces({ "HEAD", 7043 }, { "CHEST", 7044 }) }),
+}, stubResolver(CLOTH_CLASS)))
+assert(#colourRows == 2, "and a set from the armour lists is never read as a colour of another at all")
+
+-- A set can fit several possible families, so it joins the largest. The one
+-- left holding a single member is no family at all and stays a plain row.
+colourRows = rowsOf({
+    validRecord({ setID = 751, name = "Red Silk Robe", pieces = pieces({ "HEAD", 7028 }, { "CHEST", 7029 }) }),
+    validRecord({ setID = 752, name = "Blue Silk Robe", pieces = pieces({ "HEAD", 7030 }, { "CHEST", 7031 }) }),
+    validRecord({ setID = 753, name = "Green Silk Robe", pieces = pieces({ "HEAD", 7032 }, { "CHEST", 7033 }) }),
+    validRecord({ setID = 754, name = "Red Wool Robe", pieces = pieces({ "HEAD", 7034 }, { "CHEST", 7035 }) }),
+})
+assert(#colourRows == 2, "the three silk robes became one row and the wool one kept its own")
+assert(colourRows[1].isColourFamily and colourRows[1].name == "Silk Robe" and #colourRows[1].variants == 3,
+    "the larger family is the one every set that could join both went to")
+assert(not colourRows[2].isGroup and colourRows[2].name == "Red Wool Robe",
+    "and the set left holding a family of one is a plain row again")
+
+-- The row stands where its first colourway stood, so whatever sort produced the
+-- list still decides where the family lands.
+colourRows = rowsOf({
+    validRecord({ setID = 761, name = "Standalone Cowl", pieces = pieces({ "HEAD", 7036 }) }),
+    validRecord({ setID = 762, name = "Amber Wrap", pieces = pieces({ "HEAD", 7037 }, { "CHEST", 7038 }) }),
+    validRecord({ setID = 763, name = "Jade Wrap", pieces = pieces({ "HEAD", 7039 }, { "CHEST", 7040 }) }),
+})
+assert(#colourRows == 2 and colourRows[1].name == "Standalone Cowl" and colourRows[2].name == "Wrap",
+    "the family took the place of the first of its colourways")
+
+-- The client gives two sets of one family the same name. Those gather by that
+-- shared name first, and the row they make still belongs beside its colours
+-- rather than being stranded next to them as a family of its own.
+colourRows = rowsOf({
+    validRecord({ setID = 781, name = "Vagabond's Brick Threads",
+        pieces = pieces({ "HEAD", 7045 }, { "CHEST", 7046 }) }),
+    validRecord({ setID = 782, name = "Vagabond's Camo Threads",
+        pieces = pieces({ "HEAD", 7047 }, { "CHEST", 7048 }) }),
+    validRecord({ setID = 783, name = "Vagabond's Snowy Threads",
+        pieces = pieces({ "HEAD", 7049 }, { "CHEST", 7050 }) }),
+    validRecord({ setID = 784, name = "Vagabond's Snowy Threads",
+        pieces = pieces({ "HEAD", 7051 }, { "CHEST", 7052 }) }),
+})
+assert(#colourRows == 1 and colourRows[1].name == "Vagabond's Threads",
+    "the two sets sharing a name came in with the rest rather than standing apart")
+assert(#colourRows[1].variants == 4, "and came in one by one, since each is a colourway of its own")
+
+-- Which leaves two colourways under one word, so the picker names the ensemble
+-- each is bought from instead. The client answers for one of them and not the
+-- other, and the one it will not answer for keeps the word rather than blanking.
+local function itemNamed(itemID)
+    return itemID == 79003 and "Ensemble: Vagabond's Snowy Threads" or nil
+end
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[1], itemNamed) == "Brick",
+    "a colourway nothing else is called keeps its word whatever the client says")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3], itemNamed)
+    == "Ensemble: Vagabond's Snowy Threads",
+    "a word two colourways share gives way to the ensemble that tells them apart")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[4], itemNamed) == "Snowy",
+    "and one the client has not loaded the ensemble for waits, rather than showing nothing")
+assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Snowy",
+    "with no way to ask the client at all, the shared word is still what there is")
+end
 
 -- Search.
 
@@ -676,6 +942,7 @@ local function newTexture()
     function texture:SetHeight() end
     function texture:SetWidth(width) self.width = width end
     function texture:SetShown(shown) self.shown = shown end
+    function texture:Show() self.shown = true end
     function texture:Hide() self.shown = false end
     return texture
 end
@@ -841,12 +1108,20 @@ EventUtil = {
 local setsClassFilter = CLOTH_CLASS
 -- The looks the client counts for the Sets tab's own sets, for the looks dump.
 local setPrimaryAppearances = {}
+-- What the client calls a colourway of what. Set 603 is one it groups under 601
+-- the way it groups a tier's difficulties; 601 is that group's base set, and
+-- everything else it says nothing about.
+local baseSetIDs = { [601] = 601, [603] = 601 }
+local variantSets = { [601] = { { setID = 601 }, { setID = 603 } } }
+
 C_TransmogSets = {
     GetCameraIDs = function() return nil end,
     GetSetInfo = function(setID) return setID == 20 and { name = "Live Name" } or nil end,
     GetTransmogSetsClassFilter = function() return setsClassFilter end,
     SetTransmogSetsClassFilter = function(classID) setsClassFilter = classID end,
     GetSetPrimaryAppearances = function(setID) return setPrimaryAppearances[setID] end,
+    GetBaseSetID = function(setID) return baseSetIDs[setID] end,
+    GetVariantSets = function(setID) return variantSets[setID] end,
 }
 -- Item data arrives from the server, so the client holds it only once asked.
 local loadedItems = {}
@@ -1773,5 +2048,56 @@ assert(looksText:find("Sets tab set 901: Charm Vestments: 9501,9502,9503", 1, fa
 assert(looksText:find("Sets tab set 902: Charm Vestments: nothing resolved yet", 1, false),
     "a Sets tab set the client answers no looks for says so rather than vanishing")
 assert(not looksText:find("Elsewhere"), "only names matching the query are dumped")
+
+-- The variants dump, which is what says whether a family of colourways is one
+-- the client already groups or one this page would have to infer.
+
+local variantsPrinted = {}
+print = function(line) variantsPrinted[#variantsPrinted + 1] = line end
+ExtraSets:PrintVariants("charm vestments")
+print = realPrint
+local variantsText = table.concat(variantsPrinted, "\n")
+assert(variantsText:find("set 601: Charm Vestments %(Heroic Recolor%): base set 601, variants 601, 603", 1, false),
+    "a set the client groups says which base it belongs to and what it groups with")
+assert(variantsText:find("set 602: Charm Vestments %(Heroic Lookalike%): base set none, variants none", 1, false),
+    "and one it says nothing about says nothing, which is the answer too")
+assert(not variantsText:find("Distinct Regalia"), "only names matching the query are dumped")
+
+do
+local coloursPrinted, coloursText
+
+-- The colours dump. The grouping is read off names rather than supplied by the
+-- client, so being able to read every family it formed in one go is what makes
+-- a family that has taken in the wrong set findable.
+
+catalogRecords = {
+    colourway(801, "Midnight Sweatsuit", { 7001, 7002 }),
+    colourway(802, "Azure Sweatsuit", { 7003, 7004 }),
+    colourway(803, "Standalone Cowl", { 7005 }),
+}
+catalogRecords[1].ensembles = { 79101 }
+catalogRecords[2].ensembles = { 79102 }
+catalogRecords[3].ensembles = { 79103 }
+ExtraSets.InvalidateEntries()
+coloursPrinted = {}
+print = function(line) coloursPrinted[#coloursPrinted + 1] = line end
+ExtraSets:PrintColourFamilies()
+print = realPrint
+coloursText = table.concat(coloursPrinted, "\n")
+assert(coloursText:find("1 family", 1, true), "counted the families it formed")
+assert(coloursText:find("Sweatsuit: 2 colours of 2 piece(s): Midnight, Azure", 1, true),
+    "named the family, its size, and the word each colourway answers to")
+assert(coloursText:find("2 set(s) folded into 1 row(s)", 1, true), "and said how much of the list it moved")
+assert(not coloursText:find("Standalone"), "a set in no family is not in the dump")
+
+catalogRecords = {}
+ExtraSets.InvalidateEntries()
+coloursPrinted = {}
+print = function(line) coloursPrinted[#coloursPrinted + 1] = line end
+ExtraSets:PrintColourFamilies()
+print = realPrint
+assert(table.concat(coloursPrinted, "\n"):find("No sets were grouped", 1, true),
+    "a list with no family in it says so rather than printing a bare header")
+end
 
 print("Lucky's Wardrobe extra sets tests passed")

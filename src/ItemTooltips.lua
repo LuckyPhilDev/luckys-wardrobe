@@ -26,7 +26,8 @@ local db
 -- The two lists are counted apart because the two number their sets differently:
 -- the bundled snapshot numbers a set the way Wowhead does and the client numbers
 -- its own, so the same number means one set in one list and another set in the
--- other.
+-- other. The extra sets are keyed the way the catalogue keys its own records,
+-- because the same split runs through the listings that feed it.
 local setBySource = {}
 local extraBySource
 local setProgress, extraProgress = {}, {}
@@ -91,14 +92,15 @@ local function extraSetFor(sourceID)
     local record = extraBySource[sourceID]
     if not record then return nil end
 
-    local counted = extraProgress[record.setID]
+    local key = LuckysWardrobe.ExtraSets.RecordKey(record)
+    local counted = extraProgress[key]
     if not counted then
         -- Counted the way the Extra Sets tab counts, so the two can never disagree
         -- about how far along a set is. A count taken while the client is still
         -- loading the pieces is not kept, since nothing else would come back to
         -- correct it.
         counted = LuckysWardrobe.ExtraSets.BuildEntry(record, LuckysWardrobe.ExtraSets.LiveResolver())
-        if not counted.loading then extraProgress[record.setID] = counted end
+        if not counted.loading then extraProgress[key] = counted end
     end
     return counted
 end
