@@ -190,6 +190,35 @@ assert(#deduped == 1 and deduped[1] == anyoneCloth, "dropped the set the Sets ta
 assert(#ExtraSets.RecordsForClass({ anyoneCloth, nativeToCloth }, 8) == 2,
     "kept it for the class whose Sets tab has no such row")
 
+-- An ensemble that is one slot's worth of appearances is one appearance rather
+-- than a set, and neither page has a row for it.
+
+local cloakColours = validRecord({
+    setID = 30,
+    ensembles = { 70001 },
+    pieces = pieces({ "BACK", 8001 }, { "BACK", 8002 }, { "BACK", 8003 }),
+})
+local oneCloak = validRecord({ setID = 31, ensembles = { 70002 }, pieces = pieces({ "BACK", 8001 }) })
+local boughtOutfit = validRecord({
+    setID = 32,
+    ensembles = { 70003 },
+    pieces = pieces({ "HEAD", 8004 }, { "BACK", 8001 }),
+})
+-- The same three cloaks with no ensemble behind them: an armour list reaching
+-- one slot is a set this client could only partly resolve, and the little of it
+-- there is left to collect is still worth a row.
+local cloakSet = validRecord({ setID = 33, pieces = pieces({ "BACK", 8001 }, { "BACK", 8002 }) })
+
+assert(ExtraSets.IsSingleSlotEnsemble(cloakColours), "several colours of one slot is not a set")
+assert(ExtraSets.IsSingleSlotEnsemble(oneCloak), "nor is a single appearance sold on its own")
+assert(not ExtraSets.IsSingleSlotEnsemble(boughtOutfit), "an ensemble reaching two slots is a set")
+assert(not ExtraSets.IsSingleSlotEnsemble(cloakSet), "and a set from the armour lists is never held to this")
+
+local listed = ExtraSets.RecordsForClass(
+    { anyoneCloth, cloakColours, oneCloak, boughtOutfit, cloakSet }, CLOTH_CLASS)
+assert(#listed == 3 and listed[1] == anyoneCloth and listed[2] == boughtOutfit and listed[3] == cloakSet,
+    "the single-slot ensembles never reach either page")
+
 -- Entry building against a stub resolver.
 
 local sourceStates = {

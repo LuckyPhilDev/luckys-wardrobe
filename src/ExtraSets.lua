@@ -185,12 +185,35 @@ function ExtraSets.ListedNatively(record, classID)
     return ExtraSets.ClassAllowed(listedFor, classID)
 end
 
+-- Plenty of ensembles are one appearance rather than a set: a cloak sold on its
+-- own, a set of shoulders in four colours. A row here is a set to collect and,
+-- at the transmogrifier, an outfit to put on, and one slot is neither, so those
+-- are left off both pages. An item tooltip still names the set a piece belongs
+-- to, which is where a single appearance is worth answering for.
+--
+-- Only the ensembles are held to this. A set from the armour lists reaching one
+-- slot is one this client could only partly resolve rather than a set of one
+-- piece, and dropping it would hide the little of it there is left to collect.
+function ExtraSets.IsSingleSlotEnsemble(record)
+    if not record.ensembles then return false end
+
+    local slot
+    for _, piece in ipairs(record.pieces) do
+        if slot and piece.slot ~= slot then return false end
+        slot = piece.slot
+    end
+    return true
+end
+
 -- What is left for this page to show: the sets the class could wear, less the
--- ones the Sets tab is already showing them.
+-- ones the Sets tab is already showing them and the ensembles that are a single
+-- slot's worth of appearances rather than a set.
 function ExtraSets.RecordsForClass(records, classID)
     local matching = {}
     for _, record in ipairs(records) do
-        if ExtraSets.MatchesClass(record, classID) and not ExtraSets.ListedNatively(record, classID) then
+        if ExtraSets.MatchesClass(record, classID)
+            and not ExtraSets.ListedNatively(record, classID)
+            and not ExtraSets.IsSingleSlotEnsemble(record) then
             matching[#matching + 1] = record
         end
     end
