@@ -22,7 +22,7 @@ for _, armour in ipairs(Data.armorTypes) do
     dofile("src/Data/" .. armour.key:sub(1, 1):upper() .. armour.key:sub(2) .. "Sets.lua")
 end
 
-local totalSets, totalPieces, labelled, totalLooks = 0, 0, 0, 0
+local totalSets, totalPieces, labelled = 0, 0, 0
 local owningArmorType = {}
 for _, armour in ipairs(Data.armorTypes) do
     local sets = Data.sets[armour.key]
@@ -52,23 +52,6 @@ for _, armour in ipairs(Data.armorTypes) do
                 where .. " lists item IDs")
             totalPieces = totalPieces + 1
         end
-
-        -- Sorted and without repeats, which is what lets two sets carrying the
-        -- same look be told apart from two that merely overlap. A slot can hold
-        -- several looks while carrying one piece, so a set never has fewer of
-        -- these than it has pieces.
-        assert(type(set.displayIds) == "table" and #set.displayIds > 0,
-            where .. " has at least one display ID")
-        local previous = 0
-        for _, displayID in ipairs(set.displayIds) do
-            assert(type(displayID) == "number" and displayID > 0 and displayID % 1 == 0,
-                where .. " lists display IDs")
-            assert(displayID > previous, where .. " lists its display IDs sorted and once each")
-            previous = displayID
-        end
-        assert(#set.displayIds >= #set.pieces, where .. " has a look for every piece")
-        totalLooks = totalLooks + #set.displayIds
-
         totalSets = totalSets + 1
     end
 end
@@ -80,7 +63,6 @@ assert(totalPieces > 20000, "sets carry their pieces, got " .. totalPieces)
 -- A floor too. Difficulty is read off flags the snapshot sets on a small
 -- minority of sets, so a decode that quietly stopped working reads as zero.
 assert(labelled > 100, "the difficulty variants keep their label, got " .. labelled)
-assert(totalLooks > 20000, "sets carry the looks they wear, got " .. totalLooks)
 
 -- The ensembles are the one listing keyed by the client's own set numbering, so
 -- the armour lists' set IDs say nothing about which of these are the same set.

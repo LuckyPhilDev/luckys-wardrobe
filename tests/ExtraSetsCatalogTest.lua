@@ -215,11 +215,6 @@ local shownEntries = { {}, { alternateNames = { "Live Name (Recolor)" } } }
 local nativeFolds = {
     { setID = 21, name = "Fixture Chest And Robe", nativeName = "Fixture Official Regalia" },
 }
--- A fold the page refused because one of the two had resolved short of the
--- looks the snapshot says it wears.
-local shortFolds = {
-    { setID = 22, name = "Fixture Small Regalia", twinName = "Fixture Truncated Regalia" },
-}
 LuckysWardrobe.ExtraSets = {
     Entries = function() return shownEntries end,
     FoldedCount = function(entries)
@@ -228,7 +223,6 @@ LuckysWardrobe.ExtraSets = {
         return folded
     end,
     NativeFolds = function() return nativeFolds end,
-    ShortFolds = function() return shortFolds end,
 }
 
 local function runBuild()
@@ -458,10 +452,6 @@ assert(reportText:find("an ensemble teaches: 2"), "counted the sets that reached
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
 assert(reportText:find("folded into another row as the same look: 1"),
     "accounted for the sets the page folded away, so the count is not short with nothing to say why")
-assert(reportText:find("resolved short of the looks it wears: 1"),
-    "counted the folds refused because a set had resolved short")
-assert(reportText:find("22 %(Fixture Small Regalia%) was about to fold into Fixture Truncated Regalia"),
-    "and named each one, since this rule is to be judged on whether it was right to fire")
 assert(reportText:find("hidden as looks the Sets tab already shows this class: 1"),
     "counted the sets folded behind the tab's own looks")
 assert(reportText:find("hidden as Blizzard's own Sets tab lists them: 1"), "counted the overlap it hides")
