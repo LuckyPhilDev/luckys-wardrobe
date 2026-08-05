@@ -97,7 +97,7 @@ LuckysWardrobe.Strings = {
         },
         markTracked = {
             label = "Mark Tracked Pieces",
-            desc = "Stamps a crosshair over the pieces you are tracking when you open a set, in the Sets tab and the Extra Sets tab, so a set says which of its pieces you are out hunting for.",
+            desc = "Puts a crosshair on the corner of the pieces you are tracking when you open a set, in the Sets tab and the Extra Sets tab, so a set says which of its pieces you are out hunting for. Hover a marked piece and its tooltip says so too.",
         },
         wowheadLink = {
             label = "Wowhead Address on Ctrl-Click",
@@ -142,6 +142,7 @@ LuckysWardrobe.Strings = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
     },
     tracking = {
+        hovered = "You are tracking this appearance.",
         tracked = "Tracking %d missing appearance(s) from %s.",
         failed = "%d could not be tracked.",
         nothing = "Nothing new to track from %s.",

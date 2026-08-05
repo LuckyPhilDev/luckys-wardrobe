@@ -1,7 +1,16 @@
--- luacheck: globals CreateFrame EventUtil LuckysWardrobe WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals CreateFrame CreateTextureMarkup EventUtil GameTooltip LuckysWardrobe WardrobeCollectionFrame hooksecurefunc
 
 -- The mark answers a set being opened, tracking starting or stopping while it is
--- open, and the setting being turned off, so these go through all three.
+-- open, and the setting being turned off, so these go through all three. Hovering
+-- a marked piece has to say in words what the mark on it means.
+
+function CreateTextureMarkup(path) return "[" .. path .. "]" end
+
+GameTooltip = {
+    lines = {},
+    AddLine = function(self, text) self.lines[#self.lines + 1] = text end,
+    Show = function(self) self.shown = true end,
+}
 
 function hooksecurefunc(target, name, hook)
     local stock = target[name]
@@ -24,16 +33,19 @@ function CreateFrame()
 end
 
 local tracked = {}
-LuckysWardrobe = { SetTracking = {
-    IsTracking = function(_, sourceID) return tracked[sourceID] == true end,
-} }
+LuckysWardrobe = {
+    Strings = { tracking = { hovered = "You are tracking this appearance." } },
+    SetTracking = {
+        IsTracking = function(_, sourceID) return tracked[sourceID] == true end,
+    },
+}
 
 local function Texture()
     local texture = { shown = false }
     function texture:SetTexture(path) self.path = path end
     function texture:SetSize(width, height) self.width, self.height = width, height end
     function texture:SetVertexColor(...) self.colour = { ... } end
-    function texture:SetPoint() end
+    function texture:SetPoint(point, x, y) self.point = { point, x, y } end
     function texture:SetShown(shown) self.shown = shown end
     return texture
 end
@@ -61,6 +73,7 @@ local setsCollection = {
         },
     },
     DisplaySet = function() end,
+    RefreshAppearanceTooltip = function() end,
 }
 
 WardrobeCollectionFrame = { SetsCollectionFrame = setsCollection }
@@ -92,6 +105,21 @@ events.handler()
 assert(marked(setPieces[2]), "marked the piece being hunted")
 assert(not marked(setPieces[1]), "left the rest of the set alone")
 
+-- A badge in the corner of the icon, not a mark across the item art.
+assert(crosshair(setPieces[2]).point[1] == "BOTTOMRIGHT", "sat the mark in the corner of the icon")
+
+-- Hovering a piece in the Sets tab says in words what the mark means, and
+-- hovering an unmarked one says nothing.
+setsCollection.tooltipPrimarySourceID = 102
+setsCollection:RefreshAppearanceTooltip()
+assert(GameTooltip.lines[#GameTooltip.lines]:find(LuckysWardrobe.Strings.tracking.hovered, 1, true),
+    "told the hovered piece's tooltip it is being tracked")
+
+local said = #GameTooltip.lines
+setsCollection.tooltipPrimarySourceID = 101
+setsCollection:RefreshAppearanceTooltip()
+assert(#GameTooltip.lines == said, "said nothing over a piece nobody is hunting")
+
 -- The same texture answers every update rather than a fresh one stacking up.
 local texture = crosshair(setPieces[2])
 events.handler()
@@ -121,5 +149,12 @@ assert(not marked(setPieces[1]) and not marked(extraPiece), "cleared every mark 
 db.markTrackedAppearances = true
 TrackedAppearances:Refresh()
 assert(marked(setPieces[1]) and marked(extraPiece), "marked them again when the setting came back on")
+
+-- The tooltip line goes quiet with the setting, so the two never disagree.
+db.markTrackedAppearances = false
+said = #GameTooltip.lines
+setsCollection.tooltipPrimarySourceID = 101
+setsCollection:RefreshAppearanceTooltip()
+assert(#GameTooltip.lines == said, "said nothing over a piece while the setting is off")
 
 print("Lucky's Wardrobe tracked appearances test passed")

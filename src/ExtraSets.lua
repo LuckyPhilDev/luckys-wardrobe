@@ -1048,7 +1048,10 @@ function ExtraSets:CreatePage(wardrobe)
                 showTrackingInfo = false,
                 slotType = _G[SLOT_TOOLTIP_GLOBALS[piece.slot]],
             })
-        if piece.state == "missing" then
+        -- A piece already tracked says so instead, since telling someone to
+        -- track what they are already tracking is no help.
+        local marked = LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
+        if not marked and piece.state == "missing" then
             GameTooltip:AddLine(S.trackHint, 0.5, 0.8, 1)
         end
         GameTooltip:Show()

@@ -860,9 +860,15 @@ LuckysWardrobe.SetTracking = {
 }
 
 local markedSources = {}
+local huntedSource
 LuckysWardrobe.TrackedAppearances = {
     Mark = function(_, itemFrame, sourceID)
         markedSources[itemFrame] = sourceID or false
+    end,
+    AddTooltipLine = function(_, target, sourceID)
+        if sourceID ~= huntedSource then return false end
+        target:AddLine("tracked")
+        return true
     end,
 }
 
@@ -1284,6 +1290,13 @@ missingPiece.scripts.OnEnter(missingPiece)
 assert(tooltip.appearanceData, "missing pieces still get the native tooltip")
 assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.extraSets.trackHint,
     "missing pieces mention shift-click tracking")
+
+-- Telling someone to track what they are already tracking is no help, so the
+-- hint gives way to the line that says the piece is already being hunted.
+huntedSource = missingPiece.piece.sourceID
+missingPiece.scripts.OnEnter(missingPiece)
+assert(tooltip.lines[#tooltip.lines] == "tracked", "a tracked piece says so when hovered")
+huntedSource = nil
 
 -- The tooltip offers Tab to cycle through the items sharing a look, and the
 -- wardrobe's key handler is what answers: it moves the index and asks the frame

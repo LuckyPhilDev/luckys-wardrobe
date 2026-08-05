@@ -18,7 +18,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Sort by completion**: Order the Sets list by how close each one is, ascending to work on the nearest first or descending to see what you have most of. Favourites stay at the top.
 - **Filter by expansion and source**: Narrow the list to the expansions you are working through, or to where the sets come from, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. The count reflects what the filters actually left on screen.
 - **Track a whole set**: Shift-click a set to start tracking every appearance you are still missing from it, the way shift-clicking an item on the Items tab tracks that one.
-- **See what you are hunting**: Open a set and the pieces you are tracking carry a crosshair, in the Sets tab and the Extra Sets tab alike, so a set says what you are still out after.
+- **See what you are hunting**: Open a set and the pieces you are tracking carry a crosshair in the corner, in the Sets tab and the Extra Sets tab alike, so a set says what you are still out after. Hover one and its tooltip says so too.
 
 ### Set Tracker
 
