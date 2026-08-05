@@ -129,6 +129,9 @@ local function addFilterEntry(_owner, rootDescription)
         LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
         function() return db.hideUnwearableSets end,
         function() TransmogSets:Toggle() end)
+    -- The set names belong under the same divider rather than behind one of
+    -- their own, so everything this addon adds to the menu reads as one group.
+    LuckysWardrobe.TransmogSetNames:AddFilterOption(rootDescription)
 end
 
 -- The button marks itself as holding a filter, and offers to put it back. Left

@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil Menu Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Names on the set cards at the transmogrifier, so a wall of
 -- little models says which set each one is without hovering them one by one.
@@ -117,9 +117,10 @@ function TransmogSetNames:Refresh()
 end
 
 -- The setting again, in the filter menu of a page that shows the names: a
--- player who wants them gone is looking at them, not at a settings panel.
+-- player who wants them gone is looking at them, not at a settings panel. The
+-- page that owns the menu asks for this, and places it, since only it knows
+-- what else is already in there.
 function TransmogSetNames:AddFilterOption(rootDescription)
-    rootDescription:CreateDivider()
     rootDescription:CreateCheckbox(LuckysWardrobe.Strings.setNames.filter,
         function() return db.showSetNames end,
         function()
@@ -161,10 +162,4 @@ function TransmogSetNames:Init(database)
     db = database
 
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", installCardHooks)
-
-    -- Blizzard tags its own menus for addons to add to, which is how the Sets
-    -- tab gets the option without this touching the menu it already builds.
-    Menu.ModifyMenu("MENU_TRANSMOG_SETS_FILTER", function(_owner, rootDescription)
-        TransmogSetNames:AddFilterOption(rootDescription)
-    end)
 end

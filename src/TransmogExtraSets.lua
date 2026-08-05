@@ -653,9 +653,10 @@ function TransmogExtraSets:CreatePage(wardrobe)
             filters.uncollected = not filters.uncollected
             refresh()
         end)
-        -- Below the divider because it decides how the cards are drawn rather
+        -- Behind a divider because it decides how the cards are drawn rather
         -- than which of them are here, and the Default button leaves it alone
         -- for the same reason: it is a setting, not a filter.
+        rootDescription:CreateDivider()
         LuckysWardrobe.TransmogSetNames:AddFilterOption(rootDescription)
     end)
 

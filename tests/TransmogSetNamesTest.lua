@@ -273,15 +273,15 @@ db.showSetNames = true
 LuckysWardrobe.TransmogSetNames:Refresh()
 assert(latecomer.luckysSetName.shown, "named that card the moment the setting came back")
 
--- The same setting in the filter menu of Blizzard's Sets tab.
+-- The same setting as an option in a filter menu. The page that owns the menu
+-- places it, so what arrives here is the box alone.
 
-local nativeMenu = newMenuDescription()
-assert(menuModifiers["MENU_TRANSMOG_SETS_FILTER"], "added to the Sets tab's own filter menu")
-menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, nativeMenu)
+local menu = newMenuDescription()
+LuckysWardrobe.TransmogSetNames:AddFilterOption(menu)
 
-local option = findCheckbox(nativeMenu, LuckysWardrobe.Strings.setNames.filter)
+local option = findCheckbox(menu, LuckysWardrobe.Strings.setNames.filter)
 assert(option, "offered the names as a filter option")
-assert(nativeMenu.entries[1].divider, "kept it apart from the filters above it")
+assert(#menu.entries == 1, "added the box alone, leaving the page to keep it apart from its own entries")
 assert(option.isSelected(), "showed the option ticked while the names are on")
 
 option.setSelected()
@@ -291,12 +291,5 @@ assert(not option.isSelected(), "and unticked itself")
 
 option.setSelected()
 assert(db.showSetNames == true and setCard.luckysSetName.shown, "turning it back on brought the names back")
-
--- And in the Extra Sets tab's own filter menu, which builds its own entries and
--- then asks for this one.
-
-local extraMenu = newMenuDescription()
-LuckysWardrobe.TransmogSetNames:AddFilterOption(extraMenu)
-assert(findCheckbox(extraMenu, LuckysWardrobe.Strings.setNames.filter), "offered the same option on the Extra Sets tab")
 
 print("Lucky's Wardrobe transmog set names test passed")
