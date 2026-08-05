@@ -416,6 +416,10 @@ function ExtraSets.BuildEntry(record, resolver)
             -- Sources sharing an appearance count once, matching how Blizzard
             -- counts official set completion.
             piece.state = state.collected and "collected" or "missing"
+            -- Kept on the piece so the transmogrifier page can say whether the
+            -- outfit on show is wearing this piece's look, whichever source of
+            -- it the outfit actually carries.
+            piece.appearanceID = state.appearanceID
             if appearances[state.appearanceID] == nil then
                 appearances[state.appearanceID] = state.collected and true or false
                 total = total + 1

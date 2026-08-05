@@ -90,6 +90,13 @@ LuckysWardrobe.ExtraSets = {
     end,
 }
 
+local transmogExtraSetsInitialized = false
+LuckysWardrobe.TransmogExtraSets = {
+    Init = function()
+        transmogExtraSetsInitialized = true
+    end,
+}
+
 local reportedVerbose
 LuckysWardrobe.ExtraSetsCatalog = {
     PrintReport = function(_, verbose)
@@ -160,6 +167,7 @@ assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved varia
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
+assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
 assert(type(LuckysWardrobeDB.situationPresets) == "table", "applied the situation presets default")

@@ -202,6 +202,8 @@ assert(garb.missing == 1, "derived the missing count")
 assert(garb.unavailable == 0 and not garb.loading, "fully resolvable set has no caveats")
 assert(garb.pieces[1].slot == "HEAD" and garb.pieces[1].state == "collected", "pieces keep slot order and state")
 assert(garb.pieces[2].state == "missing" and garb.pieces[3].state == "missing", "uncollected pieces are missing")
+assert(garb.pieces[1].appearanceID == 9001 and garb.pieces[2].appearanceID == 9003,
+    "pieces keep their look, so the transmogrifier page can match them against an outfit")
 
 local loadingSet = entries[2]
 assert(loadingSet.name == "Loading Set", "fell back to the catalogue name")
