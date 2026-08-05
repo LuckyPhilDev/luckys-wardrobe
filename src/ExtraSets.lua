@@ -1192,9 +1192,9 @@ function ExtraSets:CreatePage(wardrobe)
     -- cold, since building the list only asks the client about pieces it will
     -- not judge, so without this pass the notice would be wrong exactly where
     -- it matters and right only after leaving the set and coming back.
-    local function loadPieceItems(entry, pass)
+    local function loadPieceItems(row, pass)
         local waiting = false
-        for _, piece in ipairs(entry.pieces) do
+        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
             if piece.itemID and not C_Item.GetItemInfo(piece.itemID) then
                 C_Item.RequestLoadItemDataByID(piece.itemID)
                 waiting = true
@@ -1203,10 +1203,11 @@ function ExtraSets:CreatePage(wardrobe)
         if not waiting or pass >= ITEM_LOAD_PASSES then return end
 
         C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
-            -- The set on screen may have moved on while the client answered.
-            if not selectedEntry or selectedEntry.key ~= entry.key then return end
-            showNotice(entry)
-            loadPieceItems(entry, pass + 1)
+            -- The row on screen may have moved on while the client answered, and
+            -- the colourway on show may have changed under a row that has not.
+            if selectedEntry ~= row then return end
+            showNotice(ExtraSets.VariantOf(row, selectedVariants[row.key]))
+            loadPieceItems(row, pass + 1)
         end)
     end
 
@@ -1269,7 +1270,7 @@ function ExtraSets:CreatePage(wardrobe)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         showNotice(entry)
-        loadPieceItems(entry, 1)
+        loadPieceItems(row, 1)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
