@@ -9,3 +9,5 @@ AGENTS.md
 
 tools/
 __pycache__/
+
+.vscode/
