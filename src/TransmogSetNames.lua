@@ -15,11 +15,13 @@ local TransmogSetNames = LuckysWardrobe.TransmogSetNames
 
 local NAME_PADDING = 8
 local NAME_LINE_SPACING = 2
--- Two lines of a card's width take the longest set names Blizzard has written.
+-- Two lines of a card's width take almost every set name Blizzard has written.
 -- A name past that shrinks to fit rather than wrapping down over the model, and
--- stops shrinking while it can still be read across the room.
+-- stops shrinking two points short of the card's own font, which is as small as
+-- a name can go and still be read at a glance. The handful of names too long
+-- even for that are cut off, and hovering the card still gives them in full.
 local MAX_LINES = 2
-local MIN_LINE_HEIGHT = 8
+local MIN_LINE_HEIGHT = 10
 local COLLECTED_COLOUR = { r = 0.827, g = 0.776, b = 0.620 }
 local INCOMPLETE_COLOUR = { r = 0.612, g = 0.627, b = 0.690 }
 -- Above the card's own dimming and its transmogrified glow, so the name stays
