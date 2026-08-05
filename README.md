@@ -116,6 +116,7 @@ Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
 - Wowhead addresses take ctrl-click off the dressing room preview. Turn them off in **Appearances** if you would rather keep the preview.
 - The Extra Sets catalogue is read from your client the first time you open Appearances. On a cold client it takes a moment, and the tab says so while it works.
+- The Extra Sets tab in the transmogrify window takes a second or two to settle. Its set cards dress themselves as they load, so the page looks half drawn while it works, and a card can show the wrong pieces until it lands. It corrects itself, so no reload is needed.
 - Some pieces are not on every client build. A set that holds one says how many it cannot show, and those pieces cannot be previewed or applied.
 - Catalyst marks and catalyst loot alerts need Transmog Upgrade Master. Without it those two options stay off, and the settings panel says why.
 

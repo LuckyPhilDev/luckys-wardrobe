@@ -37,3 +37,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Minimap button**: shift-click for the set list, right-click for settings.
 - **A welcome note**: a hello at your first login, with the Discord address for anything the addon is still missing.
 - **Conflict warning**: a dialog at login if Better Wardrobe or the old Lucky's Better Wardrobe is still enabled, with a button to turn either one off and reload on the spot.
+
+### Known issues
+
+- **The Extra Sets tab in the transmogrify window takes a second or two to settle.** Its cards dress as they load, so the tab looks half drawn at first. It sorts itself out, no reload needed.
