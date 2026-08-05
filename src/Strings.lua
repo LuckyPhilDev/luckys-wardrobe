@@ -123,7 +123,7 @@ LuckysWardrobe.Strings = {
         },
         tooltipSetProgress = {
             label = "Show Set Information",
-            desc = "Adds a line to an item's tooltip naming the set it belongs to and how much of that set you have, as in \"From set: Glyphed Garb 7/8\", so a drop says what it is worth at a glance.",
+            desc = "Adds a line to an item's tooltip naming the set it belongs to and how much of that set you have, so a drop says what it is worth at a glance. Example: \"From set: Glyphed Garb 7/8\"",
         },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
