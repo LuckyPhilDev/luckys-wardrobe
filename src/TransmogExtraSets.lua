@@ -1,4 +1,4 @@
--- luacheck: globals C_PlayerInfo C_Timer C_TransmogCollection C_TransmogOutfitInfo COLLECTED ColorManager Constants CreateDataProvider CreateFrame Enum EventUtil GameTooltip GameTooltip_AddColoredLine GameTooltip_AddDisabledLine GameTooltip_AddHighlightLine GetTime GREEN_FONT_COLOR IsShiftKeyDown IsUnitModelReadyForUI LIGHTYELLOW_FONT_COLOR MenuUtil NORMAL_FONT_COLOR NOT_COLLECTED PlaySound Pool_HideAndClearAnchors RED_FONT_COLOR RETRIEVING_ITEM_INFO Round SOUNDKIT TextureKitConstants TransmogFrame UIErrorsFrame WrapTextInColor hooksecurefunc
+-- luacheck: globals C_Item C_PlayerInfo C_Timer C_TransmogCollection C_TransmogOutfitInfo COLLECTED ColorManager Constants CreateDataProvider CreateFrame Enum EventUtil GameTooltip GameTooltip_AddColoredLine GameTooltip_AddDisabledLine GameTooltip_AddHighlightLine GetTime GREEN_FONT_COLOR IsShiftKeyDown IsUnitModelReadyForUI LIGHTYELLOW_FONT_COLOR MenuUtil NORMAL_FONT_COLOR NOT_COLLECTED PlaySound Pool_HideAndClearAnchors RED_FONT_COLOR RETRIEVING_ITEM_INFO Round SOUNDKIT TextureKitConstants TransmogFrame UIErrorsFrame WrapTextInColor hooksecurefunc
 
 -- Lucky's Wardrobe: the Extra Sets tab at the transmogrifier, beside Blizzard's
 -- own Sets tab and built from the same card grid, so the two read as one UI.
@@ -15,6 +15,16 @@ local TransmogExtraSets = LuckysWardrobe.TransmogExtraSets
 -- How long a burst of collection events is allowed to gather before the page
 -- reads the catalogue again, matching the Collections page.
 local REBUILD_DELAY_SECONDS = 0.25
+
+-- How long the page waits for the items behind its sets to arrive before it
+-- judges them again, and how many times it is willing to wait. Some items never
+-- arrive, so the waiting ends rather than running until it succeeds.
+local ITEM_LOAD_DELAY_SECONDS = 0.5
+local ITEM_LOAD_PASSES = 3
+-- How many items one pass will ask for. This page lists hundreds of sets, and
+-- asking about every one of them at once is a burst the client answers no
+-- faster for.
+local ITEM_LOAD_BUDGET = 200
 
 -- The grid spacing Blizzard gives the native Sets tab's card grid.
 local CARD_GRID_X_PADDING = 27
@@ -76,6 +86,25 @@ function TransmogExtraSets.LayoutIndexAfter(setsIndex, otherIndexes)
     end
     if not nextIndex then return setsIndex + 1 end
     return (setsIndex + nextIndex) / 2
+end
+
+-- The sets this character can actually put on. A set the client refuses, over
+-- a faction lock most often, can never be applied at the transmogrifier, so it
+-- is not offered here: Blizzard's own Sets tab lists only the sets the player
+-- can use, for the same reason. The Collections page still lists them, because
+-- browsing a set is not wearing it.
+--
+-- A set the client has said nothing about stays. Its verdict comes from item
+-- data the client loads only once asked, and a cold cache is not a refusal:
+-- hiding on one would empty the page every time it opened.
+function TransmogExtraSets.WearableEntries(entries, classID, sourceValidity)
+    local wearable = {}
+    for _, entry in ipairs(entries) do
+        if not LuckysWardrobe.ExtraSets.UnwearableReason(entry, classID, sourceValidity) then
+            wearable[#wearable + 1] = entry
+        end
+    end
+    return wearable
 end
 
 -- The cards in the order the page shows them: nearest to finished first, so
@@ -153,9 +182,23 @@ end
 -- Entries for the character being played, built once and kept until the
 -- collection changes. The page has no class dropdown: whoever is standing at
 -- the transmogrifier is the class every answer is about.
+--
+-- The rows and the verdict on them are kept apart because they go stale for
+-- different reasons: the rows change when the collection does, while the
+-- verdict changes as the item data behind a set arrives, which happens far more
+-- often and costs nothing like as much to work out again.
+local cachedRows
 local cachedEntries
 
 function TransmogExtraSets.InvalidateEntries()
+    cachedRows = nil
+    cachedEntries = nil
+end
+
+-- Judges the rows again without building them again, which is what item data
+-- landing calls for: the sets have not changed, only what the client will say
+-- about them.
+function TransmogExtraSets.RejudgeEntries()
     cachedEntries = nil
 end
 
@@ -164,13 +207,42 @@ function TransmogExtraSets.Entries()
         LuckysWardrobe.Perf:Begin("transmog entries built")
         local ExtraSets = LuckysWardrobe.ExtraSets
         local resolver = ExtraSets.LiveResolver()
-        cachedEntries = ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
+        cachedRows = cachedRows or ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
             ExtraSets.RecordsForClass(ExtraSets.Records(), resolver.playerClassID()),
             resolver
         ))
+        cachedEntries = TransmogExtraSets.WearableEntries(
+            cachedRows, resolver.playerClassID(), resolver.sourceValidity)
         LuckysWardrobe.Perf:End("transmog entries built")
     end
     return cachedEntries
+end
+
+-- Items already asked for this session, so a pass moves on to the sets nothing
+-- has been asked about rather than asking again for answers still in flight.
+local requestedItems = {}
+
+-- Asks the client for the item behind one piece of every set it has not judged
+-- yet, which is what makes it judge them. One piece is enough to place a set:
+-- a lock that keeps a character out of one covers every piece of it, so its
+-- first piece answers for the rest. Says whether anything was asked for, which
+-- is the only reason to look again.
+local function requestUnjudgedItems(entries)
+    local asked = 0
+    for _, entry in ipairs(entries) do
+        if asked >= ITEM_LOAD_BUDGET then break end
+        for _, piece in ipairs(entry.pieces) do
+            if piece.state ~= "unavailable" and piece.itemID then
+                if not requestedItems[piece.itemID] and not C_Item.GetItemInfo(piece.itemID) then
+                    requestedItems[piece.itemID] = true
+                    C_Item.RequestLoadItemDataByID(piece.itemID)
+                    asked = asked + 1
+                end
+                break
+            end
+        end
+    end
+    return asked > 0
 end
 
 -- Locale-free record slots to the outfit slots the transmogrifier's API
@@ -246,17 +318,26 @@ local function applyEntry(entry)
         return
     end
 
-    PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK)
     local appearanceType = Enum.TransmogType.Appearance
     local noOption = Enum.TransmogOutfitSlotOption.None
+    local applied = 0
     for _, application in ipairs(applications) do
         local slot = outfitSlotFor(application.slot)
         local slotInfo = slot and C_TransmogOutfitInfo.GetViewedOutfitSlotInfo(slot, appearanceType, noOption)
         if slotInfo and slotInfo.canTransmogrify then
             C_TransmogOutfitInfo.SetPendingTransmog(slot, appearanceType, noOption,
                 application.sourceID, Enum.TransmogOutfitDisplayType.Assigned)
+            applied = applied + 1
         end
     end
+
+    -- A set every slot turns down leaves the outfit exactly as it was, and a
+    -- click that changes nothing has to say why rather than look broken.
+    if applied == 0 then
+        UIErrorsFrame:AddMessage(LuckysWardrobe.Strings.extraSets.nothingApplied, RED_FONT_COLOR:GetRGB())
+        return
+    end
+    PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK)
 end
 
 -- Card behaviour, installed over Blizzard's own set-card template so every
@@ -514,9 +595,28 @@ function TransmogExtraSets:CreatePage(wardrobe)
         LuckysWardrobe.Perf:End("transmog page refresh")
     end
 
+    -- A set is only kept off the page once the client has refused it, and the
+    -- client will not judge a set whose items it has not loaded. So each rebuild
+    -- asks for what it is missing and reads the answers a moment later, which is
+    -- what settles the page onto the sets this character can really wear.
+    local warmRun = 0
+    local function warmVerdicts(run, pass)
+        if not requestUnjudgedItems(TransmogExtraSets.Entries()) then return end
+
+        C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
+            -- A rebuild since this pass started has a warm-up of its own.
+            if run ~= warmRun or not page:IsShown() then return end
+            TransmogExtraSets.RejudgeEntries()
+            refresh()
+            if pass < ITEM_LOAD_PASSES then warmVerdicts(run, pass + 1) end
+        end)
+    end
+
     local function rebuildNow()
         TransmogExtraSets.InvalidateEntries()
         refresh()
+        warmRun = warmRun + 1
+        warmVerdicts(warmRun, 1)
     end
 
     -- Learning one appearance fires the collection event several times over,

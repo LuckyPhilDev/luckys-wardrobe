@@ -217,4 +217,30 @@ assert(#applications == 1 and applications[1].sourceID == 5002,
 assert(#TransmogExtraSets.ApplyList(emptySet, function() return nil end) == 0,
     "a set with nothing applicable applies nothing")
 
+-- Sets this character cannot wear. The transmogrifier dresses one character, so
+-- a set the client refuses is one nothing here could ever put on.
+
+local refusedSources = {}
+local function validity(sourceID)
+    if not sourceStates[sourceID] then return nil end
+    if refusedSources[sourceID] then return false, "faction", "Requires Alliance" end
+    return true
+end
+
+local everySet = { completeSet, partialSet, emptySet }
+assert(#TransmogExtraSets.WearableEntries(everySet, 1, validity) == 3,
+    "sets the client accepts are all offered")
+
+refusedSources[2002] = true
+local wearable = TransmogExtraSets.WearableEntries(everySet, 1, validity)
+assert(#wearable == 2 and wearable[1] == partialSet and wearable[2] == emptySet,
+    "the set holding a refused piece is kept off the page")
+
+-- The client works its verdict out from item data it loads only once asked, and
+-- a set it has not judged has to stay: hiding on a cold cache would empty the
+-- page every time it opened.
+assert(#TransmogExtraSets.WearableEntries(everySet, 1, function() return nil end) == 3,
+    "sets the client has said nothing about are still offered")
+refusedSources = {}
+
 print("Lucky's Wardrobe transmog extra sets tests passed")

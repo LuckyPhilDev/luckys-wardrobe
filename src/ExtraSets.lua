@@ -539,11 +539,13 @@ end
 -- what the details panel says when it could not. Armour type is what keeps
 -- most sets off a character and the class mask does not encode it, so the
 -- refusal comes from the sources themselves and only then is it worth asking
--- what the class wears. Anything the client turns down for a reason of its
--- own, a race or faction lock among them, answers "other": there is nothing
--- more to tell the player than that it turned it down. Worked out for the set
--- on screen rather than for every set in the list, because only the one on
--- screen ever says so.
+-- what the class wears. Worked out for the set on screen rather than for every
+-- set in the list, because only the one on screen ever says so.
+--
+-- The client names some of its own refusals, a faction or race lock among
+-- them, and its word beats anything worked out from the record: it knows why
+-- it said no. Where it names nothing, its own sentence about the refusal comes
+-- back beside the reason so the panel can quote it rather than shrug.
 --
 -- sourceValidity is the client's answer about the character being played, so it
 -- is passed only while the chosen class is that character's own. Browsing
@@ -555,25 +557,37 @@ function ExtraSets.UnwearableReason(entry, classID, sourceValidity)
     if not sourceValidity then return nil end
 
     local judged, valid = 0, 0
+    local refused, refusal, refusalMessage
     for _, piece in ipairs(entry.pieces) do
-        local isValid = sourceValidity(piece.sourceID)
+        local isValid, pieceRefusal, pieceMessage = sourceValidity(piece.sourceID)
         if isValid ~= nil then
             judged = judged + 1
-            if isValid then valid = valid + 1 end
+            if isValid then
+                valid = valid + 1
+            elseif not refused then
+                refused = true
+                refusal, refusalMessage = pieceRefusal, pieceMessage
+            end
         end
     end
     if judged == 0 or valid == judged then return nil end
+    if refusal then return refusal, refusalMessage end
 
     local wornArmour = LuckysWardrobe.Classes:ArmourType(classID)
     if wornArmour and entry.armorType and entry.armorType ~= wornArmour then return "armour" end
-    return "other"
+    return "other", refusalMessage
 end
 
 -- The line the details panel shows for a set out of reach, naming the reason
 -- where there is one to name. A set whose mask holds no class this client has,
--- or an armour type it has no name for, falls back to saying only that the set
--- is out of reach rather than to a sentence with a hole in it.
-function ExtraSets.UnwearableNotice(entry, reason, classID)
+-- or an armour type it has no name for, falls back to the client's own words
+-- for the refusal, and to saying only that the set is out of reach when there
+-- are none, rather than to a sentence with a hole in it.
+--
+-- detail carries what only the client can supply: the faction a set locked
+-- against this character must belong to, and the sentence the client gave with
+-- its refusal.
+function ExtraSets.UnwearableNotice(entry, reason, classID, detail)
     local S = LuckysWardrobe.Strings.extraSets
     if reason == "class" then
         local classes = LuckysWardrobe.Classes:FromMask(entry.classMask)
@@ -582,7 +596,15 @@ function ExtraSets.UnwearableNotice(entry, reason, classID)
         local setArmour = S.armourTypes[entry.armorType]
         local wornArmour = S.armourTypes[LuckysWardrobe.Classes:ArmourType(classID)]
         if setArmour and wornArmour then return S.notUsableArmour:format(setArmour, wornArmour) end
+    elseif reason == "faction" then
+        local faction = detail and detail.faction
+        if faction then return S.notUsableFaction:format(faction) end
+    elseif reason == "race" then
+        return S.notUsableRace
     end
+
+    local message = detail and detail.message
+    if message and message ~= "" then return S.notUsableReason:format(message) end
     return S.notUsable
 end
 
@@ -721,6 +743,34 @@ end
 
 -- Live resolvers, split out so tests can replace them wholesale.
 
+-- The client's own word for why it turned a source down, as a locale-free key
+-- the notice can answer to. Faction and race are worth a sentence of their own
+-- because they say something the player can act on, or stop trying to; every
+-- other refusal it names is left to the wording it supplies with it.
+local refusalKeys
+local function refusalKey(useErrorType)
+    if not useErrorType then return nil end
+
+    if not refusalKeys then
+        local useErrors = Enum.TransmogUseErrorType
+        refusalKeys = {
+            [useErrors.Faction] = "faction",
+            [useErrors.Race] = "race",
+        }
+    end
+    return refusalKeys[useErrorType]
+end
+
+-- The faction a set this character is locked out of must belong to: the one
+-- they are not. A character with no side of its own, a pandaren who has not
+-- chosen, is told no faction rather than the wrong one.
+function ExtraSets.OpposingFactionName()
+    local faction = UnitFactionGroup("player")
+    if faction == "Alliance" then return FACTION_HORDE end
+    if faction == "Horde" then return FACTION_ALLIANCE end
+    return nil
+end
+
 function ExtraSets.LiveResolver()
     return {
         -- Asked of every piece of every set on this page, so it asks the client
@@ -753,11 +803,16 @@ function ExtraSets.LiveResolver()
         -- it has not loaded yet says no rather than declining. Cold is not the
         -- same as no, so an unloaded piece goes unjudged and the set waits for
         -- a real answer instead of being called unwearable on first sight.
+        --
+        -- A refusal comes back with the client's own account of it: the kind of
+        -- lock where that is one the page can name, and the sentence the client
+        -- would show for it either way.
         sourceValidity = function(sourceID)
             local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
             if not sourceInfo then return nil end
             if not sourceInfo.itemID or not C_Item.GetItemInfo(sourceInfo.itemID) then return nil end
-            return sourceInfo.isValidSourceForPlayer and true or false
+            if sourceInfo.isValidSourceForPlayer then return true end
+            return false, refusalKey(sourceInfo.useErrorType), sourceInfo.useError
         end,
         -- Everything the client will say about one source, gathered for the dev
         -- dump. Each question is one the page already asks somewhere; what the
@@ -1121,12 +1176,15 @@ function ExtraSets:CreatePage(wardrobe)
         local resolver = ExtraSets.LiveResolver()
         local classID = ExtraSets.SelectedClassID() or resolver.playerClassID()
         local ownClass = classID == resolver.playerClassID()
-        local unwearable =
+        local unwearable, clientReason =
             ExtraSets.UnwearableReason(entry, classID, ownClass and resolver.sourceValidity or nil)
         if entry.unavailable > 0 then
             noticeText:SetFormattedText(S.unavailableNotice, entry.unavailable)
         elseif unwearable then
-            noticeText:SetText(ExtraSets.UnwearableNotice(entry, unwearable, classID))
+            noticeText:SetText(ExtraSets.UnwearableNotice(entry, unwearable, classID, {
+                faction = ExtraSets.OpposingFactionName(),
+                message = clientReason,
+            }))
         end
         noticeText:SetShown(entry.unavailable > 0 or unwearable ~= nil)
     end
