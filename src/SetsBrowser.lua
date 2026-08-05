@@ -7,7 +7,6 @@ LuckysWardrobe.SetsBrowser = {}
 
 local SetsBrowser = LuckysWardrobe.SetsBrowser
 local SetSources = LuckysWardrobe.SetSources
-local DEBUG_TAG = "[DEBUG-settab-c7a2]"
 local state = {
     sortMode = "default",
     sortDirection = "ascending",
@@ -136,11 +135,6 @@ function SetsBrowser:ApplyListOrder(container)
     )
     if container.UpdateListSelection then container:UpdateListSelection() end
     self:ReselectIfHidden(container:GetParent())
-    if state.traceListApply then
-        state.traceListApply = nil
-        LuckysWardrobe.DevLog(DEBUG_TAG .. " rendered list applied; first="
-            .. tostring(self.lastSets[1] and self.lastSets[1].setID))
-    end
 end
 
 -- Filtering can hide the set that is currently selected. Left alone, the
@@ -189,7 +183,7 @@ function SetsBrowser:UpdateProgressBar(setsFrame)
     if not isNarrowed() then
         local nativeCollected, nativeTotal = C_TransmogSets.GetFilteredBaseSetsCounts()
         if nativeCollected ~= collected or nativeTotal ~= #self.lastSets then
-            LuckysWardrobe.DevLog(DEBUG_TAG .. " unfiltered count mismatch; ours="
+            LuckysWardrobe.DevLog("Sets tab: unfiltered count mismatch; ours="
                 .. collected .. "/" .. #self.lastSets
                 .. " blizzard=" .. nativeCollected .. "/" .. nativeTotal)
         end
@@ -199,7 +193,7 @@ function SetsBrowser:UpdateProgressBar(setsFrame)
 end
 
 local function refresh(setsFrame)
-    LuckysWardrobe.DevLog(DEBUG_TAG .. " refresh; OnSearchUpdate="
+    LuckysWardrobe.DevLog("Sets tab: refresh; OnSearchUpdate="
         .. type(setsFrame.OnSearchUpdate) .. " init=" .. tostring(setsFrame.init))
     if setsFrame.OnSearchUpdate then
         setsFrame:OnSearchUpdate()
@@ -212,13 +206,13 @@ end
 
 function SetsBrowser:SetupFilterMenu(frame)
     if not frame then
-        LuckysWardrobe.DevLog(DEBUG_TAG .. " collection frame missing")
+        LuckysWardrobe.DevLog("Sets tab: collection frame missing")
         return
     end
     local setsFrame = frame.SetsCollectionFrame
     local button = frame.FilterButton
     if not button or not setsFrame then
-        LuckysWardrobe.DevLog(DEBUG_TAG .. " filter button=" .. tostring(button ~= nil)
+        LuckysWardrobe.DevLog("Sets tab: filter button=" .. tostring(button ~= nil)
             .. " sets frame=" .. tostring(setsFrame ~= nil))
         return
     end
@@ -259,8 +253,7 @@ function SetsBrowser:SetupFilterMenu(frame)
             local mode = option
             sort:CreateRadio(mode.label, function() return state.sortMode == mode.key end, function()
                 state.sortMode = mode.key
-                state.traceNextRead = true
-                LuckysWardrobe.DevLog(DEBUG_TAG .. " sort mode=" .. mode.key)
+                LuckysWardrobe.DevLog("Sets tab: sort mode=" .. mode.key)
                 refresh(setsFrame)
             end)
         end
@@ -270,8 +263,7 @@ function SetsBrowser:SetupFilterMenu(frame)
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return state.sortDirection == sortDirection.key end, function()
                 state.sortDirection = sortDirection.key
-                state.traceNextRead = true
-                LuckysWardrobe.DevLog(DEBUG_TAG .. " sort direction=" .. sortDirection.key)
+                LuckysWardrobe.DevLog("Sets tab: sort direction=" .. sortDirection.key)
                 refresh(setsFrame)
             end)
         end
@@ -316,12 +308,12 @@ function SetsBrowser:SetupFilterMenu(frame)
             end)
         end
     end)
-    LuckysWardrobe.DevLog(DEBUG_TAG .. " menu attached to " .. tostring(frame:GetName()))
+    LuckysWardrobe.DevLog("Sets tab: menu attached to " .. tostring(frame:GetName()))
 end
 
 function SetsBrowser:Init()
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
-        LuckysWardrobe.DevLog(DEBUG_TAG .. " collections loaded; stock="
+        LuckysWardrobe.DevLog("Sets tab: collections loaded; stock="
             .. tostring(WardrobeCollectionFrame ~= nil) .. " better="
             .. tostring(BetterWardrobeCollectionFrame ~= nil) .. " initializer="
             .. type(WardrobeCollectionFrame and WardrobeCollectionFrame.InitBaseSetsFilterButton) .. " GetBaseSets="
@@ -334,17 +326,9 @@ function SetsBrowser:Init()
                 local sorted = SetsBrowser:FilterAndSort(sets)
                 SetsBrowser.lastSets = {}
                 for index, set in ipairs(sorted) do SetsBrowser.lastSets[index] = set end
-                if state.traceNextRead then
-                    state.traceNextRead = nil
-                    state.traceListApply = true
-                    LuckysWardrobe.DevLog(DEBUG_TAG .. " GetBaseSets read; count=" .. #sorted
-                        .. " mode=" .. state.sortMode .. " direction=" .. state.sortDirection
-                        .. " before=" .. tostring(sets[1] and sets[1].setID)
-                        .. " after=" .. tostring(sorted[1] and sorted[1].setID))
-                end
                 return sorted
             end
-            LuckysWardrobe.DevLog(DEBUG_TAG .. " GetBaseSets wrapped")
+            LuckysWardrobe.DevLog("Sets tab: GetBaseSets wrapped")
         end
 
         local setsFrame = WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame
@@ -355,7 +339,7 @@ function SetsBrowser:Init()
             hooksecurefunc(listContainer, "UpdateDataProvider", function(container)
                 SetsBrowser:ApplyListOrder(container)
             end)
-            LuckysWardrobe.DevLog(DEBUG_TAG .. " rendered list hooked")
+            LuckysWardrobe.DevLog("Sets tab: rendered list hooked")
         end
 
         if setsFrame and type(setsFrame.UpdateProgressBar) == "function"
@@ -364,17 +348,17 @@ function SetsBrowser:Init()
             hooksecurefunc(setsFrame, "UpdateProgressBar", function(frame)
                 SetsBrowser:UpdateProgressBar(frame)
             end)
-            LuckysWardrobe.DevLog(DEBUG_TAG .. " progress bar hooked")
+            LuckysWardrobe.DevLog("Sets tab: progress bar hooked")
         end
 
         if WardrobeCollectionFrame and type(WardrobeCollectionFrame.InitBaseSetsFilterButton) == "function"
             and not SetsBrowser.filterHooked then
             SetsBrowser.filterHooked = true
             hooksecurefunc(WardrobeCollectionFrame, "InitBaseSetsFilterButton", function(frame)
-                LuckysWardrobe.DevLog(DEBUG_TAG .. " filter initializer ran")
+                LuckysWardrobe.DevLog("Sets tab: filter initializer ran")
                 SetsBrowser:SetupFilterMenu(frame)
             end)
-            LuckysWardrobe.DevLog(DEBUG_TAG .. " filter initializer hooked")
+            LuckysWardrobe.DevLog("Sets tab: filter initializer hooked")
         end
 
         SetsBrowser:SetupFilterMenu(WardrobeCollectionFrame)
