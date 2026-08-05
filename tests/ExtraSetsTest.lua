@@ -567,6 +567,9 @@ function CreateFrame(frameType, name, parent, template)
     function frame:GetText() return self.text or "" end
     function frame:GetName() return self.name end
     function frame:GetParent() return self.parent end
+    -- The client only answers for a frame's screen edges once it has been laid
+    -- out, so this stays unset until a test says where the frame landed.
+    function frame:GetRight() return self.right end
     frame.CreateFontString = function() return newFontString() end
     frame.CreateTexture = function() return newTexture() end
     function frame:SetMinMaxValues(minValue, maxValue) self.min, self.max = minValue, maxValue end
@@ -771,6 +774,7 @@ end
 -- builds the menu again.
 local function nativeClassDropdown()
     local dropdown = recordAnchors(visibilityFrame(true))
+    function dropdown:GetLeft() return self.left end
     function dropdown:SetupMenu(builder) self.menuBuilder = builder end
     function dropdown:SetClassFilter(classID)
         C_TransmogSets.SetTransmogSetsClassFilter(classID)
@@ -916,17 +920,25 @@ end
 
 -- The third tab reaches into where Blizzard parked the progress bar, so both
 -- the native bar and the addon's own copy move past the end of the tab strip.
+-- Nothing has been laid out on screen yet, so there is no gap to measure.
 
 for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
     assert(#bar.points == 1, "gave the progress bar a single anchor")
-    local anchor = bar.points[1]
-    assert(anchor[1] == "TOPLEFT" and anchor[2] == extraTab and anchor[3] == "TOPRIGHT",
+    local point, relativeTo, relativePoint, x = bar:GetPoint()
+    assert(point == "TOP" and relativeTo == extraTab and relativePoint == "TOPRIGHT",
         "anchored the progress bar to the end of the tab strip")
+    assert(x - bar.width / 2 > 0, "kept the whole bar past the end of the tab strip")
     assert(bar.width < NATIVE_PROGRESS_BAR_WIDTH, "narrowed the progress bar to clear the class dropdown")
     assert(bar.border.width > bar.width, "kept the border art framing the narrowed bar")
 end
 
--- Tab switching.
+-- Tab switching. Both frames the bar sits between have landed on screen by the
+-- time a tab is clicked, so the gap can be measured from here on.
+
+local TAB_STRIP_RIGHT = 400
+local CLASS_DROPDOWN_LEFT = 700
+extraTab.right = TAB_STRIP_RIGHT
+wardrobe.ClassDropdown.left = CLASS_DROPDOWN_LEFT
 
 extraTab.scripts.OnClick()
 assert(wardrobe.selectedCollectionTab == 3 and page.shown, "selected and showed Extra Sets")
@@ -936,6 +948,15 @@ assert(not wardrobe.progressBar.shown, "hid the rest of the native controls")
 assert(wardrobe.ClassDropdown.shown, "kept the native class dropdown, which this page shares")
 assert(wardrobe.activeFrame == page, "became the active Appearances page")
 assert(playedSound == SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, "used the native tab sound")
+
+-- Resizing the strip measured the gap again, and this time the bar could centre
+-- itself in it rather than hug the end of the strip.
+for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
+    local _, _, _, x = bar:GetPoint()
+    assert(x == (CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT) / 2,
+        "centred the bar in the gap between the tab strip and the class dropdown")
+    assert(x + bar.width / 2 < CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT, "left the class dropdown clear")
+end
 
 wardrobe:SetTab(4)
 assert(not page.shown and not wardrobe.SearchBox.shown, "left unknown third-party tabs alone")

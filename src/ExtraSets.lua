@@ -32,8 +32,8 @@ local CLASS_DROPDOWN_X = -9
 local CLASS_DROPDOWN_Y = 4
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
--- runs underneath it. It moves to the end of the strip and gives up some width
--- to stay clear of the class dropdown on the right.
+-- runs underneath it. It moves into the gap between the end of the strip and
+-- the class dropdown, and gives up some width to sit there.
 local PROGRESS_BAR_WIDTH = 150
 local PROGRESS_BAR_TAB_GAP = 10
 local PROGRESS_BAR_TAB_DROP = -11
@@ -1455,9 +1455,38 @@ local function layOutClassDropdown(dropdown)
     dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
 end
 
+-- Centring the bar in the gap means measuring both of its edges, which no
+-- single anchor can do, so the centre is worked out from where the two frames
+-- landed. Neither has a position until the wardrobe has been shown; until then
+-- the bar sits just past the last tab, and every tab change measures again.
+local function progressBarCentreOffset()
+    local stripEdge = extraTab:GetRight()
+    local dropdownEdge = attachedWardrobe.ClassDropdown:GetLeft()
+    if not (stripEdge and dropdownEdge) then
+        return PROGRESS_BAR_TAB_GAP + PROGRESS_BAR_WIDTH / 2
+    end
+
+    return (dropdownEdge - stripEdge) / 2
+end
+
+-- The border art is a fixed texture, so it has to be narrowed alongside the bar
+-- it frames.
+local function layOutProgressBar(progressBar)
+    progressBar:ClearAllPoints()
+    progressBar:SetPoint("TOP", extraTab, "TOPRIGHT", progressBarCentreOffset(), PROGRESS_BAR_TAB_DROP)
+    progressBar:SetWidth(PROGRESS_BAR_WIDTH)
+    progressBar.border:SetWidth(PROGRESS_BAR_WIDTH + PROGRESS_BAR_BORDER_MARGIN)
+end
+
+local function layOutProgressBars()
+    layOutProgressBar(attachedWardrobe.progressBar)
+    layOutProgressBar(extraPage.progressBar)
+end
+
 local function updateSelectedTab(wardrobe, selectedTabID)
     local selected = selectedTabID == extraTabID
     extraPage:SetShown(selected)
+    layOutProgressBars()
 
     if selected then
         wardrobe.ItemsCollectionFrame:Hide()
@@ -1477,16 +1506,6 @@ local function updateSelectedTab(wardrobe, selectedTabID)
         wardrobe.FilterButton:Show()
         wardrobe.ClassDropdown:Show()
     end
-end
-
--- Anchoring to the last tab keeps the bar clear of the strip as tab widths
--- change with the selection. The border art is a fixed texture, so it has to be
--- narrowed alongside the bar it frames.
-local function layOutProgressBar(progressBar)
-    progressBar:ClearAllPoints()
-    progressBar:SetPoint("TOPLEFT", extraTab, "TOPRIGHT", PROGRESS_BAR_TAB_GAP, PROGRESS_BAR_TAB_DROP)
-    progressBar:SetWidth(PROGRESS_BAR_WIDTH)
-    progressBar.border:SetWidth(PROGRESS_BAR_WIDTH + PROGRESS_BAR_BORDER_MARGIN)
 end
 
 function ExtraSets:Attach(wardrobe)
@@ -1515,6 +1534,7 @@ function ExtraSets:Attach(wardrobe)
     hooksecurefunc(wardrobe, "SetTab", updateSelectedTab)
     hooksecurefunc(wardrobe, "ClickTab", function(self)
         PanelTemplates_ResizeTabsToFit(self, TAB_FIT_WIDTH)
+        layOutProgressBars()
     end)
 
     -- One class for both pages: the Sets tab's dropdown is the only class
@@ -1532,8 +1552,6 @@ function ExtraSets:Attach(wardrobe)
 
     PanelTemplates_SetNumTabs(wardrobe, extraTabID)
     PanelTemplates_ResizeTabsToFit(wardrobe, TAB_FIT_WIDTH)
-    layOutProgressBar(wardrobe.progressBar)
-    layOutProgressBar(extraPage.progressBar)
     updateSelectedTab(wardrobe, wardrobe.selectedCollectionTab)
 end
 
