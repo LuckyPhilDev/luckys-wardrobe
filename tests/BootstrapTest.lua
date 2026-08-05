@@ -126,7 +126,11 @@ LuckysWardrobe.TransmogExtraSets = {
 }
 
 local reportedVerbose
+local catalogueStarted = false
 LuckysWardrobe.ExtraSetsCatalog = {
+    Init = function()
+        catalogueStarted = true
+    end,
     PrintReport = function(_, verbose)
         reportedVerbose = verbose
     end,
@@ -197,6 +201,7 @@ assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved vari
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(itemTooltipsDB == LuckysWardrobeDB, "initialized item tooltips with saved variables")
+assert(catalogueStarted, "set the Extra Sets catalogue building without waiting for Collections")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")

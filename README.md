@@ -10,7 +10,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 - **Extra Sets tab**: A third tab in Collections, Appearances listing the armour sets Blizzard defines but never shows in the Sets tab. It lists only what one class could wear, and shares the Sets tab's class selector, so both tabs always show the same class. Search the list, narrow it by expansion or by what you have collected, preview any set on your character, and shift-click to track the pieces you are missing.
   - **One row per set.** Sets listed twice under two names are folded into a single row, and a set that comes in several colourways is one row with a picker in the details pane to switch between them, the same way the Sets tab handles its variants. A folded name still finds the row that holds it.
-- **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8".
+- **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8". Sets that only appear on the Extra Sets tab are named too, so a world drop nobody would guess was part of anything still says what it belongs to.
 - **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
 - **Settings access**: Open the addon settings with `/wardrobe`.
 

@@ -1,8 +1,9 @@
 -- luacheck: globals C_TransmogCollection C_TransmogSets CreateColor CreateFrame Enum GameTooltip ItemRefTooltip LuckysWardrobe TooltipDataProcessor TooltipUtil
 
--- Covers what an item's tooltip says about it: which set the piece belongs to and
--- how far along that set is, how the line is coloured, what silences it, and which
--- tooltips it is put on at all.
+-- Covers what an item's tooltip says about it: which set the piece belongs to,
+-- whether Blizzard lists that set or only the Extra Sets catalogue does, how far
+-- along it is, how the line is coloured, what silences it, and which tooltips it is
+-- put on at all.
 
 LuckysWardrobe = {}
 
@@ -22,13 +23,14 @@ local WHITE = "[1.00,1.00,1.00]"
 local COUNT = "[0.91,0.69,0.25]"
 local COMPLETE = "[0.41,0.86,0.49]"
 
--- Two pieces of one set, a piece of no set, a piece two sets share, and an item
--- carrying no appearance at all.
+-- Two pieces of one set, a piece of no set, a piece two sets share, a piece only the
+-- Extra Sets catalogue knows a set for, and an item carrying no appearance at all.
 local ITEMS = {
     ["|Hitem:100|h[Helm]|h"] = { visualID = 501, sourceID = 1 },
     ["|Hitem:200|h[Gloves]|h"] = { visualID = 502, sourceID = 2 },
     ["|Hitem:300|h[Trinket]|h"] = { visualID = 503, sourceID = 3 },
     ["|Hitem:400|h[Shared Piece]|h"] = { visualID = 504, sourceID = 4 },
+    ["|Hitem:500|h[Eyepatch]|h"] = { visualID = 505, sourceID = 5 },
     ["|Hitem:900|h[Potion]|h"] = {},
     [900] = {},
 }
@@ -65,6 +67,29 @@ _G.C_TransmogSets = {
     end,
     GetSetInfo = function(setID) return sets[setID] end,
     GetSetPrimaryAppearances = function(setID) return setPieces[setID] end,
+}
+
+-- The catalogue behind the Extra Sets tab, which numbers its sets the way Wowhead
+-- does: set 100 here is a different set from Blizzard's 100, which is why the two
+-- are counted apart. It is not ready until the build that runs on entering the
+-- world has finished.
+local catalogueReady = false
+local extraEntries = 0
+
+LuckysWardrobe.ExtraSetsCatalog = {
+    IsReady = function() return catalogueReady end,
+    GetRecords = function()
+        return { { setID = 100, name = "Glyphed Garb (Recolor)", pieces = { { sourceID = 5 }, { sourceID = 6 } } } }
+    end,
+}
+
+LuckysWardrobe.ExtraSets = {
+    LiveResolver = function() return "resolver" end,
+    BuildEntry = function(record, resolver)
+        assert(resolver == "resolver", "the live resolver should be the one asked")
+        extraEntries = extraEntries + 1
+        return { name = record.name, collected = 3, total = 8 }
+    end,
 }
 
 local events = {}
@@ -133,6 +158,30 @@ assert(lineFor("|Hitem:200|h[Gloves]|h").text == helm.text)
 -- whichever order the client lists them in.
 assert(lineFor("|Hitem:400|h[Shared Piece]|h").text:find("Glyphed Garb", 1, true),
     "the unwearable set was named")
+
+-- Blizzard lists a fraction of the sets the client holds. A piece it says belongs to
+-- nothing is put to the Extra Sets catalogue, which has nothing to say until the
+-- build that runs on entering the world has finished.
+assert(lineFor("|Hitem:500|h[Eyepatch]|h") == nil, "the catalogue answered before it was built")
+
+catalogueReady = true
+local eyepatch = lineFor("|Hitem:500|h[Eyepatch]|h")
+assert(eyepatch.text == "From set: " .. WHITE .. "Glyphed Garb (Recolor)[/] " .. COUNT .. "3/8[/]",
+    "got: " .. tostring(eyepatch and eyepatch.text))
+
+-- Counting an extra set costs a walk through its pieces, so the answer is kept
+-- until the collection changes.
+local countedBefore = extraEntries
+lineFor("|Hitem:500|h[Eyepatch]|h")
+assert(extraEntries == countedBefore, "the same extra set was counted again")
+events.handler()
+lineFor("|Hitem:500|h[Eyepatch]|h")
+assert(extraEntries == countedBefore + 1, "the extra set's count survived the collection changing")
+
+-- The two lists number their sets differently, so a piece Blizzard does list is
+-- never answered with the catalogue's set of the same number.
+assert(lineFor("|Hitem:100|h[Helm]|h").text:find("7/8", 1, true),
+    "a Blizzard set was answered with the catalogue's count")
 
 -- Set membership cannot change while a client runs, so it is asked once per piece.
 local lookupsBefore = membershipLookups

@@ -314,6 +314,20 @@ function Catalog:StartBuild()
     stepFrame:SetScript("OnUpdate", step)
 end
 
+-- The catalogue is no longer only the Extra Sets tab's: item tooltips ask it which
+-- set a piece belongs to wherever the player is standing, and waiting for someone
+-- to open Collections would leave them silent for a whole session's play. Built at
+-- the first entry into the world rather than at load, so the client has its item
+-- data to answer with.
+function Catalog:Init()
+    local entering = CreateFrame("Frame")
+    entering:RegisterEvent("PLAYER_ENTERING_WORLD")
+    entering:SetScript("OnEvent", function()
+        entering:UnregisterEvent("PLAYER_ENTERING_WORLD")
+        Catalog:StartBuild()
+    end)
+end
+
 -- Discards the session catalogue and builds it again. Dev and test hook.
 function Catalog:Rebuild()
     records = nil

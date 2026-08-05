@@ -1,6 +1,9 @@
 -- Lucky's Wardrobe: What an item is worth to a collection, said on the item's own
--- tooltip. How far along the set a piece belongs to is is otherwise a question you
--- answer by putting the item down and going through the wardrobe looking for it.
+-- tooltip. Which set a piece belongs to, and how much of that set is already yours,
+-- is otherwise a question you answer by putting the item down and going through the
+-- wardrobe looking for it. Both lists of sets are asked, Blizzard's and the one
+-- behind the Extra Sets tab, so the answer does not depend on which of them a set
+-- happens to be in.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.ItemTooltips = {}
 
@@ -19,11 +22,17 @@ local db
 -- Which set a piece belongs to is fixed for the life of the client, so it is asked
 -- once per piece. What is collected changes all session, so those counts are thrown
 -- away whenever the collection says something moved.
+--
+-- The two lists are counted apart because the two number their sets differently:
+-- the bundled snapshot numbers a set the way Wowhead does and the client numbers
+-- its own, so the same number means one set in one list and another set in the
+-- other.
 local setBySource = {}
-local setProgress = {}
+local extraBySource
+local setProgress, extraProgress = {}, {}
 
 local function forgetProgress()
-    setProgress = {}
+    setProgress, extraProgress = {}, {}
 end
 
 local function coloured(rgb, text)
@@ -48,17 +57,50 @@ local function setFor(sourceID)
     return found or nil
 end
 
-local function progressOf(setID)
-    local progress = setProgress[setID]
+local function progressOf(set)
+    local progress = setProgress[set.setID]
     if not progress then
-        progress = { collected = 0, total = 0 }
-        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
+        progress = { name = set.name, collected = 0, total = 0 }
+        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(set.setID) or {}) do
             progress.total = progress.total + 1
             if appearance.collected then progress.collected = progress.collected + 1 end
         end
-        setProgress[setID] = progress
+        setProgress[set.setID] = progress
     end
     return progress
+end
+
+--- The set a piece belongs to among the ones only the Extra Sets tab lists, with
+--- the same counts that tab puts on it, or nil for a piece in none of them.
+-- Blizzard's Sets tab lists a fraction of the sets the client holds, so a piece it
+-- says belongs to nothing may still belong to a set the player can see elsewhere in
+-- this very addon. Nothing to say until the catalogue has been built, which it is
+-- on entering the world.
+local function extraSetFor(sourceID)
+    if not extraBySource then
+        if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then return nil end
+
+        extraBySource = {}
+        for _, record in ipairs(LuckysWardrobe.ExtraSetsCatalog:GetRecords()) do
+            for _, piece in ipairs(record.pieces) do
+                extraBySource[piece.sourceID] = extraBySource[piece.sourceID] or record
+            end
+        end
+    end
+
+    local record = extraBySource[sourceID]
+    if not record then return nil end
+
+    local counted = extraProgress[record.setID]
+    if not counted then
+        -- Counted the way the Extra Sets tab counts, so the two can never disagree
+        -- about how far along a set is. A count taken while the client is still
+        -- loading the pieces is not kept, since nothing else would come back to
+        -- correct it.
+        counted = LuckysWardrobe.ExtraSets.BuildEntry(record, LuckysWardrobe.ExtraSets.LiveResolver())
+        if not counted.loading then extraProgress[record.setID] = counted end
+    end
+    return counted
 end
 
 --- The line this addon has to add to an item's tooltip, ready to be drawn.
@@ -69,18 +111,18 @@ function ItemTooltips:Line(itemInfo)
     if itemInfo == nil or not db.tooltipSetProgress then return nil end
 
     local _, sourceID = C_TransmogCollection.GetItemInfo(itemInfo)
-    local set = sourceID and setFor(sourceID)
-    if not set then return nil end
+    if not sourceID then return nil end
 
+    local set = setFor(sourceID)
+    local progress = set and progressOf(set) or extraSetFor(sourceID)
     -- A set this client lists no pieces for has no progress to report, and "0/0" is
     -- a worse answer than saying nothing.
-    local progress = progressOf(set.setID)
-    if progress.total == 0 then return nil end
+    if not progress or progress.total == 0 then return nil end
 
     local S = LuckysWardrobe.Strings.tooltips
     local count = S.setProgress:format(progress.collected, progress.total)
     return {
-        text = S.setLine:format(coloured(NAME_COLOUR, set.name),
+        text = S.setLine:format(coloured(NAME_COLOUR, progress.name),
             coloured(progress.collected == progress.total and COMPLETE_COLOUR or COUNT_COLOUR, count)),
         colour = LABEL_COLOUR,
     }
