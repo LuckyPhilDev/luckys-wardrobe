@@ -1,4 +1,4 @@
--- luacheck: globals C_PlayerInfo C_Timer C_TransmogCollection C_TransmogOutfitInfo COLLECTED ColorManager Constants CreateDataProvider CreateFrame Enum EventUtil GameTooltip GameTooltip_AddColoredLine GameTooltip_AddDisabledLine GameTooltip_AddHighlightLine GetTime GREEN_FONT_COLOR IsShiftKeyDown IsUnitModelReadyForUI LIGHTYELLOW_FONT_COLOR MenuUtil NORMAL_FONT_COLOR NOT_COLLECTED PlaySound Pool_HideAndClearAnchors RED_FONT_COLOR RETRIEVING_ITEM_INFO Round SOUNDKIT TextureKitConstants TransmogFrame UIErrorsFrame WrapTextInColor
+-- luacheck: globals C_PlayerInfo C_Timer C_TransmogCollection C_TransmogOutfitInfo COLLECTED ColorManager Constants CreateDataProvider CreateFrame Enum EventUtil GameTooltip GameTooltip_AddColoredLine GameTooltip_AddDisabledLine GameTooltip_AddHighlightLine GetTime GREEN_FONT_COLOR IsShiftKeyDown IsUnitModelReadyForUI LIGHTYELLOW_FONT_COLOR MenuUtil NORMAL_FONT_COLOR NOT_COLLECTED PlaySound Pool_HideAndClearAnchors RED_FONT_COLOR RETRIEVING_ITEM_INFO Round SOUNDKIT TextureKitConstants TransmogFrame UIErrorsFrame WrapTextInColor hooksecurefunc
 
 -- Lucky's Wardrobe: the Extra Sets tab at the transmogrifier, beside Blizzard's
 -- own Sets tab and built from the same card grid, so the two read as one UI.
@@ -52,6 +52,30 @@ function TransmogExtraSets.FilterByCollected(entries, showCollected, showUncolle
         end
     end
     return result
+end
+
+-- Where this tab belongs in the strip: directly after the Sets tab, as a number
+-- midway between Sets and whichever tab currently follows it. Everything else
+-- keeps the place it holds, because the strip is shared. Another addon's tab
+-- may be in here, and where it put itself is its business.
+--
+-- The answer is a midpoint rather than a fixed number because tab numbering is
+-- not stable. An addon inserting a tab renumbers the ones behind it, so a
+-- position worked out once at load goes stale the moment that happens: W2
+-- Transmog Studio renumbers Items, Studio, Sets, Custom Sets, Situations to 1
+-- through 5, which turned the 2.5 this tab was given, back when Sets was 2,
+-- into a seat in front of the tab it was aimed at.
+--
+-- Taking the nearest index above Sets keeps the midpoint clear of every other
+-- tab, so no two tabs can end up asking for the same seat, and asking twice
+-- against an unchanged strip gives the same answer both times.
+function TransmogExtraSets.LayoutIndexAfter(setsIndex, otherIndexes)
+    local nextIndex
+    for _, index in ipairs(otherIndexes) do
+        if index > setsIndex and (not nextIndex or index < nextIndex) then nextIndex = index end
+    end
+    if not nextIndex then return setsIndex + 1 end
+    return (setsIndex + nextIndex) / 2
 end
 
 -- The cards in the order the page shows them: nearest to finished first, so
@@ -587,6 +611,26 @@ function TransmogExtraSets:CreatePage(wardrobe)
     return page
 end
 
+-- Puts this tab back in its seat against the strip as it stands right now,
+-- rather than as it stood when the tab was added.
+local function placeTabAfterSets()
+    local wardrobe = attachedWardrobe
+    local headers = wardrobe and wardrobe.TabHeaders
+    if not headers or not extraTabID then return end
+
+    local tabButton = headers:GetTabButton(extraTabID)
+    local setsButton = wardrobe.setsTabID and headers:GetTabButton(wardrobe.setsTabID)
+    if not tabButton or not setsButton or not setsButton.layoutIndex then return end
+
+    local otherIndexes = {}
+    for _, tab in ipairs(headers.tabs or {}) do
+        if tab ~= tabButton and tab.layoutIndex then
+            otherIndexes[#otherIndexes + 1] = tab.layoutIndex
+        end
+    end
+    tabButton.layoutIndex = TransmogExtraSets.LayoutIndexAfter(setsButton.layoutIndex, otherIndexes)
+end
+
 function TransmogExtraSets:Attach(transmogFrame)
     if attachedWardrobe then return end
     local wardrobe = transmogFrame and transmogFrame.WardrobeCollection
@@ -600,15 +644,21 @@ function TransmogExtraSets:Attach(transmogFrame)
     local page = self:CreatePage(wardrobe)
     extraTabID = wardrobe:AddNamedTab(LuckysWardrobe.Strings.extraSets.tab, page)
 
-    -- New tabs land at the end of the strip, after Situations. The strip lays
-    -- its tabs out by index, so a number between the Sets tab's and its
-    -- neighbour's slides this one in beside Sets.
-    local tabButton = wardrobe.TabHeaders:GetTabButton(extraTabID)
-    local setsButton = wardrobe.setsTabID and wardrobe.TabHeaders:GetTabButton(wardrobe.setsTabID)
-    if tabButton and setsButton and setsButton.layoutIndex then
-        tabButton.layoutIndex = setsButton.layoutIndex + 0.5
-        wardrobe.TabHeaders:MarkDirty()
+    -- New tabs land at the end of the strip, after Situations, so this one has
+    -- to take its seat beside Sets and then keep taking it: another addon can
+    -- renumber the strip at any point in the session, and one of them does.
+    --
+    -- Laying the strip out is deferred to the frame after it is marked dirty,
+    -- and marking it dirty is what anything moving a tab has to do for the move
+    -- to show. So the seat is claimed from there, after whatever renumbering
+    -- prompted it and before the layout it will be read by. Claiming it changes
+    -- an index and nothing else, leaving the frame as dirty as it already was,
+    -- so this cannot mark its way into a loop.
+    placeTabAfterSets()
+    if type(wardrobe.TabHeaders.MarkDirty) == "function" then
+        hooksecurefunc(wardrobe.TabHeaders, "MarkDirty", placeTabAfterSets)
     end
+    wardrobe.TabHeaders:MarkDirty()
 
     -- The catalogue may still be building when the page first shows; repaint
     -- the moment it lands.
