@@ -9,8 +9,8 @@ local Randomiser = LuckysWardrobe.Randomiser
 -- Held rolls run fast enough to blur into a spin. Letting go stretches each
 -- wait by SLOWDOWN until the next one would outlast a reel coming to rest.
 local ROLL_INTERVAL = 0.08
-local SLOWDOWN = 1.55
-local SLOWEST_INTERVAL = 0.6
+local SLOWDOWN = 2
+local SLOWEST_INTERVAL = 0.4
 -- The model redresses a frame or two behind a burst of pending changes, so the
 -- final selection is sent again once the reel has been still this long.
 local SETTLE_DELAY = 0.15
