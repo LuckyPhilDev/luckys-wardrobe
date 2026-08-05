@@ -194,14 +194,16 @@ favouriteCard.Favorite.Icon:SetShown(true)
 TransmogSetModelMixin.UpdateSet(favouriteCard)
 
 local favouriteText = favouriteCard.luckysSetName.fontString
-assert(favouriteText.points.TOPLEFT[1] > left[1], "started the name past the star rather than under it")
-assert(favouriteText.points.TOPRIGHT[1] == right[1], "left the name's other edge where it was")
+assert(favouriteText.points.TOPLEFT[1] > left[1], "gave the name room to clear the star")
+assert(favouriteText.points.TOPRIGHT[1] == -favouriteText.points.TOPLEFT[1],
+    "pulled both edges in by the same amount, so the name stays centred on the card")
 
 -- Cards are pooled, so the one that carried a favourite carries an ordinary set
 -- a page later.
 favouriteCard.Favorite.Icon:SetShown(false)
 TransmogSetModelMixin.UpdateSet(favouriteCard)
-assert(favouriteText.points.TOPLEFT[1] == left[1], "took the name back to the edge once the star went")
+assert(favouriteText.points.TOPLEFT[1] == left[1] and favouriteText.points.TOPRIGHT[1] == right[1],
+    "took the name back to the card's own edges once the star went")
 
 -- Blizzard's Custom Sets tab.
 
