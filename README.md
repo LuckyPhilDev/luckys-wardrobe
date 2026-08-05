@@ -50,7 +50,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 
 ## Installation
 
-Install from [CurseForge](https://www.curseforge.com/wow/addons/luckys-better-wardrobe), or place the `Luckys_Wardrobe` folder in `World of Warcraft/_retail_/Interface/AddOns/`.
+Install from [CurseForge](https://www.curseforge.com/wow/addons/luckys-wardrobe), or place the `Luckys_Wardrobe` folder in `World of Warcraft/_retail_/Interface/AddOns/`.
 
 Lucky's Utils is required. CurseForge release packages include it automatically.
 
