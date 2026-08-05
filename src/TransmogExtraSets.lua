@@ -18,6 +18,11 @@ local Utils = LuckysWardrobe.Utils
 -- faster for.
 local ITEM_LOAD_BUDGET = 200
 
+-- How long after the transmogrifier opens the rows are built. Long enough for
+-- the transmog UI to have finished loading itself, short enough to be done
+-- before a player has read their way along the tab strip.
+local PREBUILD_DELAY_SECONDS = 0.5
+
 -- The grid spacing Blizzard gives the native Sets tab's card grid.
 local CARD_GRID_X_PADDING = 27
 local CARD_GRID_Y_PADDING = 19
@@ -307,6 +312,23 @@ end
 -- asked about twice, so the rounds run out on their own.
 local warmingItems = false
 
+-- The rows the tab lists, built before the visit that wants them. Building them
+-- is by far the most expensive thing here, a good tenth of a second, and a tenth
+-- of a second spent while a player is still picking through the Items tab is one
+-- they never notice. The same tenth spent the moment they click Extra Sets is
+-- the tab hanging on them.
+--
+-- Held back until the transmogrifier has been opened, so a player who never goes
+-- near one never pays for a page they are not going to look at, and until the
+-- client has answered what it is going to about the sets, so the rows are built
+-- against settled verdicts and the tab opens on its final list rather than
+-- settling onto it while the player watches.
+local function prebuildRows()
+    if not attachedWardrobe or warmingItems then return end
+    if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then return end
+    TransmogExtraSets.Entries()
+end
+
 local function warmItemData()
     if warmingItems then return end
     warmingItems = true
@@ -318,6 +340,7 @@ local function warmItemData()
     local function round()
         if not requestUnjudgedItems(records) then
             warmingItems = false
+            prebuildRows()
             return
         end
         C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
@@ -870,11 +893,18 @@ function TransmogExtraSets:Attach(transmogFrame)
     wardrobe.TabHeaders:MarkDirty()
 
     -- The catalogue may still be building when the page first shows; repaint
-    -- the moment it lands.
+    -- the moment it lands, and take that as the cue to build the rows too.
     LuckysWardrobe.ExtraSetsCatalog:OnReady(function()
         TransmogExtraSets.InvalidateEntries()
         if page:IsShown() then page.Refresh() end
+        prebuildRows()
     end)
+
+    -- A moment after the frame opens rather than during it: Blizzard_Transmog is
+    -- loading itself here, and building the rows is work that can wait for a
+    -- quieter frame. A player who beats it to the tab builds them on the click
+    -- as before, and this finds them already built.
+    C_Timer.After(PREBUILD_DELAY_SECONDS, prebuildRows)
 
     LuckysWardrobe.DevLog("Transmog Extra Sets: tab " .. tostring(extraTabID) .. " added beside Sets.")
 end
