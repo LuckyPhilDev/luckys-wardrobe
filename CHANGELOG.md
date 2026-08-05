@@ -11,7 +11,7 @@ Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebu
 - **Catalyst marks**: pieces you could catalyse from something already in your bags are marked in the set list. Requires Transmog Upgrade Master.
 - **Extra Sets at the transmogrifier**: the transmog NPC gets an Extra Sets tab beside Sets, showing the hidden sets your class can wear as the same preview cards. Click a set to apply every piece you have collected, with the closest to complete on the first pages.
 - **Sort and filter the Sets tab**: sort by completion, and narrow the list by expansion or by source, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. Favourites stay at the top, and the count reflects what the filters actually left on screen.
-- **Track a whole set at once**: shift-click a set in the Sets collection to track every appearance you are still missing from it.
+- **Track a whole set at once, or one piece of it**: shift-click a set in the Sets collection to track every appearance you are still missing from it, or open the set and shift-click one of its pieces to track just that one. Shift-click a piece you are already tracking to call it off.
 - **A crosshair on what you are hunting**: open a set and the pieces you are tracking carry a crosshair in the corner, in the Sets tab and the Extra Sets tab alike, and hovering one says so in its tooltip.
 - **Random outfit**: hold the dice button at the transmog NPC to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Saved situations**: save the situation you have built up on one outfit and load it onto another.

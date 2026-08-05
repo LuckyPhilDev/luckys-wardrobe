@@ -1103,12 +1103,10 @@ function ExtraSets:CreatePage(wardrobe)
                 showTrackingInfo = false,
                 slotType = _G[SLOT_TOOLTIP_GLOBALS[piece.slot]],
             })
-        -- A piece already tracked says so instead, since telling someone to
-        -- track what they are already tracking is no help.
-        local marked = LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
-        if not marked and piece.state == "missing" then
-            GameTooltip:AddLine(S.trackHint, 0.5, 0.8, 1)
-        end
+        -- A piece already tracked says so, then the shift-click offers the way
+        -- back out of it rather than offering to track it again.
+        LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
+        LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, piece.sourceID)
         GameTooltip:Show()
     end
 
@@ -1147,8 +1145,8 @@ function ExtraSets:CreatePage(wardrobe)
                 and LuckysWardrobe.WowheadLink:ShowForSource(self.piece.sourceID) then
                 return
             end
-            if IsShiftKeyDown() and self.piece.state == "missing" then
-                LuckysWardrobe.SetTracking:TrackSources({ self.piece.sourceID }, selectedEntry and selectedEntry.name)
+            if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) and self.piece.state == "missing" then
+                LuckysWardrobe.SetTracking:TogglePiece(self.piece.sourceID, selectedEntry and selectedEntry.name)
             end
         end)
         itemFrames[index] = itemFrame
@@ -1358,7 +1356,7 @@ function ExtraSets:CreatePage(wardrobe)
 
         button:SetScript("OnClick", function(_, buttonName)
             if buttonName ~= "LeftButton" then return end
-            if IsShiftKeyDown() then
+            if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) then
                 ExtraSets:TrackMissing(entry)
                 return
             end

@@ -900,14 +900,30 @@ C_Item = {
 }
 
 local trackedSources, trackedName
+local toggledPiece, toggledName
+local shiftClickTracks = true
+-- The one source the player is hunting, which both stubs below answer for: the
+-- mark shows on it and the shift-click offered over it is the one that stops.
+local huntedSource
 LuckysWardrobe.SetTracking = {
     TrackSources = function(_, sourceIDs, setName)
         trackedSources, trackedName = sourceIDs, setName
     end,
+    TogglePiece = function(_, sourceID, setName)
+        toggledPiece, toggledName = sourceID, setName
+    end,
+    HandlesShiftClick = function(_, buttonName)
+        return shiftClickTracks and shiftDown and buttonName == "LeftButton"
+    end,
+    AddTrackHint = function(_, target, sourceID)
+        if not sourceID then return false end
+        local hints = LuckysWardrobe.Strings.tracking
+        target:AddLine(sourceID == huntedSource and hints.stopHint or hints.hint)
+        return true
+    end,
 }
 
 local markedSources = {}
-local huntedSource
 LuckysWardrobe.TrackedAppearances = {
     Mark = function(_, itemFrame, sourceID)
         markedSources[itemFrame] = sourceID or false
@@ -1286,6 +1302,15 @@ shiftDown = true
 capturedView.initializer(button, scrollBox.dataProvider[1])
 button.scripts.OnClick(button, "LeftButton")
 assert(#trackedSources == 2, "both missing sources are tracked")
+
+-- Shift-click tracking is one setting across every page that offers it, so
+-- turning it off hands the click back to selecting the set.
+shiftClickTracks = false
+trackedSources = nil
+playedSound = nil
+button.scripts.OnClick(button, "LeftButton")
+assert(trackedSources == nil and playedSound, "selected the set instead when tracking is turned off")
+shiftClickTracks = true
 shiftDown = false
 
 -- Piece tooltips. The details frame has to sit above the model or the model
@@ -1335,14 +1360,16 @@ assert(collectedPiece.border.alpha == 1 and missingPiece.border.alpha < 1,
     "faded the border with the piece it holds, rather than framing nothing brightly")
 missingPiece.scripts.OnEnter(missingPiece)
 assert(tooltip.appearanceData, "missing pieces still get the native tooltip")
-assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.extraSets.trackHint,
+assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.tracking.hint,
     "missing pieces mention shift-click tracking")
 
--- Telling someone to track what they are already tracking is no help, so the
--- hint gives way to the line that says the piece is already being hunted.
+-- A piece already tracked says so, then the shift-click offers the way back out
+-- rather than offering to track what is already tracked.
 huntedSource = missingPiece.piece.sourceID
 missingPiece.scripts.OnEnter(missingPiece)
-assert(tooltip.lines[#tooltip.lines] == "tracked", "a tracked piece says so when hovered")
+assert(tooltip.lines[#tooltip.lines - 1] == "tracked", "a tracked piece says so when hovered")
+assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.tracking.stopHint,
+    "and offers the shift-click that stops")
 huntedSource = nil
 
 -- The tooltip offers Tab to cycle through the items sharing a look, and the
@@ -1365,17 +1392,19 @@ collectedPiece.scripts.OnEnter(collectedPiece)
 assert(not wardrobe.tooltipCycle, "one item behind a look means nothing to cycle through")
 
 -- Ctrl-click hands back a piece's Wowhead address, and shift-click still tracks.
-trackedSources = nil
+toggledPiece = nil
 ctrlDown = true
 missingPiece.scripts.OnClick(missingPiece, "LeftButton")
 assert(linkedSource == missingPiece.piece.sourceID, "ctrl-click asked for the piece's address")
-assert(trackedSources == nil, "ctrl-click did not also track the piece")
+assert(toggledPiece == nil, "ctrl-click did not also track the piece")
 ctrlDown = false
 
+-- The click is a toggle, and which way it goes is decided where tracking lives,
+-- so the page only says which piece was clicked.
 shiftDown = true
 missingPiece.scripts.OnClick(missingPiece, "LeftButton")
-assert(trackedSources and trackedSources[1] == missingPiece.piece.sourceID,
-    "shift-click still tracks a missing piece")
+assert(toggledPiece == missingPiece.piece.sourceID and toggledName == "Live Name",
+    "shift-click hands a missing piece over to be tracked or untracked, named by its set")
 shiftDown = false
 
 collectedPiece.scripts.OnLeave(collectedPiece)
