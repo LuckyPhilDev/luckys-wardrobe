@@ -201,21 +201,35 @@ function ExtraSets.AppearanceKey(appearances, loading)
     return table.concat(ids, ",")
 end
 
--- The colourways of one set share a name and differ only in the parenthetical
--- the snapshot puts after it: "(Heroic Recolor)", "(Alliance Recolor)". Dropping
--- that gives the set itself, which is what gathers its colourways together. A
--- name the client supplied carries no parenthetical, so it is its own base name.
+-- The colourways of one set share a name and differ only in the qualifier the
+-- snapshot puts after it: a parenthetical, "(Heroic Recolor)", or a colon
+-- clause, "Barkbloom Warleathers Set: World Drops". Dropping the qualifier
+-- gives the set itself, which is what gathers its colourways together. A name
+-- the client supplied carries neither, so it is its own base name.
+--
+-- The snapshot spells one set's colon names both with and without a trailing
+-- "Set": "Barkbloom Warleathers Set: World Drops" sits beside "Barkbloom
+-- Warleathers: Emerald Bounties". That word comes off a colon name too, or the
+-- two spellings never meet. A name with no colon clause keeps its "Set"; it
+-- has no second spelling to meet, and its parenthetical colourways already
+-- share it.
 function ExtraSets.BaseName(name)
     local stripped = name:gsub("%s*%b()%s*$", "")
     if stripped == "" then return name end
-    return stripped
+
+    local base = stripped:match("^(.-)%s*:%s")
+    if not base then return stripped end
+    base = base:gsub("%s+Set$", "")
+    if base == "" then return stripped end
+    return base
 end
 
 -- What a colourway is called once its set name is the row above it. Repeating
 -- the set name on every one of its colourways is the noise the grouping exists
--- to remove, so only the parenthetical that tells them apart is left.
+-- to remove, so only the qualifier that tells them apart is left: the
+-- parenthetical, or the clause after the colon.
 function ExtraSets.VariantLabel(name)
-    return name:match("%(([^()]*)%)%s*$") or name
+    return name:match("%(([^()]*)%)%s*$") or name:match(":%s+(.+)$") or name
 end
 
 -- Sets gathered by the name they share, in the order they first appear, so

@@ -358,7 +358,16 @@ assert(colourwayEntries[1].appearanceKey ~= colourwayEntries[3].appearanceKey, "
 assert(ExtraSets.BaseName("Charm Vestments (Heroic Recolor)") == "Charm Vestments", "dropped the colourway")
 assert(ExtraSets.BaseName("Live Name") == "Live Name", "a name with no parenthetical is its own base name")
 assert(ExtraSets.BaseName("(Recolor)") == "(Recolor)", "a name that is nothing but a parenthetical keeps it")
+assert(ExtraSets.BaseName("Barkbloom Warleathers: Emerald Bounties") == "Barkbloom Warleathers",
+    "a colon clause is a colourway qualifier too")
+assert(ExtraSets.BaseName("Barkbloom Warleathers Set: World Drops") == "Barkbloom Warleathers",
+    "the trailing Set only some colon spellings carry comes off with the clause")
+assert(ExtraSets.BaseName("Primal Storms Leather Set") == "Primal Storms Leather Set",
+    "a name without a colon clause keeps its Set")
+assert(ExtraSets.BaseName(": World Drops") == ": World Drops", "a name that is nothing but a colon clause keeps it")
 assert(ExtraSets.VariantLabel("Charm Vestments (Heroic Recolor)") == "Heroic Recolor", "kept what tells it apart")
+assert(ExtraSets.VariantLabel("Barkbloom Warleathers Set: World Drops") == "World Drops",
+    "a colon colourway is told apart by its clause")
 assert(ExtraSets.VariantLabel("Live Name") == "Live Name", "with nothing to strip, the name stands as the label")
 
 local collapsed = ExtraSets.CollapseDuplicates(colourwayEntries)
@@ -472,6 +481,21 @@ assert(ExtraSets.VariantOf(rows[2], nil) == rows[2], "a plain row is its own col
 local lastStanding = ExtraSets.BuildRows({ collapsed[1], collapsed[3] })
 assert(#lastStanding == 2 and not lastStanding[1].isGroup,
     "the last colourway left is a plain row again")
+
+-- The Emerald Dream world sets spell their colourways with colon clauses, one
+-- of the four without the "Set", and every spelling has to land in one row.
+local barkbloomRecords = {
+    colourway(651, "Barkbloom Warleathers: Emerald Bounties", { 5101 }),
+    colourway(652, "Barkbloom Warleathers Set: World Drops", { 5102 }),
+    colourway(653, "Barkbloom Warleathers Set: Quest Rewards", { 5103 }),
+    colourway(654, "Barkbloom Warleathers Set: Superbloom Weekly Rewards", { 5104 }),
+}
+local barkbloomRows = ExtraSets.BuildRows(ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(barkbloomRecords, stubResolver(CLOTH_CLASS))))
+assert(#barkbloomRows == 1, "the four colon colourways became one row")
+assert(barkbloomRows[1].isGroup and barkbloomRows[1].name == "Barkbloom Warleathers",
+    "named for the set, whichever spelling a colourway used")
+assert(#barkbloomRows[1].variants == 4, "holding every colourway")
 
 -- Search.
 
