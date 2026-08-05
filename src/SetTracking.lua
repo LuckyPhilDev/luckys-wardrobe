@@ -77,12 +77,16 @@ end
 
 function SetTracking:TrackSet(setID)
     local setInfo = C_TransmogSets.GetSetInfo(setID)
-    local missing = {}
+    -- Despite the field name, appearanceID holds an itemModifiedAppearanceID
+    -- (source ID); Blizzard's own sets UI feeds it straight to GetSourceInfo.
+    local missingSources = {}
     for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
-        if not appearance.collected then missing[#missing + 1] = appearance.appearanceID end
+        if not appearance.collected then
+            missingSources[#missingSources + 1] = appearance.appearanceID
+        end
     end
 
-    reportTracking((setInfo and setInfo.name) or tostring(setID), trackAll(missing))
+    reportTracking((setInfo and setInfo.name) or tostring(setID), trackAll(missingSources))
 end
 
 -- Tracks exact appearance sources by ID, used by the Extra Sets page where the
