@@ -50,6 +50,30 @@ local SLOT_TOOLTIP_GLOBALS = Utils.SLOT_TOOLTIP_GLOBALS
 
 local expansionNames = Utils.EXPANSION_NAMES
 
+-- Where the snapshot says a set comes from, as the source bits Wowhead sets. A
+-- set carries as many as apply: a tier that dropped in a raid and was sold by a
+-- vendor later is both, which is why these are checkboxes rather than a radio.
+--
+-- Wowhead sets bits above these that it does not document, and a set can carry
+-- nothing but those. Naming them in the menu would mean guessing at what they
+-- mean, so they are left out of it, and the rule below keeps the sets that carry
+-- them on screen rather than behind a box that does not describe them.
+ExtraSets.SOURCES = {
+    { bit = 1, label = "crafted" },
+    { bit = 2, label = "drop" },
+    { bit = 4, label = "pvp" },
+    { bit = 8, label = "quest" },
+    { bit = 16, label = "vendor" },
+}
+
+--- Whether a mask carries a bit, the way Classes:MaskHas reads a class out of
+--- one. Arithmetic rather than the bit library, so the rules stay testable
+--- outside the client.
+function ExtraSets.MaskHas(mask, bit)
+    if not mask then return false end
+    return mask % (bit + bit) >= bit
+end
+
 -- Session-only view state behind the filter button, matching the Sets tab menu.
 -- The class is not in here: it narrows the catalogue before entries are built,
 -- rather than hiding rows that have already been worked out.
@@ -57,6 +81,7 @@ local filters = {
     collected = true,
     uncollected = true,
     expansions = {},
+    sources = {},
     sortMode = "default",
     sortDirection = "ascending",
 }
@@ -65,16 +90,29 @@ local function setAllExpansions(shown)
     Utils.SetAllExpansions(filters.expansions, shown)
 end
 
+local function setAllSources(shown)
+    for _, source in ipairs(ExtraSets.SOURCES) do filters.sources[source.bit] = shown end
+end
+
 -- Which colourway each set is showing, keyed by group. Session-only, like the
 -- filters: which tint you were last looking at is not worth keeping past logout.
 local selectedVariants = {}
 
+local function anySourceHidden()
+    for _, source in ipairs(ExtraSets.SOURCES) do
+        if not filters.sources[source.bit] then return true end
+    end
+    return false
+end
+
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
+    if anySourceHidden() then return true end
     return Utils.AnyExpansionHidden(filters.expansions)
 end
 
 setAllExpansions(true)
+setAllSources(true)
 
 local attachedWardrobe
 local extraPage
@@ -100,6 +138,9 @@ function ExtraSets.ValidateRecord(record)
     if record.label ~= nil and type(record.label) ~= "string" then return nil, "label must be a string" end
     if record.expansionID ~= nil and type(record.expansionID) ~= "number" then
         return nil, "expansionID must be a number"
+    end
+    if record.sourceMask ~= nil and (type(record.sourceMask) ~= "number" or record.sourceMask < 0) then
+        return nil, "sourceMask must be a positive number"
     end
     if type(record.armorType) ~= "number" then return nil, "armorType is required" end
     if type(record.classMask) ~= "number" or record.classMask < 0 then return nil, "classMask is required" end
@@ -730,6 +771,7 @@ function ExtraSets.BuildEntry(record, resolver)
         -- against. Folding another row in gives this one more ensembles without
         -- changing where the row itself came from.
         fromEnsemble = record.ensembles ~= nil,
+        sourceMask = record.sourceMask,
         pieces = pieces,
         -- Which looks this set is made of, and whether each is collected. What
         -- makes two sets the same set, and what lets one row speak for several.
@@ -877,8 +919,25 @@ function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
 
--- Collected/Not Collected and expansion narrowing, mirroring the Sets tab
--- filter menu. Only sets the client itself knows carry an expansion, so the
+-- Whether any source box the entry answers to is checked. A set the snapshot
+-- gave no source, and one carrying only the bits Wowhead does not document,
+-- answer to no box at all: those stay on screen while any box is checked, the
+-- same way a set with no expansion does, rather than vanishing behind boxes that
+-- do not describe them. The ensembles are the largest group of these; their
+-- listing carries no source field.
+local function sourceShown(entry, filterState, anySource)
+    local described = false
+    for _, source in ipairs(ExtraSets.SOURCES) do
+        if ExtraSets.MaskHas(entry.sourceMask, source.bit) then
+            if filterState.sources[source.bit] then return true end
+            described = true
+        end
+    end
+    return not described and anySource
+end
+
+-- Collected/Not Collected, source, and expansion narrowing, mirroring the Sets
+-- tab filter menu. Only sets the client itself knows carry an expansion, so the
 -- rest stay visible while any expansion is still checked rather than vanishing
 -- behind a box that does not describe them.
 function ExtraSets.ApplyFilters(entries, filterState)
@@ -890,6 +949,14 @@ function ExtraSets.ApplyFilters(entries, filterState)
         end
     end
 
+    local anySource = false
+    for _, shown in pairs(filterState.sources or {}) do
+        if shown then
+            anySource = true
+            break
+        end
+    end
+
     local result = {}
     for _, entry in ipairs(entries) do
         local shown
@@ -897,6 +964,9 @@ function ExtraSets.ApplyFilters(entries, filterState)
             shown = filterState.collected
         else
             shown = filterState.uncollected
+        end
+        if shown and filterState.sources then
+            shown = sourceShown(entry, filterState, anySource)
         end
         if shown then
             if entry.expansionID ~= nil and filterState.expansions[entry.expansionID] ~= nil then
@@ -1792,6 +1862,7 @@ function ExtraSets:CreatePage(wardrobe)
         filters.collected = true
         filters.uncollected = true
         setAllExpansions(true)
+        setAllSources(true)
         refresh()
     end)
 
@@ -1827,6 +1898,29 @@ function ExtraSets:CreatePage(wardrobe)
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return filters.sortDirection == sortDirection.key end, function()
                 filters.sortDirection = sortDirection.key
+                refresh()
+            end)
+        end
+
+        local sourceLabels = LuckysWardrobe.Strings.snapshotSources
+        local sources = root:CreateButton(menu.source)
+        sources:CreateButton(CHECK_ALL, function()
+            setAllSources(true)
+            refresh()
+            return MenuResponse.Refresh
+        end)
+        sources:CreateButton(UNCHECK_ALL, function()
+            setAllSources(false)
+            refresh()
+            return MenuResponse.Refresh
+        end)
+        sources:CreateDivider()
+        for _, option in ipairs(ExtraSets.SOURCES) do
+            local source = option
+            sources:CreateCheckbox(sourceLabels[source.label], function()
+                return filters.sources[source.bit]
+            end, function()
+                filters.sources[source.bit] = not filters.sources[source.bit]
                 refresh()
             end)
         end
@@ -2249,6 +2343,7 @@ function ExtraSets:Init()
     filters.sortMode = "default"
     filters.sortDirection = "ascending"
     setAllExpansions(true)
+    setAllSources(true)
     selectedVariants = {}
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", function()
         LuckysWardrobe.ExtraSetsCatalog:StartBuild()

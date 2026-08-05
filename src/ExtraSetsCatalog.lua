@@ -234,6 +234,10 @@ local function buildRecord(setID, set, armorType)
         label = info and info.label,
         pieces = pieces,
         unresolvedPieces = unresolved,
+        -- Where the snapshot says the set comes from, as Wowhead's own bits. The
+        -- client has no source field on a set to prefer over it, and the
+        -- ensembles carry none, which is nil rather than a set from nowhere.
+        sourceMask = set.sourceMask,
         -- Which classes' Sets tab already lists this set, so the page can drop
         -- the ones it would otherwise show a second time.
         officialClassMask = officialClassMask,

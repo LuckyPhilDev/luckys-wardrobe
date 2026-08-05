@@ -22,7 +22,7 @@ for _, armour in ipairs(Data.armorTypes) do
     dofile("src/Data/" .. armour.key:sub(1, 1):upper() .. armour.key:sub(2) .. "Sets.lua")
 end
 
-local totalSets, totalPieces = 0, 0
+local totalSets, totalPieces, labelled = 0, 0, 0
 local owningArmorType = {}
 for _, armour in ipairs(Data.armorTypes) do
     local sets = Data.sets[armour.key]
@@ -36,6 +36,16 @@ for _, armour in ipairs(Data.armorTypes) do
 
         assert(type(set.name) == "string" and set.name ~= "", where .. " has a name")
         assert(type(set.classMask) == "number" and set.classMask >= 0, where .. " has a class mask")
+        -- The snapshot answers for all three of these on every set, so a nil is
+        -- a generator that dropped a field rather than a set that lacks one.
+        assert(type(set.quality) == "number" and set.quality >= 0 and set.quality <= 8,
+            where .. " has an item quality")
+        assert(type(set.minLevel) == "number" and set.minLevel >= 0, where .. " has a minimum level")
+        assert(type(set.sourceMask) == "number" and set.sourceMask >= 0, where .. " has a source mask")
+        -- Only the difficulty variants carry a label, so nil is an ordinary set.
+        assert(set.label == nil or (type(set.label) == "string" and set.label ~= ""),
+            where .. " has a difficulty label or none at all")
+        if set.label then labelled = labelled + 1 end
         assert(type(set.pieces) == "table" and #set.pieces > 0, where .. " has at least one piece")
         for _, itemID in ipairs(set.pieces) do
             assert(type(itemID) == "number" and itemID > 0 and itemID % 1 == 0,
@@ -50,6 +60,9 @@ end
 -- retaken, but an order-of-magnitude drop means a file failed to load.
 assert(totalSets > 3000, "the snapshot holds the thousands of sets it should, got " .. totalSets)
 assert(totalPieces > 20000, "sets carry their pieces, got " .. totalPieces)
+-- A floor too. Difficulty is read off flags the snapshot sets on a small
+-- minority of sets, so a decode that quietly stopped working reads as zero.
+assert(labelled > 100, "the difficulty variants keep their label, got " .. labelled)
 
 -- The ensembles are the one listing keyed by the client's own set numbering, so
 -- the armour lists' set IDs say nothing about which of these are the same set.
