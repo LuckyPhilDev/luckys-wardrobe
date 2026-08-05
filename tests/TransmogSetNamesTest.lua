@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe Menu Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_TransmogCollection C_TransmogSets CreateFrame EventUtil LuckysWardrobe Mixin TransmogCustomSetModelMixin TransmogSetModelMixin hooksecurefunc
 
 LuckysWardrobe = {}
 
@@ -21,6 +21,9 @@ function AutoScalingFontStringMixin:SetText(value)
 end
 function AutoScalingFontStringMixin:SetMinLineHeight(height)
     self.minLineHeight = height
+end
+function AutoScalingFontStringMixin:ScaleTextToFit()
+    self.scalings = (self.scalings or 0) + 1
 end
 
 local function newRegion(kind)
@@ -77,13 +80,6 @@ function CreateFrame(_, _, parent)
 end
 
 EventUtil = { ContinueOnAddOnLoaded = function(_, callback) callback() end }
-
--- Blizzard tags its own menus so addons can add to them without rebuilding
--- what is already there.
-local menuModifiers = {}
-Menu = {
-    ModifyMenu = function(tag, callback) menuModifiers[tag] = callback end,
-}
 
 -- A stand-in for the menu being built, which records what was added to it.
 local function newMenuDescription()
@@ -214,6 +210,21 @@ local favouriteText = favouriteCard.luckysSetName.fontString
 assert(favouriteText.points.TOPLEFT[1] > left[1], "gave the name room to clear the star")
 assert(favouriteText.points.TOPRIGHT[1] == -favouriteText.points.TOPLEFT[1],
     "pulled both edges in by the same amount, so the name stays centred on the card")
+
+-- A name that wraps fills its line whatever the padding, so on a favourited
+-- card it takes the room it needs on the star's side alone.
+local centredLeft = favouriteText.points.TOPLEFT[1]
+favouriteText.lines = 2
+local scalings = favouriteText.scalings
+TransmogSetModelMixin.UpdateSet(favouriteCard)
+assert(favouriteText.points.TOPLEFT[1] > centredLeft, "started a wrapped name clear of the star outright")
+assert(favouriteText.points.TOPRIGHT[1] == -centredLeft, "left its other edge where the centring put it")
+assert(favouriteText.scalings > scalings + 1,
+    "measured the name again against the narrower line it was given")
+
+favouriteText.lines = 1
+TransmogSetModelMixin.UpdateSet(favouriteCard)
+assert(favouriteText.points.TOPLEFT[1] == centredLeft, "put a one line name back where the centring wants it")
 
 -- Cards are pooled, so the one that carried a favourite carries an ordinary set
 -- a page later.

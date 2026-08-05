@@ -19,8 +19,11 @@ local NAME_PADDING = 8
 local NAME_PADDING_TWO_LINES = 4
 -- A favourited set wears a star in the corner the name starts from, so the name
 -- is given room to clear it. Both edges pull in by the same amount rather than
--- just the near one, which keeps the name centred on the card.
+-- just the near one, which keeps a short name centred on the card. A name long
+-- enough to wrap fills its line whatever the padding, so that one takes the
+-- room it really needs on the star's side alone.
 local NAME_PADDING_PAST_STAR = 16
+local NAME_PADDING_CLEARING_STAR = 24
 local NAME_LINE_SPACING = 2
 -- Two lines of a card's width take almost every set name Blizzard has written.
 -- A name past that shrinks to fit rather than wrapping down over the model, and
@@ -43,9 +46,9 @@ local NAME_LEVEL_OFFSET = 5
 local db
 local labels = {}
 
-local function anchorName(text, padding, topPadding)
-    text:SetPoint("TOPLEFT", padding, -topPadding)
-    text:SetPoint("TOPRIGHT", -padding, -topPadding)
+local function anchorName(text, leftPadding, rightPadding, topPadding)
+    text:SetPoint("TOPLEFT", leftPadding, -topPadding)
+    text:SetPoint("TOPRIGHT", -rightPadding, -topPadding)
 end
 
 local function nameLabel(card)
@@ -56,7 +59,7 @@ local function nameLabel(card)
     overlay:SetFrameLevel(card:GetFrameLevel() + NAME_LEVEL_OFFSET)
 
     local text = overlay:CreateFontString(nil, "OVERLAY", "GameFontNormalOutline")
-    anchorName(text, NAME_PADDING, NAME_PADDING)
+    anchorName(text, NAME_PADDING, NAME_PADDING, NAME_PADDING)
     text:SetJustifyH("CENTER")
     text:SetSpacing(NAME_LINE_SPACING)
     text:SetMaxLines(MAX_LINES)
@@ -95,16 +98,23 @@ function TransmogSetNames:Apply(card, name, collected)
 
     -- The width the name has to run in is settled before it is set, so the
     -- shrinking measures against the room the name will really have.
-    local padding = card.Favorite.Icon:IsShown() and NAME_PADDING_PAST_STAR or NAME_PADDING
-    anchorName(text, padding, NAME_PADDING)
+    local starred = card.Favorite.Icon:IsShown()
+    local padding = starred and NAME_PADDING_PAST_STAR or NAME_PADDING
+    anchorName(text, padding, padding, NAME_PADDING)
 
     text:SetText(name or "")
     local colour = collected and COLLECTED_COLOUR or INCOMPLETE_COLOUR
     text:SetTextColor(colour.r, colour.g, colour.b)
 
     -- A name that wraps starts higher, so two lines sit no further down the
-    -- card than one line and its gap do.
-    if text:GetNumLines() > 1 then anchorName(text, padding, NAME_PADDING_TWO_LINES) end
+    -- card than one line and its gap do, and it runs the full width of its
+    -- line, so on a favourited card it starts clear of the star outright. That
+    -- narrows the line it was measured against, so it is measured again.
+    if text:GetNumLines() > 1 then
+        local leftPadding = starred and NAME_PADDING_CLEARING_STAR or NAME_PADDING
+        anchorName(text, leftPadding, padding, NAME_PADDING_TWO_LINES)
+        text:ScaleTextToFit()
+    end
 
     overlay:SetShown(db.showSetNames and (name or "") ~= "")
 end
