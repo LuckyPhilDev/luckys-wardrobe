@@ -4,7 +4,7 @@
 
 Find the sets you can still finish, hear about it the moment a piece drops, and get more out of Blizzard's collection journal.
 
-Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebuild that adds to the collection journal instead of replacing it, so it is much lighter and far less likely to break when a patch lands.
+It adds to the collection journal instead of replacing it, so it stays light and is far less likely to break when a patch lands.
 
 ---
 
@@ -54,12 +54,6 @@ Install from [CurseForge](https://www.curseforge.com/wow/addons/luckys-wardrobe)
 
 Lucky's Utils is required. CurseForge release packages include it automatically.
 
-### Upgrading from Better Wardrobe
-
-Lucky's Wardrobe changes the same collection and transmog windows that Better Wardrobe and Lucky's Better Wardrobe do, so they cannot run alongside it. If one of them is still enabled you get a dialog at login, and it can turn either one off for you.
-
-The update from Lucky's Better Wardrobe leaves its old folder behind. Delete `Interface/AddOns/LuckysBetterWardrobe` to be rid of it for good.
-
 ---
 
 ## Usage
@@ -78,9 +72,7 @@ The update from Lucky's Better Wardrobe leaves its old folder behind. Delete `In
 |---|---|
 | `/wardrobe` | Open addon settings |
 | `/lw` | Short form of `/wardrobe` |
-| `/wardrobe sets` | Show the sets you can finish where you are standing |
-| `/wardrobe welcome` | Show the welcome note again, with the Discord address |
-| `/wardrobe welcome reset` | Owe the welcome note again, so it arrives at the next login |
+| `/lw sets` | Show the sets you can finish where you are standing |
 
 A keybinding for the set list is available under **Sets You Can Finish Here** in the game's Key Bindings screen.
 
@@ -90,27 +82,27 @@ These report what the addon can see, for working out why something looks wrong.
 
 | Command | Action |
 |---|---|
-| `/wardrobe replay` | Reopen the set list as if you had just walked in, for checking your settings |
-| `/wardrobe scan` | Report what the addon can see about the instance you are in |
-| `/wardrobe extrasets` | Report how many extra sets this client can show, and how many were left out and why |
-| `/wardrobe extrasets full` | List the extra sets and the ones left out, with the reason for each |
-| `/wardrobe extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
-| `/wardrobe extrasets looks <name>` | Compare the looks behind a set with the ones the Sets tab holds, for checking why a set was folded away |
-| `/wardrobe extrasets variants <name>` | Ask the client which sets it already calls colourways of one another |
-| `/wardrobe extrasets colours` | List every family of sets grouped as one garment in several colours (`colors` works too) |
-| `/wardrobe extrasets pieces` | Report the set selected in the Extra Sets tab piece by piece, for working out why it reads as unwearable |
-| `/wardrobe extrasets perf` | Report how long the tab's work takes and how it lands on your frame rate |
-| `/wardrobe extrasets perf reset` | Clear those measurements and start again |
-| `/wardrobe recolors` | Report how many recolor families this client's appearances form |
-| `/wardrobe recolors full` | List every family, its pieces, and every cluster left out |
-| `/wardrobe recolors dump` | Save the whole family report to saved variables for reading after a reload |
-| `/wardrobe recolors probe` | Report how many appearances in each slot the client can name yet, for when a report comes back short |
+| `/lw replay` | Reopen the set list as if you had just walked in, for checking your settings |
+| `/lw scan` | Report what the addon can see about the instance you are in |
+| `/lw extrasets` | Report how many extra sets this client can show, and how many were left out and why |
+| `/lw extrasets full` | List the extra sets and the ones left out, with the reason for each |
+| `/lw extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
+| `/lw extrasets looks <name>` | Compare the looks behind a set with the ones the Sets tab holds, for checking why a set was folded away |
+| `/lw extrasets variants <name>` | Ask the client which sets it already calls colourways of one another |
+| `/lw extrasets colours` | List every family of sets grouped as one garment in several colours (`colors` works too) |
+| `/lw extrasets pieces` | Report the set selected in the Extra Sets tab piece by piece, for working out why it reads as unwearable |
+| `/lw extrasets perf` | Report how long the tab's work takes and how it lands on your frame rate |
+| `/lw extrasets perf reset` | Clear those measurements and start again |
+| `/lw recolors` | Report how many recolor families this client's appearances form |
+| `/lw recolors full` | List every family, its pieces, and every cluster left out |
+| `/lw recolors dump` | Save the whole family report to saved variables for reading after a reload |
+| `/lw recolors probe` | Report how many appearances in each slot the client can name yet, for when a report comes back short |
 
 ---
 
 ## Settings
 
-Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
+Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
 - **General**: Turn on dev mode for troubleshooting, and see version info.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
@@ -126,12 +118,6 @@ Open settings with `/wardrobe` or **Options > AddOns > Lucky's Wardrobe**.
 - The Extra Sets catalogue is read from your client the first time you open Appearances. On a cold client it takes a moment, and the tab says so while it works.
 - Some pieces are not on every client build. A set that holds one says how many it cannot show, and those pieces cannot be previewed or applied.
 - Catalyst marks and catalyst loot alerts need Transmog Upgrade Master. Without it those two options stay off, and the settings panel says why.
-
----
-
-## Roadmap
-
-- More of Better Wardrobe's collection journal and transmog vendor features, rebuilt on the lighter foundation.
 
 ---
 
