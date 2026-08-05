@@ -4,6 +4,7 @@
 LuckysWardrobe = {}
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Perf.lua")
 
 local Perf = LuckysWardrobe.Perf

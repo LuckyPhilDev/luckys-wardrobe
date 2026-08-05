@@ -14,6 +14,7 @@ function CreateFrame()
     }
 end
 
+dofile("src/Utils.lua")
 dofile("src/RecolorGroups.lua")
 local RecolorGroups = LuckysWardrobe.RecolorGroups
 
@@ -221,6 +222,16 @@ assert(shown.collected == false and shown.uncollected == false, "restored the fi
 assert(coverage.enumerated == 2 and coverage.total == 50 + 30 * 10 and coverage.filtered == 10 + 5 * 10,
     "reported what the enumeration covered against the client's own totals")
 assert(#coverage.items == 3, "every source's item is offered up for warming, not just the one that named it")
+
+-- A sweep that throws still hands the player back the filters they had.
+
+local sweepingCategories = C_TransmogCollection.GetCategoryAppearances
+C_TransmogCollection.GetCategoryAppearances = function() error("the client gave up mid-sweep") end
+local swept, failure = pcall(RecolorGroups.LiveAppearances)
+C_TransmogCollection.GetCategoryAppearances = sweepingCategories
+assert(not swept and failure:find("mid%-sweep"), "the failure is passed on rather than swallowed")
+assert(shown.collected == false and shown.uncollected == false,
+    "restored the filters even though the sweep never finished")
 
 -- The funnel counts each step separately, so a shortfall points at one call.
 

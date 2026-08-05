@@ -6,14 +6,6 @@ LuckysWardrobe.Classes = {}
 
 local Classes = LuckysWardrobe.Classes
 
--- A set names its classes as a bitmask, one bit per class ID. Read with plain
--- arithmetic rather than the bit library so the same code runs under the tests,
--- which have no such library to stub.
-local function maskHasClass(classMask, classID)
-    local flag = 2 ^ (classID - 1)
-    return classMask % (flag + flag) >= flag
-end
-
 -- The armour a class transmogrifies, as the client's own armour subclass IDs.
 -- The client exposes no API for this and it only changes when a class is added.
 local ARMOUR_TYPE_BY_CLASS = {
@@ -69,6 +61,14 @@ function Classes:ArmourType(classID)
     return ARMOUR_TYPE_BY_CLASS[classID]
 end
 
+--- Whether a class bitmask names one class. A mask carries one bit per class
+--- ID, read with plain arithmetic rather than the bit library so the same code
+--- runs under the tests, which have no such library to stub.
+function Classes:MaskHas(classMask, classID)
+    local flag = 2 ^ (classID - 1)
+    return classMask % (flag + flag) >= flag
+end
+
 --- The classes a set belongs to, empty for one that belongs to all of them.
 function Classes:FromMask(classMask)
     -- A mask of zero is every class at once, which the game uses for the sets that
@@ -77,7 +77,7 @@ function Classes:FromMask(classMask)
 
     local classes = {}
     for _, class in ipairs(self:All()) do
-        if maskHasClass(classMask, class.classID) then
+        if self:MaskHas(classMask, class.classID) then
             classes[#classes + 1] = class
         end
     end

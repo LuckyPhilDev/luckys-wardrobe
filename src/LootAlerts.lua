@@ -35,7 +35,7 @@ end
 local function announce(message)
     if not db.alertWithChat then return end
 
-    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, message))
+    LuckysWardrobe.Utils.Say(message)
 end
 
 -- Blizzard's loot lines are format strings, so the only reliable way to tell the

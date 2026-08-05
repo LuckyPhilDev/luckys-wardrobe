@@ -12,9 +12,7 @@ local INSTANCE_TYPES = { party = true, raid = true }
 
 local db
 
-local function say(text)
-    print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, text))
-end
+local say = LuckysWardrobe.Utils.Say
 
 --- Whether a set belongs to the tier the game is currently on.
 -- A set's patchID and the client's interface number are the same kind of number,
@@ -84,31 +82,6 @@ local function sameDifficulty(a, b)
     return string.find(a, b, 1, true) ~= nil or string.find(b, a, 1, true) ~= nil
 end
 
--- The difficulties a raid set's description can name, taken from the game's own
--- labels so this reads whatever the client is playing in.
-local raidDifficulties
-local function isRaidDifficulty(description)
-    if description == nil then return false end
-
-    if not raidDifficulties then
-        raidDifficulties = {}
-        for _, difficulty in ipairs({ PLAYER_DIFFICULTY1, PLAYER_DIFFICULTY2,
-            PLAYER_DIFFICULTY3, PLAYER_DIFFICULTY6 }) do
-            if difficulty then raidDifficulties[difficulty] = true end
-        end
-    end
-
-    if raidDifficulties[description] then return true end
-
-    -- Wrath era tier puts the difficulty inside the raid size, as in "10 Player
-    -- (Normal)", so the bracketed form counts as naming one too.
-    for difficulty in pairs(raidDifficulties) do
-        if string.find(description, "(" .. difficulty .. ")", 1, true) then return true end
-    end
-
-    return false
-end
-
 -- A drop with no difficulties listed is available on all of them. Anything else is
 -- reported, so a piece that is here but out of reach on this difficulty says so.
 local function difficultyNote(instance, difficulties)
@@ -126,7 +99,7 @@ end
 -- Only a description that actually names one counts: anything else says nothing
 -- about difficulty and must not be reported as though it did.
 local function variantDifficultyNote(instance, variant)
-    if not variant or not isRaidDifficulty(variant) then return nil end
+    if not variant or not LuckysWardrobe.SetSources:IsRaidDifficulty(variant) then return nil end
     if sameDifficulty(variant, instance.difficulty) then return nil end
 
     return variant

@@ -42,11 +42,12 @@ local function initialize()
             end
         end,
         tooltip = function(tooltip)
+            local S = LuckysWardrobe.Strings.minimap
             tooltip:AddLine(LuckysWardrobe.Strings.addon.title)
             tooltip:AddLine(" ")
-            tooltip:AddLine("Shift-click: Sets you can finish here", 0.91, 0.86, 0.78)
-            tooltip:AddLine("Right-click: Open settings", 0.91, 0.86, 0.78)
-            tooltip:AddLine("Drag: Move button", 0.54, 0.49, 0.42)
+            tooltip:AddLine(S.shiftClick, 0.91, 0.86, 0.78)
+            tooltip:AddLine(S.rightClick, 0.91, 0.86, 0.78)
+            tooltip:AddLine(S.drag, 0.54, 0.49, 0.42)
         end,
     })
     LuckysWardrobe.DevLog(LuckysWardrobe.Strings.addon.initialized)
@@ -54,6 +55,7 @@ local function initialize()
     SLASH_LUCKYSWARDROBE1 = "/wardrobe"
     SLASH_LUCKYSWARDROBE2 = "/lw"
     SlashCmdList.LUCKYSWARDROBE = function(message)
+        local say = LuckysWardrobe.Utils.Say
         local command, argument = (message or ""):match("^%s*(%S*)%s*(.-)%s*$")
         command = command:lower()
         if command == "sets" then
@@ -75,7 +77,7 @@ local function initialize()
             elseif subcommand == "perf" then
                 if query:lower() == "reset" then
                     LuckysWardrobe.Perf:Reset()
-                    print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.perf.reset)
+                    say(LuckysWardrobe.Strings.perf.reset)
                 else
                     LuckysWardrobe.Perf:PrintReport()
                 end
@@ -84,7 +86,6 @@ local function initialize()
             end
         elseif command == "recolors" then
             local S = LuckysWardrobe.Strings.recolorGroups
-            local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
             if argument:lower() == "probe" then
                 LuckysWardrobe.RecolorGroups:PrintFunnel()
             elseif argument:lower() == "dump" then

@@ -20,14 +20,16 @@ SetSources.MISC = 7
 -- Menu order for the Sources submenu. Every category the classifier can return
 -- has an entry here, so each set on screen has a checkbox that can hide it and
 -- Uncheck All really does empty the list.
+local S = LuckysWardrobe.Strings.setSources
+
 SetSources.Categories = {
-    { id = SetSources.RAID, label = "Raid" },
-    { id = SetSources.PVP, label = "PvP" },
-    { id = SetSources.COVENANT, label = "Covenants" },
-    { id = SetSources.HERITAGE, label = "Heritage" },
-    { id = SetSources.COSMETIC, label = "Cosmetic" },
-    { id = SetSources.TRADING_POST, label = "Trading Post" },
-    { id = SetSources.MISC, label = "Miscellaneous" },
+    { id = SetSources.RAID, label = S.raid },
+    { id = SetSources.PVP, label = S.pvp },
+    { id = SetSources.COVENANT, label = S.covenants },
+    { id = SetSources.HERITAGE, label = S.heritage },
+    { id = SetSources.COSMETIC, label = S.cosmetic },
+    { id = SetSources.TRADING_POST, label = S.tradingPost },
+    { id = SetSources.MISC, label = S.miscellaneous },
 }
 
 -- Covenant armour sets sit in one contiguous set ID range.
@@ -76,11 +78,15 @@ local nonRaidLabels = {
     ["Legion: Assaults"] = true,
 }
 
--- Wrath era tier puts the difficulty inside the raid size, as in "10 Player
--- (Normal)", so the difficulty is matched within the description as well as
--- against the whole of it. Only the bracketed form counts, so a description
--- that merely contains the word is not mistaken for a difficulty.
-local function isRaidDifficulty(description)
+--- Whether a set's description names a raid difficulty, which is what marks it
+--- as tier. Wrath era tier puts the difficulty inside the raid size, as in
+--- "10 Player (Normal)", so the difficulty is matched within the description as
+--- well as against the whole of it. Only the bracketed form counts, so a
+--- description that merely contains the word is not mistaken for a difficulty.
+---
+--- The set tracker asks this too, so the answer is the same one that put the
+--- set in the Raid category.
+function SetSources:IsRaidDifficulty(description)
     if description == nil then return false end
     if raidDifficulties[description] then return true end
 
@@ -118,7 +124,7 @@ function SetSources:Classify(set)
         return SetSources.TRADING_POST
     elseif isHeritageName(set.name) then
         return SetSources.HERITAGE
-    elseif isRaidDifficulty(set.description) and not (set.label and nonRaidLabels[set.label]) then
+    elseif self:IsRaidDifficulty(set.description) and not (set.label and nonRaidLabels[set.label]) then
         return SetSources.RAID
     elseif set.classMask == 0 then
         -- Wearable by every class, which is what the outfit collections are.

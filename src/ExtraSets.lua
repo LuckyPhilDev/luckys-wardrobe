@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -9,19 +9,11 @@ LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.ExtraSets = {}
 
 local ExtraSets = LuckysWardrobe.ExtraSets
+local Utils = LuckysWardrobe.Utils
 
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
--- How long a burst of collection events is allowed to gather before the page
--- reads the catalogue again. Long enough to collapse a burst, short enough
--- that collecting something still updates the list while you are looking at it.
-local REBUILD_DELAY_SECONDS = 0.25
--- How long the page waits for the items behind a set's pieces to arrive before
--- reading them again. Some never arrive, so the wait is given up after a few
--- passes rather than run until it succeeds.
-local ITEM_LOAD_DELAY_SECONDS = 0.5
-local ITEM_LOAD_PASSES = 3
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -41,35 +33,10 @@ local PROGRESS_BAR_BORDER_MARGIN = 9
 
 -- Blizzard's localized slot-name globals, for the tooltip's slot line. A slot
 -- with no entry here is one the page could not label, so records are held to
--- the slots named below.
-local SLOT_TOOLTIP_GLOBALS = {
-    HEAD = "HEADSLOT",
-    SHOULDER = "SHOULDERSLOT",
-    BACK = "BACKSLOT",
-    CHEST = "CHESTSLOT",
-    BODY = "SHIRTSLOT",
-    TABARD = "TABARDSLOT",
-    WRIST = "WRISTSLOT",
-    HANDS = "HANDSSLOT",
-    WAIST = "WAISTSLOT",
-    LEGS = "LEGSSLOT",
-    FEET = "FEETSLOT",
-}
+-- the slots the addon knows.
+local SLOT_TOOLTIP_GLOBALS = Utils.SLOT_TOOLTIP_GLOBALS
 
-local expansionNames = {
-    EXPANSION_NAME0,
-    EXPANSION_NAME1,
-    EXPANSION_NAME2,
-    EXPANSION_NAME3,
-    EXPANSION_NAME4,
-    EXPANSION_NAME5,
-    EXPANSION_NAME6,
-    EXPANSION_NAME7,
-    EXPANSION_NAME8,
-    EXPANSION_NAME9,
-    EXPANSION_NAME10,
-    EXPANSION_NAME11,
-}
+local expansionNames = Utils.EXPANSION_NAMES
 
 -- Session-only view state behind the filter button, matching the Sets tab menu.
 -- The class is not in here: it narrows the catalogue before entries are built,
@@ -82,10 +49,8 @@ local filters = {
     sortDirection = "ascending",
 }
 
--- Keyed by Blizzard's expansionID, which counts from 0 for Classic. The name
--- list is a Lua array counting from 1, so every lookup here is index - 1.
 local function setAllExpansions(shown)
-    for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
+    Utils.SetAllExpansions(filters.expansions, shown)
 end
 
 -- Which colourway each set is showing, keyed by group. Session-only, like the
@@ -94,10 +59,7 @@ local selectedVariants = {}
 
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
-    for index = 1, #expansionNames do
-        if not filters.expansions[index - 1] then return true end
-    end
-    return false
+    return Utils.AnyExpansionHidden(filters.expansions)
 end
 
 setAllExpansions(true)
@@ -143,10 +105,11 @@ function ExtraSets.ValidateRecord(record)
     return true
 end
 
+-- A mask of zero names every class at once, which is how the game marks the
+-- sets that are nobody's in particular.
 function ExtraSets.ClassAllowed(classMask, classID)
     if classMask == 0 or not classID then return true end
-    local classBit = 2 ^ (classID - 1)
-    return math.floor(classMask / classBit) % 2 == 1
+    return LuckysWardrobe.Classes:MaskHas(classMask, classID)
 end
 
 -- What one class has any use for: the sets named for it, plus the sets named
@@ -1192,21 +1155,22 @@ function ExtraSets:CreatePage(wardrobe)
     -- cold, since building the list only asks the client about pieces it will
     -- not judge, so without this pass the notice would be wrong exactly where
     -- it matters and right only after leaving the set and coming back.
-    local function loadPieceItems(entry, pass)
+    local function loadPieceItems(row, pass)
         local waiting = false
-        for _, piece in ipairs(entry.pieces) do
+        for _, piece in ipairs(ExtraSets.VariantOf(row, selectedVariants[row.key]).pieces) do
             if piece.itemID and not C_Item.GetItemInfo(piece.itemID) then
                 C_Item.RequestLoadItemDataByID(piece.itemID)
                 waiting = true
             end
         end
-        if not waiting or pass >= ITEM_LOAD_PASSES then return end
+        if not waiting or pass >= Utils.ITEM_LOAD_PASSES then return end
 
-        C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
-            -- The set on screen may have moved on while the client answered.
-            if not selectedEntry or selectedEntry.key ~= entry.key then return end
-            showNotice(entry)
-            loadPieceItems(entry, pass + 1)
+        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
+            -- The row on screen may have moved on while the client answered, and
+            -- the colourway on show may have changed under a row that has not.
+            if selectedEntry ~= row then return end
+            showNotice(ExtraSets.VariantOf(row, selectedVariants[row.key]))
+            loadPieceItems(row, pass + 1)
         end)
     end
 
@@ -1269,7 +1233,7 @@ function ExtraSets:CreatePage(wardrobe)
         labelText:SetText(entry.label)
         countsText:SetFormattedText(S.counts, entry.collected, entry.total)
         showNotice(entry)
-        loadPieceItems(entry, 1)
+        loadPieceItems(row, 1)
         if redress then model:Undress() end
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
@@ -1451,12 +1415,13 @@ function ExtraSets:CreatePage(wardrobe)
         end)
         root:CreateDivider()
 
-        local sort = root:CreateButton("Sort By")
+        local menu = LuckysWardrobe.Strings.filterMenu
+        local sort = root:CreateButton(menu.sortBy)
         for _, option in ipairs({
             { key = "default", label = DEFAULT },
-            { key = "name", label = "Name" },
-            { key = "completion", label = "Completion" },
-            { key = "pieces", label = "Pieces" },
+            { key = "name", label = menu.byName },
+            { key = "completion", label = menu.byCompletion },
+            { key = "pieces", label = menu.byPieces },
         }) do
             local mode = option
             sort:CreateRadio(mode.label, function() return filters.sortMode == mode.key end, function()
@@ -1465,8 +1430,8 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        local direction = root:CreateButton("Sort Direction")
-        for _, option in ipairs({ { key = "ascending", label = "Ascending" }, { key = "descending", label = "Descending" } }) do
+        local direction = root:CreateButton(menu.sortDirection)
+        for _, option in ipairs({ { key = "ascending", label = menu.ascending }, { key = "descending", label = menu.descending } }) do
             local sortDirection = option
             direction:CreateRadio(sortDirection.label, function() return filters.sortDirection == sortDirection.key end, function()
                 filters.sortDirection = sortDirection.key
@@ -1474,7 +1439,7 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        local expansions = root:CreateButton("Expansion")
+        local expansions = root:CreateButton(menu.expansion)
         expansions:CreateButton(CHECK_ALL, function()
             setAllExpansions(true)
             refresh()
@@ -1503,21 +1468,10 @@ function ExtraSets:CreatePage(wardrobe)
         refresh()
     end
 
-    -- Learning one appearance fires the collection event several times over,
-    -- and reading every set again costs far more than a frame, so a burst
-    -- collapses into a single pass a moment later. The delay is not felt:
-    -- nothing on screen changes until the pass runs either way.
-    local rebuildQueued = false
-    local function queueRebuild()
-        if rebuildQueued then return end
-
-        rebuildQueued = true
-        C_Timer.After(REBUILD_DELAY_SECONDS, function()
-            rebuildQueued = false
-            -- A page that has since closed rebuilds when it opens again.
-            if page:IsShown() then rebuildNow() end
-        end)
-    end
+    local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
+        -- A page that has since closed rebuilds when it opens again.
+        if page:IsShown() then rebuildNow() end
+    end)
 
     searchBox:HookScript("OnTextChanged", refresh)
     page:SetScript("OnShow", function(self)
@@ -1587,7 +1541,7 @@ end
 
 function ExtraSets:PrintPieceReport()
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = Utils.Say
 
     local entry = extraPage and extraPage.SelectedEntry()
     if not entry then
@@ -1624,7 +1578,7 @@ end
 -- name a fold, two that share none name a genuine recolour.
 function ExtraSets:PrintLooks(query)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = Utils.Say
     local catalog = LuckysWardrobe.ExtraSetsCatalog
     local report = catalog:GetReport()
     if not report then

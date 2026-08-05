@@ -36,12 +36,9 @@ local ARMOUR_SLOTS = {
     INVTYPE_FEET = "FEET",
 }
 
--- Locale-free slot keys in display order, head to feet. Records leave here
--- already ordered, so nothing downstream has to know what a slot means.
-local SLOT_ORDER = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
+-- Records leave here already ordered, so nothing downstream has to know what a
+-- slot means.
+local SLOT_ORDER = LuckysWardrobe.Utils.ARMOUR_SLOTS
 
 local REJECT = {
     unresolvable = "no piece this client can resolve",
@@ -64,16 +61,16 @@ end
 -- it turned up under are kept as a mask: the Sets tab shows a set only under
 -- those, which is the only place it can be a duplicate.
 local function snapshotOfficialSets()
+    local Classes = LuckysWardrobe.Classes
     local names, classMasks = {}, {}
     local savedFilter = C_TransmogSets.GetTransmogSetsClassFilter()
     for classID = 1, GetNumClasses() do
         C_TransmogSets.SetTransmogSetsClassFilter(classID)
-        local classBit = 2 ^ (classID - 1)
         for _, set in ipairs(C_TransmogSets.GetAllSets() or {}) do
             names[set.setID] = set.name or ""
             local mask = classMasks[set.setID] or 0
-            if math.floor(mask / classBit) % 2 == 0 then
-                classMasks[set.setID] = mask + classBit
+            if not Classes:MaskHas(mask, classID) then
+                classMasks[set.setID] = mask + 2 ^ (classID - 1)
             end
         end
     end
@@ -228,9 +225,8 @@ function Catalog:OfficialLooks(classID)
     for setID in pairs(report.officialClasses) do setIDs[#setIDs + 1] = setID end
     table.sort(setIDs)
 
-    local classBit = classID and 2 ^ (classID - 1)
     for _, setID in ipairs(setIDs) do
-        if not classBit or math.floor(report.officialClasses[setID] / classBit) % 2 == 1 then
+        if not classID or LuckysWardrobe.Classes:MaskHas(report.officialClasses[setID], classID) then
             add(setID, report.official[setID])
             -- The tab offers a set's difficulties through a dropdown rather
             -- than as rows of their own, so a variant is as listed as its set.
@@ -377,7 +373,7 @@ end
 
 function Catalog:PrintReport(verbose)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     if not report then
         say(S.notStarted)
@@ -470,7 +466,7 @@ end
 
 function Catalog:PrintMatches(query)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+    local say = LuckysWardrobe.Utils.Say
 
     if not report then
         say(S.notStarted)

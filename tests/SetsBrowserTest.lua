@@ -45,6 +45,8 @@ C_TransmogSets = {
     end,
 }
 
+dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/SetSources.lua")
 dofile("src/SetsBrowser.lua")
 

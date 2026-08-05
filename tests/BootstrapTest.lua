@@ -195,6 +195,7 @@ LuckysWardrobe.Catalyst = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Defaults.lua")
 dofile("src/Core.lua")
 

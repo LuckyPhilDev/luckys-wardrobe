@@ -6,6 +6,7 @@ LuckysWardrobe = {}
 -- A localised difficulty global must classify alongside the English fallbacks.
 PLAYER_DIFFICULTY6 = "Mythisch"
 
+dofile("src/Strings.lua")
 dofile("src/SetSources.lua")
 
 local SetSources = LuckysWardrobe.SetSources
@@ -83,6 +84,14 @@ assertClassifies(SetSources.MISC,
 assertClassifies(SetSources.MISC,
     { setID = 2605 },
     "a missing class mask is not evidence of anything")
+
+-- The set tracker reads the same difficulty test to decide whether a set's
+-- description says anything about difficulty at all, so it answers on its own.
+assert(SetSources:IsRaidDifficulty("Mythic"), "a difficulty on its own names one")
+assert(SetSources:IsRaidDifficulty("Mythisch"), "a localised difficulty global names one")
+assert(SetSources:IsRaidDifficulty("10 Player (Normal)"), "the bracketed Wrath form names one")
+assert(not SetSources:IsRaidDifficulty("Normally calm"), "a word that merely starts alike names none")
+assert(not SetSources:IsRaidDifficulty(nil), "no description names no difficulty")
 
 -- The checks above cover every category a set can come out as, so the menu
 -- offers no dead checkbox.

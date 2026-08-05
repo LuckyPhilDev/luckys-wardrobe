@@ -63,12 +63,12 @@ local function reportTracking(setName, tracked, failed, lastError)
         if failed > 0 then
             message = message .. " " .. LuckysWardrobe.Strings.tracking.failed:format(failed)
         end
-        print(LuckysWardrobe.Strings.addon.prefix .. " " .. message)
+        LuckysWardrobe.Utils.Say(message)
         PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK)
     elseif lastError then
         ContentTrackingUtil.DisplayTrackingError(lastError)
     else
-        print(LuckysWardrobe.Strings.addon.prefix .. " " .. LuckysWardrobe.Strings.tracking.nothing:format(setName))
+        LuckysWardrobe.Utils.Say(LuckysWardrobe.Strings.tracking.nothing:format(setName))
     end
 end
 
@@ -119,8 +119,7 @@ local function untrackAppearance(sourceID, setName)
 
     if stopped == 0 then return end
 
-    print(LuckysWardrobe.Strings.addon.prefix .. " "
-        .. LuckysWardrobe.Strings.tracking.stopped:format(setName or "?"))
+    LuckysWardrobe.Utils.Say(LuckysWardrobe.Strings.tracking.stopped:format(setName or "?"))
     PlaySound(SOUNDKIT.CONTENT_TRACKING_STOP_TRACKING)
 end
 

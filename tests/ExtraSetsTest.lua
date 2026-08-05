@@ -28,6 +28,7 @@ C_ClassColor = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/Classes.lua")
 -- The page measures its own work, so the real stopwatch runs here too, wound

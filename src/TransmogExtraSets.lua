@@ -11,16 +11,8 @@ LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.TransmogExtraSets = {}
 
 local TransmogExtraSets = LuckysWardrobe.TransmogExtraSets
+local Utils = LuckysWardrobe.Utils
 
--- How long a burst of collection events is allowed to gather before the page
--- reads the catalogue again, matching the Collections page.
-local REBUILD_DELAY_SECONDS = 0.25
-
--- How long the page waits for the items behind its sets to arrive before it
--- judges them again, and how many times it is willing to wait. Some items never
--- arrive, so the waiting ends rather than running until it succeeds.
-local ITEM_LOAD_DELAY_SECONDS = 0.5
-local ITEM_LOAD_PASSES = 3
 -- How many items one pass will ask for. This page lists hundreds of sets, and
 -- asking about every one of them at once is a burst the client answers no
 -- faster for.
@@ -30,11 +22,8 @@ local ITEM_LOAD_BUDGET = 200
 local CARD_GRID_X_PADDING = 27
 local CARD_GRID_Y_PADDING = 19
 
--- The record slots, head to feet, in the order the viewed outfit is read.
-local SLOT_KEYS = {
-    "HEAD", "SHOULDER", "BACK", "CHEST", "BODY", "TABARD",
-    "WRIST", "HANDS", "WAIST", "LEGS", "FEET",
-}
+-- The record slots, in the order the viewed outfit is read.
+local SLOT_KEYS = Utils.ARMOUR_SLOTS
 
 -- Session-only state behind the filter button, mirroring the native Sets tab
 -- menu: fully collected sets and everything short of that.
@@ -207,10 +196,16 @@ function TransmogExtraSets.Entries()
         LuckysWardrobe.Perf:Begin("transmog entries built")
         local ExtraSets = LuckysWardrobe.ExtraSets
         local resolver = ExtraSets.LiveResolver()
-        cachedRows = cachedRows or ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
-            ExtraSets.RecordsForClass(ExtraSets.Records(), resolver.playerClassID()),
-            resolver
-        ))
+        if not cachedRows then
+            -- The Sets tab sits beside this one here as it does in Collections,
+            -- so a look it already shows folds away on both pages or the two
+            -- disagree about which sets exist.
+            local classID = resolver.playerClassID()
+            cachedRows = ExtraSets.CollapseDuplicates(
+                ExtraSets.BuildEntries(ExtraSets.RecordsForClass(ExtraSets.Records(), classID), resolver),
+                ExtraSets.NativeLooks(classID)
+            )
+        end
         cachedEntries = TransmogExtraSets.WearableEntries(
             cachedRows, resolver.playerClassID(), resolver.sourceValidity)
         LuckysWardrobe.Perf:End("transmog entries built")
@@ -605,12 +600,12 @@ function TransmogExtraSets:CreatePage(wardrobe)
     local function warmVerdicts(run, pass)
         if not requestUnjudgedItems(TransmogExtraSets.Entries()) then return end
 
-        C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
+        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
             -- A rebuild since this pass started has a warm-up of its own.
             if run ~= warmRun or not page:IsShown() then return end
             TransmogExtraSets.RejudgeEntries()
             refresh()
-            if pass < ITEM_LOAD_PASSES then warmVerdicts(run, pass + 1) end
+            if pass < Utils.ITEM_LOAD_PASSES then warmVerdicts(run, pass + 1) end
         end)
     end
 
@@ -621,18 +616,9 @@ function TransmogExtraSets:CreatePage(wardrobe)
         warmVerdicts(warmRun, 1)
     end
 
-    -- Learning one appearance fires the collection event several times over,
-    -- so a burst collapses into a single pass a moment later.
-    local rebuildQueued = false
-    local function queueRebuild()
-        if rebuildQueued then return end
-
-        rebuildQueued = true
-        C_Timer.After(REBUILD_DELAY_SECONDS, function()
-            rebuildQueued = false
-            if page:IsShown() then rebuildNow() end
-        end)
-    end
+    local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
+        if page:IsShown() then rebuildNow() end
+    end)
 
     filterButton:SetIsDefaultCallback(function()
         return filters.collected and filters.uncollected
