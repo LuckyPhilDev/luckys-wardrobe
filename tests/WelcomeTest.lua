@@ -65,6 +65,7 @@ LuckyUI = {
         borderDark = { 0.2, 0.18, 0.1 },
         textLight = { 1, 1, 1 },
         textMuted = { 0.5, 0.5, 0.5 },
+        goldPrimary = { 1, 0.82, 0 },
         goldAccent = { 0.8, 0.7, 0.3 },
         goldMuted = { 0.5, 0.4, 0.2 },
     },
@@ -146,6 +147,7 @@ assert(said(S.headline), "said the addon is newly written")
 assert(said(S.body), "said some functionality is missing")
 assert(said(S.ask), "asked for bugs and feature requests")
 assert(said(S.copyHint), "said how to copy the address")
+assert(said(S.signoff), "signed off on a warm note")
 assert(panel.link:GetText() == S.discordURL, "handed over the Discord address")
 assert(UISpecialFrames[1] == "LuckysWardrobeWelcome", "let Escape close it")
 

@@ -40,6 +40,7 @@ LuckysWardrobe.Strings = {
         linkLabel = "Discord",
         discordURL = "https://discord.gg/ptTtYyAjdZ",
         copyHint = "Click the address, then press Ctrl+C to copy it.",
+        signoff = "And most of all, enjoy!",
         close = "Close",
         reset = "The welcome note is owed again. It arrives a moment after your next login.",
     },

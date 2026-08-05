@@ -91,7 +91,12 @@ local function build()
     local ask = addLine(frame, body, 12, LuckyUI.C.textMuted)
     ask:SetText(S.ask)
 
-    local linkLabel = addLine(frame, ask, 12, LuckyUI.C.goldAccent)
+    -- Closes what the note has to say. The address below it is there to be used
+    -- rather than read, so the warm line comes before it and not after.
+    local signoff = addLine(frame, ask, 12, LuckyUI.C.goldPrimary)
+    signoff:SetText(S.signoff)
+
+    local linkLabel = addLine(frame, signoff, 12, LuckyUI.C.goldAccent)
     linkLabel:SetText(S.linkLabel)
     local linkBox = addLink(frame, linkLabel)
 
@@ -116,7 +121,7 @@ local function build()
     -- Wrapped text is only as tall as the font makes it, so the panel is sized
     -- from what the lines measure once they hold their text.
     local text = 0
-    for _, line in ipairs({ headline, body, ask, linkLabel }) do
+    for _, line in ipairs({ headline, body, ask, signoff, linkLabel }) do
         text = text + line:GetStringHeight() + LINE_GAP
     end
     frame:SetHeight(TEXT_TOP + text - LINE_GAP
