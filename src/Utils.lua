@@ -1,4 +1,4 @@
--- luacheck: globals EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11
+-- luacheck: globals C_Timer EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11
 
 -- Lucky's Wardrobe: data and helpers more than one module needs.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -36,6 +36,34 @@ end
 --- and every alert speaks.
 function Utils.Say(line)
     print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, line))
+end
+
+-- How long a burst of collection events is allowed to gather before a page
+-- reads the catalogue again. Long enough to collapse a burst, short enough that
+-- collecting something still updates the list while you are looking at it.
+Utils.REBUILD_DELAY_SECONDS = 0.25
+
+-- How long a page waits for the items behind a set's pieces to arrive before
+-- reading them again, and how many times it is willing to wait. Some never
+-- arrive, so the waiting ends rather than running until it succeeds.
+Utils.ITEM_LOAD_DELAY_SECONDS = 0.5
+Utils.ITEM_LOAD_PASSES = 3
+
+--- Wraps an action so a burst of calls runs it once, a moment later. Learning
+--- one appearance fires the collection event several times over, and reading
+--- every set again costs far more than a frame. The delay is not felt: nothing
+--- on screen changes until the pass runs either way.
+function Utils.Debounced(seconds, action)
+    local queued = false
+    return function()
+        if queued then return end
+
+        queued = true
+        C_Timer.After(seconds, function()
+            queued = false
+            action()
+        end)
+    end
 end
 
 -- Every expansion, named as the game names it, for the Expansion submenu both

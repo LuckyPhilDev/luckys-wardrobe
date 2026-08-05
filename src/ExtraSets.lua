@@ -9,19 +9,11 @@ LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.ExtraSets = {}
 
 local ExtraSets = LuckysWardrobe.ExtraSets
+local Utils = LuckysWardrobe.Utils
 
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
 local NATIVE_SETS_TAB_ID = 2
--- How long a burst of collection events is allowed to gather before the page
--- reads the catalogue again. Long enough to collapse a burst, short enough
--- that collecting something still updates the list while you are looking at it.
-local REBUILD_DELAY_SECONDS = 0.25
--- How long the page waits for the items behind a set's pieces to arrive before
--- reading them again. Some never arrive, so the wait is given up after a few
--- passes rather than run until it succeeds.
-local ITEM_LOAD_DELAY_SECONDS = 0.5
-local ITEM_LOAD_PASSES = 3
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -42,9 +34,9 @@ local PROGRESS_BAR_BORDER_MARGIN = 9
 -- Blizzard's localized slot-name globals, for the tooltip's slot line. A slot
 -- with no entry here is one the page could not label, so records are held to
 -- the slots the addon knows.
-local SLOT_TOOLTIP_GLOBALS = LuckysWardrobe.Utils.SLOT_TOOLTIP_GLOBALS
+local SLOT_TOOLTIP_GLOBALS = Utils.SLOT_TOOLTIP_GLOBALS
 
-local expansionNames = LuckysWardrobe.Utils.EXPANSION_NAMES
+local expansionNames = Utils.EXPANSION_NAMES
 
 -- Session-only view state behind the filter button, matching the Sets tab menu.
 -- The class is not in here: it narrows the catalogue before entries are built,
@@ -58,7 +50,7 @@ local filters = {
 }
 
 local function setAllExpansions(shown)
-    LuckysWardrobe.Utils.SetAllExpansions(filters.expansions, shown)
+    Utils.SetAllExpansions(filters.expansions, shown)
 end
 
 -- Which colourway each set is showing, keyed by group. Session-only, like the
@@ -67,7 +59,7 @@ local selectedVariants = {}
 
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
-    return LuckysWardrobe.Utils.AnyExpansionHidden(filters.expansions)
+    return Utils.AnyExpansionHidden(filters.expansions)
 end
 
 setAllExpansions(true)
@@ -1171,9 +1163,9 @@ function ExtraSets:CreatePage(wardrobe)
                 waiting = true
             end
         end
-        if not waiting or pass >= ITEM_LOAD_PASSES then return end
+        if not waiting or pass >= Utils.ITEM_LOAD_PASSES then return end
 
-        C_Timer.After(ITEM_LOAD_DELAY_SECONDS, function()
+        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
             -- The row on screen may have moved on while the client answered, and
             -- the colourway on show may have changed under a row that has not.
             if selectedEntry ~= row then return end
@@ -1476,21 +1468,10 @@ function ExtraSets:CreatePage(wardrobe)
         refresh()
     end
 
-    -- Learning one appearance fires the collection event several times over,
-    -- and reading every set again costs far more than a frame, so a burst
-    -- collapses into a single pass a moment later. The delay is not felt:
-    -- nothing on screen changes until the pass runs either way.
-    local rebuildQueued = false
-    local function queueRebuild()
-        if rebuildQueued then return end
-
-        rebuildQueued = true
-        C_Timer.After(REBUILD_DELAY_SECONDS, function()
-            rebuildQueued = false
-            -- A page that has since closed rebuilds when it opens again.
-            if page:IsShown() then rebuildNow() end
-        end)
-    end
+    local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
+        -- A page that has since closed rebuilds when it opens again.
+        if page:IsShown() then rebuildNow() end
+    end)
 
     searchBox:HookScript("OnTextChanged", refresh)
     page:SetScript("OnShow", function(self)
@@ -1560,7 +1541,7 @@ end
 
 function ExtraSets:PrintPieceReport()
     local S = LuckysWardrobe.Strings.extraSets.report
-    local say = LuckysWardrobe.Utils.Say
+    local say = Utils.Say
 
     local entry = extraPage and extraPage.SelectedEntry()
     if not entry then
@@ -1597,7 +1578,7 @@ end
 -- name a fold, two that share none name a genuine recolour.
 function ExtraSets:PrintLooks(query)
     local S = LuckysWardrobe.Strings.extraSets.report
-    local say = LuckysWardrobe.Utils.Say
+    local say = Utils.Say
     local catalog = LuckysWardrobe.ExtraSetsCatalog
     local report = catalog:GetReport()
     if not report then
