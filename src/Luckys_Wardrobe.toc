@@ -5,6 +5,7 @@
 ## Author: Lucky Phil
 ## SavedVariables: LuckysWardrobeDB
 ## Dependencies: Luckys_Utils
+## OptionalDeps: TransmogUpgradeMaster
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 ## X-Curse-Project-ID: 1631480
 

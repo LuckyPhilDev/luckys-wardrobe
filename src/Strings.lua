@@ -26,6 +26,7 @@ LuckysWardrobe.Strings = {
             inInstances = "In Dungeons and Raids",
             whenYouLoot = "When You Loot",
         },
+        catalystMissing = "The catalyst options below are turned off because Transmog Upgrade Master is not installed. It is the only way to know what the catalyst would turn an item into.",
         maxMissing = {
             label = "Pieces Missing At Most",
             desc = "How incomplete a set can be and still count as one you are close to finishing. At 3, a set you are missing four or more pieces of is left out of the instance list and never alerts.",

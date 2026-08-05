@@ -97,6 +97,11 @@ function LuckysWardrobe.Settings:Init(db)
     -- leads and neither side owns it.
     local setTracker = panel:Group(S.settings.groups.setTracker)
     local catalystAvailable = LuckysWardrobe.Catalyst:IsAvailable()
+    -- Two settings in two different sections grey out together, and a greyed row
+    -- says nothing about why until you hover it, so the group says it once up top.
+    if not catalystAvailable then
+        setTracker:Notice({ text = S.settings.catalystMissing })
+    end
 
     setTracker:Section(S.settings.sections.whatToTrack)
     setTracker:Slider({
