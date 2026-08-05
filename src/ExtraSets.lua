@@ -507,6 +507,41 @@ local function containedIn(entry, family)
     end
 end
 
+-- Whether a sorted list of looks holds every look in another sorted list. Both
+-- come off the snapshot already sorted and without repeats, so this walks them
+-- once rather than building a lookup for each comparison.
+local function holdsEveryLook(larger, smaller)
+    local index = 1
+    for _, displayID in ipairs(smaller) do
+        while larger[index] and larger[index] < displayID do index = index + 1 end
+        if larger[index] ~= displayID then return false end
+    end
+    return true
+end
+
+-- Whether one of these two sets is the other with looks missing, as the snapshot
+-- counted them. This is what a set that resolved short looks like.
+--
+-- An appearance key is built from the looks this client could resolve, and a
+-- piece it holds no data for at all is not one it waits for: it is counted as
+-- unavailable and left out of the key, which leaves a set that resolved short
+-- looking exactly like a complete but smaller one. Where a smaller set really
+-- does exist with those looks, the two match on a key neither should have
+-- shared, and one is folded away into a set it has nothing to do with.
+--
+-- The snapshot counted every look each set wears before this client had a say,
+-- so it can tell the two apart. Sizes differing and the larger holding all of
+-- the smaller is the shape of a set missing looks; two sets that differ some
+-- other way are two sets, and the client is left to its own answer about them.
+local function oneIsTheOtherShort(entry, twin)
+    if not (entry.displayIds and twin.displayIds) then return false end
+    if #entry.displayIds == #twin.displayIds then return false end
+
+    local larger, smaller = entry.displayIds, twin.displayIds
+    if #larger < #smaller then larger, smaller = smaller, larger end
+    return holdsEveryLook(larger, smaller)
+end
+
 -- The looks the Sets tab itself shows, shaped to stand in a family beside this
 -- page's own entries: named, keyed on their looks, and marked native so no row
 -- is ever built from one. A look the client answered nothing for has no key
@@ -559,12 +594,24 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
     for _, rival in ipairs(rivals) do
         if not firstOfLook[rival.appearanceKey] then firstOfLook[rival.appearanceKey] = rival end
     end
+    local shortFolds = {}
     for _, entry in ipairs(entries) do
         local twin = entry.appearanceKey and firstOfLook[entry.appearanceKey]
+        -- One of the two resolved short, so the key they met on describes only
+        -- what this client could answer for. Both keep their row; the snapshot
+        -- says they are not the same set whatever the key says.
+        if twin and oneIsTheOtherShort(entry, twin) then
+            shortFolds[#shortFolds + 1] = { setID = entry.setID, name = entry.name, twinName = twin.name }
+            twin = nil
+        end
         if twin then
             survivorOf[entry] = twin
         else
-            if entry.appearanceKey then firstOfLook[entry.appearanceKey] = entry end
+            -- The key may already stand for the row this one was refused
+            -- against, which keeps its claim on it.
+            if entry.appearanceKey and not firstOfLook[entry.appearanceKey] then
+                firstOfLook[entry.appearanceKey] = entry
+            end
             kept[#kept + 1] = entry
         end
     end
@@ -618,7 +665,7 @@ function ExtraSets.CollapseDuplicates(entries, nativeLooks)
             rows[#rows + 1] = entry
         end
     end
-    return rows, nativeFolds
+    return rows, nativeFolds, shortFolds
 end
 
 -- One row standing for a set's several colourways: named for the set, counting
@@ -772,6 +819,7 @@ function ExtraSets.BuildEntry(record, resolver)
         -- changing where the row itself came from.
         fromEnsemble = record.ensembles ~= nil,
         sourceMask = record.sourceMask,
+        displayIds = record.displayIds,
         pieces = pieces,
         -- Which looks this set is made of, and whether each is collected. What
         -- makes two sets the same set, and what lets one row speak for several.
@@ -1225,6 +1273,7 @@ end
 -- actually changes.
 local cachedEntries
 local cachedNativeFolds = {}
+local cachedShortFolds = {}
 local selectedClassID
 
 function ExtraSets.InvalidateEntries()
@@ -1251,7 +1300,7 @@ end
 function ExtraSets.Entries()
     if not cachedEntries then
         LuckysWardrobe.Perf:Begin("entries built")
-        cachedEntries, cachedNativeFolds = ExtraSets.CollapseDuplicates(
+        cachedEntries, cachedNativeFolds, cachedShortFolds = ExtraSets.CollapseDuplicates(
             ExtraSets.BuildEntries(
                 ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
                 ExtraSets.LiveResolver()
@@ -1268,6 +1317,13 @@ end
 -- command names when a set is not where the bundled list says it should be.
 function ExtraSets.NativeFolds()
     return cachedNativeFolds
+end
+
+-- The folds the last build refused because one of the two sets had resolved
+-- short of what the snapshot says it wears. Two rows survive each of these that
+-- would otherwise have been one, so the report says how often it happened.
+function ExtraSets.ShortFolds()
+    return cachedShortFolds
 end
 
 -- Page UI. Mirrors the native Sets layout: list on the left, dressing-room

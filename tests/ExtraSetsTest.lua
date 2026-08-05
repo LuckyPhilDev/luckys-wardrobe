@@ -511,6 +511,79 @@ assert(#ExtraSets.FilterEntries(collapsed, "Lookalike") == 2, "folded names are 
 assert(#ExtraSets.FilterEntries(collapsed, "Distinct Regalia") == 1,
     "a set folded under another name is found by the name it lost")
 
+-- A set this client resolved short of the looks it wears must not fold into a
+-- smaller set that really does wear only those. The appearance key is built from
+-- what resolved, so the two meet on a key neither should have shared; the
+-- snapshot counted the looks before the client had a say, and tells them apart.
+
+do
+local function withLooks(record, displayIds)
+    record.displayIds = displayIds
+    return record
+end
+
+-- Both resolve to the same two looks. The snapshot says the first wears four,
+-- so it is the second with looks missing rather than the same set.
+local shortRecords = {
+    withLooks(colourway(701, "Truncated Regalia", { 5101, 5102 }), { 91, 92, 93, 94 }),
+    withLooks(colourway(702, "Genuinely Small Regalia", { 5101, 5102 }), { 91, 92 }),
+}
+local shortRows, _, shortFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(shortRecords, stubResolver(CLOTH_CLASS)))
+assert(#shortRows == 2, "a set that resolved short keeps its row rather than folding away")
+assert(#shortFolds == 1 and shortFolds[1].setID == 702,
+    "and the refused fold is reported so it can be judged")
+assert(shortFolds[1].twinName == "Truncated Regalia", "naming the row it was about to fold into")
+assert(shortRows[1].alternateNames == nil and shortRows[2].alternateNames == nil,
+    "neither absorbed the other's name")
+
+-- The difficulty variants are the case this must not break. Wowhead gives them
+-- one piece list and separate looks, so they resolve to one appearance key and
+-- their looks are disjoint rather than one being short of the other. The client
+-- has only the one piece list to draw either with, so they stay one row.
+local tintRecords = {
+    withLooks(colourway(703, "Aberrus Heroic", { 5101, 5102 }), { 91, 92 }),
+    withLooks(colourway(704, "Aberrus Mythic", { 5101, 5102 }), { 81, 82 }),
+}
+local tintRows, _, tintFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(tintRecords, stubResolver(CLOTH_CLASS)))
+assert(#tintRows == 1 and #tintFolds == 0,
+    "sets whose looks merely differ keep folding on the client's own answer")
+assert(tintRows[1].alternateNames[1] == "Aberrus Mythic", "and the folded name is still kept")
+
+-- Different sizes, but the larger does not hold the smaller's looks: two sets
+-- that differ, not one missing looks. Only containment says a set resolved
+-- short, so this folds on the client's answer like any other.
+local unrelatedRecords = {
+    withLooks(colourway(709, "Unrelated Regalia", { 5101, 5102 }), { 91, 92, 93, 94 }),
+    withLooks(colourway(710, "Unrelated Regalia (Lookalike)", { 5101, 5102 }), { 81, 82 }),
+}
+local unrelatedRows, _, unrelatedFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(unrelatedRecords, stubResolver(CLOTH_CLASS)))
+assert(#unrelatedRows == 1 and #unrelatedFolds == 0,
+    "a size difference alone is not a set that resolved short")
+
+-- Same looks, same size: an ordinary duplicate, which folds as it always did.
+local twinRecords = {
+    withLooks(colourway(705, "Twin Regalia", { 5101, 5102 }), { 91, 92 }),
+    withLooks(colourway(706, "Twin Regalia (Lookalike)", { 5101, 5102 }), { 91, 92 }),
+}
+assert(#ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(twinRecords, stubResolver(CLOTH_CLASS))) == 1,
+    "an identical look still folds to one row")
+
+-- The ensembles carry no looks, so they are left to the client's answer exactly
+-- as before. A guard that needed both sides would otherwise stop folding them.
+local mixedRecords = {
+    withLooks(colourway(707, "Mixed Regalia", { 5101, 5102 }), { 91, 92, 93, 94 }),
+    colourway(708, "Mixed Regalia (Ensemble)", { 5101, 5102 }),
+}
+mixedRecords[2].ensembles = { 70002 }
+assert(#ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(mixedRecords, stubResolver(CLOTH_CLASS))) == 1,
+    "a set with no looks of its own folds on the client's answer alone")
+end
+
 -- An ensemble teaching a look an armour list already carries folds into that
 -- row like any other duplicate, and takes the one thing it knows with it.
 

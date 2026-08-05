@@ -238,6 +238,10 @@ local function buildRecord(setID, set, armorType)
         -- client has no source field on a set to prefer over it, and the
         -- ensembles carry none, which is nil rather than a set from nowhere.
         sourceMask = set.sourceMask,
+        -- Every look the set wears, as the snapshot counted them, whatever this
+        -- client can resolve of it. What makes a set that resolved short tellable
+        -- from one that really is that small.
+        displayIds = set.displayIds,
         -- Which classes' Sets tab already lists this set, so the page can drop
         -- the ones it would otherwise show a second time.
         officialClassMask = officialClassMask,
@@ -466,6 +470,15 @@ function Catalog:PrintReport(verbose)
     say(S.shownLine:format(#shown))
     say(S.foldedLine:format(LuckysWardrobe.ExtraSets.FoldedCount(shown)))
     say(S.nativeFoldedLine:format(#LuckysWardrobe.ExtraSets.NativeFolds()))
+    -- Named rather than only counted: this one exists to be judged on how often
+    -- it fires, and a bare number says nothing about whether it was right to.
+    local shortFolds = LuckysWardrobe.ExtraSets.ShortFolds()
+    if #shortFolds > 0 then
+        say(S.shortFoldLine:format(#shortFolds))
+        for _, fold in ipairs(shortFolds) do
+            say(S.shortFoldEntry:format(fold.setID, fold.name, fold.twinName))
+        end
+    end
     say(S.officialLine:format(report.alsoOfficial))
     say(S.ensembleLine:format(report.fromEnsembles))
     if report.identityMismatches > 0 then
