@@ -93,7 +93,7 @@ LuckysWardrobe.Strings = {
         },
         trackSets = {
             label = "Track on Shift-Click",
-            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one. Works in Blizzard's Sets tab, in the Extra Sets tab, and on the Extra Sets cards at the transmogrifier.",
+            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one and shift-click it again to stop. Works in Blizzard's Sets tab, in the Extra Sets tab, and on the Extra Sets cards at the transmogrifier.",
         },
         markTracked = {
             label = "Mark Tracked Pieces",
@@ -144,6 +144,8 @@ LuckysWardrobe.Strings = {
     tracking = {
         hovered = "You are tracking this appearance.",
         hint = "Shift-click to track this appearance.",
+        stopHint = "Shift-click to stop tracking it.",
+        stopped = "Stopped tracking an appearance from %s.",
         tracked = "Tracking %d missing appearance(s) from %s.",
         failed = "%d could not be tracked.",
         nothing = "Nothing new to track from %s.",

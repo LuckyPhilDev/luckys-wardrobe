@@ -1,7 +1,8 @@
 -- luacheck: globals EventUtil WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
 
--- Lucky's Wardrobe: Shift-click tracking for Blizzard's stock set list, whole
--- sets from the list itself and single pieces from the set on show.
+-- Lucky's Wardrobe: Shift-click tracking for Blizzard's stock set list. A whole
+-- set from the list itself, or one piece of the set on show, which the same
+-- click calls off again.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.SetTracking = {}
 
@@ -105,13 +106,41 @@ function SetTracking:TrackSources(sourceIDs, setName)
     reportTracking(setName or "?", trackAll(sourceIDs))
 end
 
+-- Whichever item taught the look is the one being tracked, and it is not always
+-- the one clicked, so every item that teaches it is called off.
+local function untrackAppearance(sourceID, setName)
+    local stopped = 0
+    for _, candidateID in ipairs(getCandidates(sourceID)) do
+        if C_ContentTracking.IsTracking(APPEARANCE, candidateID) then
+            C_ContentTracking.StopTracking(APPEARANCE, candidateID, Enum.ContentTrackingStopType.Manual)
+            stopped = stopped + 1
+        end
+    end
+
+    if stopped == 0 then return end
+
+    print(LuckysWardrobe.Strings.addon.prefix .. " "
+        .. LuckysWardrobe.Strings.tracking.stopped:format(setName or "?"))
+    PlaySound(SOUNDKIT.CONTENT_TRACKING_STOP_TRACKING)
+end
+
+-- Shift-clicking one piece is a toggle: the first click starts hunting it, the
+-- next calls it off, the way the game's own appearance list works.
+function SetTracking:TogglePiece(sourceID, setName)
+    if self:IsTracking(sourceID) then
+        untrackAppearance(sourceID, setName)
+    else
+        self:TrackSources({ sourceID }, setName)
+    end
+end
+
 -- Every place that answers a shift-click asks here, which is also where turning
 -- the setting off hands the click back.
 function SetTracking:HandlesShiftClick(button)
     return button == "LeftButton" and IsShiftKeyDown() and db.trackSetsOnShiftClick or false
 end
 
--- Says the shift-click is there, on a piece it would actually track. The Sets
+-- Says which way the shift-click would go, on a piece it would act on. The Sets
 -- tab says nothing about tracking of its own, so a piece there is silent about
 -- the one thing you can do with it.
 function SetTracking:AddTrackHint(tooltip, sourceID)
@@ -120,19 +149,20 @@ function SetTracking:AddTrackHint(tooltip, sourceID)
     local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
     if not sourceInfo or sourceInfo.isCollected then return false end
 
-    tooltip:AddLine(LuckysWardrobe.Strings.tracking.hint, 0.5, 0.8, 1)
+    local S = LuckysWardrobe.Strings.tracking
+    tooltip:AddLine(self:IsTracking(sourceID) and S.stopHint or S.hint, 0.5, 0.8, 1)
     tooltip:Show()
     return true
 end
 
 -- One piece of the set on show, for someone hunting a single item rather than
 -- the whole thing. The set names it so the report reads the same either way.
-local function trackPiece(itemFrame)
+local function togglePiece(itemFrame)
     if itemFrame.collected or not itemFrame.sourceID then return end
 
     local setID = WardrobeCollectionFrame.SetsCollectionFrame:GetSelectedSetID()
     local setInfo = setID and C_TransmogSets.GetSetInfo(setID)
-    SetTracking:TrackSources({ itemFrame.sourceID }, setInfo and setInfo.name)
+    SetTracking:TogglePiece(itemFrame.sourceID, setInfo and setInfo.name)
 end
 
 function SetTracking:Init(database)
@@ -158,7 +188,7 @@ function SetTracking:Init(database)
         function WardrobeSetsDetailsItemMixin:OnMouseDown(button, ...)
             stockPieceMouseDown(self, button, ...)
             if SetTracking:HandlesShiftClick(button) then
-                trackPiece(self)
+                togglePiece(self)
             end
         end
     end)

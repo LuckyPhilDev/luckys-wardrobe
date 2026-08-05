@@ -5,6 +5,8 @@ LuckysWardrobe = {
         addon = { prefix = "Wardrobe:" },
         tracking = {
             hint = "Shift-click to track this appearance.",
+            stopHint = "Shift-click to stop tracking it.",
+            stopped = "Stopped tracking one from %s.",
             tracked = "Tracking %d from %s.",
             failed = "%d failed.",
             nothing = "Nothing from %s.",
@@ -15,10 +17,12 @@ LuckysWardrobe = {
 Enum = {
     ContentTrackingType = { Appearance = 1 },
     ContentTrackingError = { Untrackable = 2 },
+    ContentTrackingStopType = { Manual = 2 },
 }
 
 local shiftDown = false
 local tracked = {}
+local stopped = {}
 local errors = {}
 local requestedSetID
 local stockClicks = 0
@@ -97,6 +101,10 @@ C_ContentTracking = {
         assert(sourceInfoByID[sourceID], "StartTracking got an ID outside the source ID space")
         table.insert(tracked, sourceID)
     end,
+    StopTracking = function(_, sourceID, stopType)
+        assert(sourceInfoByID[sourceID], "StopTracking got an ID outside the source ID space")
+        table.insert(stopped, { id = sourceID, stopType = stopType })
+    end,
 }
 
 ContentTrackingUtil = {
@@ -105,7 +113,7 @@ ContentTrackingUtil = {
     end,
 }
 
-SOUNDKIT = { UI_TRANSMOG_ITEM_CLICK = 1 }
+SOUNDKIT = { UI_TRANSMOG_ITEM_CLICK = 1, CONTENT_TRACKING_STOP_TRACKING = 2 }
 function PlaySound() end
 
 WardrobeCollectionFrame = {
@@ -168,12 +176,32 @@ assert(stockPieceClicks == 3, "still ran the stock piece click")
 shiftDown = true
 
 -- The Sets tab says nothing about tracking of its own, so the tooltip is where
--- the shift-click is offered, on a piece it would actually track.
+-- the shift-click is offered, on a piece it would actually act on.
 local tooltip = { lines = {}, AddLine = function(self, text) self.lines[#self.lines + 1] = text end, Show = function() end }
 assert(LuckysWardrobe.SetTracking:AddTrackHint(tooltip, 101), "offered the shift-click on a missing piece")
 assert(tooltip.lines[1] == LuckysWardrobe.Strings.tracking.hint, "offered it in words")
 assert(LuckysWardrobe.SetTracking:AddTrackHint(tooltip, 102) == false, "said nothing over a piece already collected")
 assert(#tooltip.lines == 1, "added no line for a collected piece")
+
+-- Clicking a piece already tracked calls it off instead, and it is the item that
+-- taught the look that stops, which is not always the one clicked.
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 201 end
+
+assert(LuckysWardrobe.SetTracking:AddTrackHint(tooltip, 101), "offered the shift-click over a tracked piece too")
+assert(tooltip.lines[2] == LuckysWardrobe.Strings.tracking.stopHint, "offered the way out rather than the way in")
+
+local trackedSoFar = #tracked
+piece:OnMouseDown("LeftButton")
+assert(#tracked == trackedSoFar, "did not track a piece that is already tracked")
+assert(#stopped == 1 and stopped[1].id == 201, "stopped tracking it instead")
+assert(stopped[1].stopType == Enum.ContentTrackingStopType.Manual, "and stopped it as a deliberate choice")
+
+local sharedLookPiece = setmetatable({ sourceID = 101, collected = false }, { __index = WardrobeSetsDetailsItemMixin })
+sharedLookPiece:OnMouseDown("LeftButton")
+assert(#stopped == 2 and stopped[2].id == 201,
+    "called off the item that taught the look, not the one clicked")
+
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 103 end
 
 db.trackSetsOnShiftClick = false
 setRow:OnClick("LeftButton")
