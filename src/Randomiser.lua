@@ -73,34 +73,48 @@ local function buildTargets()
     end
 end
 
--- Prefers a source this character may transmogrify to, and falls back to any
--- collected one so the "hide this slot" entries, whose lone source is not
--- always flagged valid, stay rollable.
-local function collectedSource(visualID, target)
+-- Takes a source this character may transmogrify to. An appearance the whole
+-- class can wear may still be collected only as a source restricted to another
+-- class, and queueing one of those leaves the slot in an error state that no
+-- later roll can clear. The "hide this slot" entries are the one exception:
+-- their lone source is not always flagged valid, so it is taken on trust.
+local function wearableSource(visualID, target)
     local sources = C_TransmogCollection.GetAppearanceSources(visualID, target.category, target.locationData)
     if not sources then return nil end
 
-    local fallbackID
+    -- The hidden check reads the visual, not the source it resolves to.
+    local isHidden = C_TransmogCollection.IsAppearanceHiddenVisual(visualID)
+    local hiddenSourceID
+
     for _, source in ipairs(sources) do
         if source.isCollected then
-            if source.isValidSourceForPlayer then return source.sourceID end
-            fallbackID = fallbackID or source.sourceID
+            if source.isValidSourceForPlayer then return source.sourceID, isHidden end
+            if isHidden and not hiddenSourceID then hiddenSourceID = source.sourceID end
         end
     end
 
-    return fallbackID
+    return hiddenSourceID, isHidden
+end
+
+-- A visual that resolves to nothing wearable is no use on any later roll
+-- either, so it leaves the pool and the draw moves on to another.
+local function drawSource(target)
+    while #target.visuals > 0 do
+        local index = math.random(#target.visuals)
+        local sourceID, isHidden = wearableSource(target.visuals[index], target)
+        if sourceID then return sourceID, isHidden end
+        table.remove(target.visuals, index)
+    end
 end
 
 local function rollSlot(target)
     local slotInfo = C_TransmogOutfitInfo.GetViewedOutfitSlotInfo(target.slot, target.transmogType, SLOT_OPTION)
     if not slotInfo or not slotInfo.canTransmogrify then return end
 
-    local visualID = target.visuals[math.random(#target.visuals)]
-    local sourceID = collectedSource(visualID, target)
+    local sourceID, isHidden = drawSource(target)
     if not sourceID then return end
 
-    -- The hidden check reads the visual, not the source it resolved to.
-    local displayType = C_TransmogCollection.IsAppearanceHiddenVisual(visualID)
+    local displayType = isHidden
         and Enum.TransmogOutfitDisplayType.Hidden
         or Enum.TransmogOutfitDisplayType.Assigned
 

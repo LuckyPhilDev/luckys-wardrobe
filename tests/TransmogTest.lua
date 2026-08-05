@@ -58,12 +58,12 @@ Constants = { TransmogOutfitDataConsts = { TRANSMOG_OUTFIT_SLOT_NONE = -1 } }
 
 -- Slot IDs the fixture rolls, plus one of each thing that must be left alone.
 local HEAD, BACK = 0, 3
-local CHEST, MAINHAND, SHOULDER_LEFT, TABARD, WRIST, FEET, ILLUSION_SLOT = 4, 12, 2, 5, 7, 11, 90
+local CHEST, MAINHAND, SHOULDER_LEFT, TABARD, WRIST, FEET, LEGS, ILLUSION_SLOT = 4, 12, 2, 5, 7, 11, 8, 90
 
 local CATEGORY = {
     [HEAD] = 101, [BACK] = 102, [CHEST] = 103, [MAINHAND] = 104,
     [SHOULDER_LEFT] = 105, [TABARD] = 106, [WRIST] = 107, [FEET] = 108,
-    [ILLUSION_SLOT] = 109,
+    [LEGS] = 110, [ILLUSION_SLOT] = 109,
 }
 
 local function makeLocation(slot, options)
@@ -93,7 +93,8 @@ TRANSMOG_SLOTS = {
     [6] = slotEntry(TABARD),
     [7] = slotEntry(WRIST),
     [8] = slotEntry(FEET),
-    [9] = slotEntry(ILLUSION_SLOT, { transmogType = Enum.TransmogType.Illusion }),
+    [9] = slotEntry(LEGS),
+    [10] = slotEntry(ILLUSION_SLOT, { transmogType = Enum.TransmogType.Illusion }),
 }
 
 -- The one appearance per slot that a roll should land on, and the one source it
@@ -124,6 +125,9 @@ end
 -- repeated selection can then only come from the settle sending the last one
 -- again.
 local ALTERNATE_VISUAL, ALTERNATE_SOURCE = 999, 9990
+-- An appearance the class can wear that this character has collected only as a
+-- source another class is restricted to.
+local WRONG_CLASS_VISUAL, WRONG_CLASS_SOURCE = 998, 9980
 local rollCounts = {}
 math.random = function(n)
     rollCounts[n] = (rollCounts[n] or 0) + 1
@@ -138,6 +142,9 @@ categoryAppearances[CATEGORY[BACK]] = pool(BACK, { isHideVisual = true })
 categoryAppearances[CATEGORY[WRIST]] = nil -- MayReturnNothing
 table.insert(categoryAppearances[CATEGORY[HEAD]],
     { visualID = ALTERNATE_VISUAL, isCollected = true, isUsable = true })
+-- Third in the head's eligible pool, so the second roll draws it.
+table.insert(categoryAppearances[CATEGORY[HEAD]],
+    { visualID = WRONG_CLASS_VISUAL, isCollected = true, isUsable = true })
 
 -- The one to pick is last, behind an uncollected source and a collected one the
 -- character may not wear.
@@ -154,8 +161,15 @@ appearanceSources[VISUAL[BACK]] = {
     { sourceID = SOURCE[BACK], isCollected = true, isValidSourceForPlayer = false },
 }
 appearanceSources[VISUAL[FEET]] = nil -- MayReturnNothing
+-- The legs slot owns nothing but an appearance the character may not wear.
+appearanceSources[VISUAL[LEGS]] = {
+    { sourceID = SOURCE[LEGS], isCollected = true, isValidSourceForPlayer = false },
+}
 appearanceSources[ALTERNATE_VISUAL] = {
     { sourceID = ALTERNATE_SOURCE, isCollected = true, isValidSourceForPlayer = true },
+}
+appearanceSources[WRONG_CLASS_VISUAL] = {
+    { sourceID = WRONG_CLASS_SOURCE, isCollected = true, isValidSourceForPlayer = false },
 }
 appearanceSources[UNCOLLECTED_VISUAL] = {
     { sourceID = 11, isCollected = true, isValidSourceForPlayer = true },
@@ -169,7 +183,7 @@ local hiddenChecks = {}
 local pendingCalls = {}
 local canTransmogrify = {
     [HEAD] = true, [BACK] = true, [CHEST] = false, [MAINHAND] = true,
-    [SHOULDER_LEFT] = true, [FEET] = true, [ILLUSION_SLOT] = true,
+    [SHOULDER_LEFT] = true, [FEET] = true, [LEGS] = true, [ILLUSION_SLOT] = true,
     -- TABARD is absent, so its slot info comes back as nothing at all.
 }
 
@@ -291,19 +305,26 @@ assert(#pendingFor(ILLUSION_SLOT) == 0, "left the illusion location alone")
 assert(#pendingFor(WRIST) == 0, "dropped the slot whose appearance query returned nothing")
 assert(#pendingFor(TABARD) == 0, "left the slot whose slot info returned nothing alone")
 assert(#pendingFor(FEET) == 0, "left the slot whose source query returned nothing alone")
+assert(#pendingFor(LEGS) == 0, "left alone the slot whose only appearance the character may not wear")
 
 local backCalls = pendingFor(BACK)
 assert(#backCalls == 1, "rolled the hide visual's slot")
 assert(backCalls[1].displayType == Enum.TransmogOutfitDisplayType.Hidden, "queued a hidden visual as hidden")
-assert(backCalls[1].transmogID == SOURCE[BACK], "fell back to the collected source for the hide visual")
-local rolledVisuals = { [VISUAL[HEAD]] = true, [ALTERNATE_VISUAL] = true, [VISUAL[BACK]] = true }
-assert(#hiddenChecks == 2, "checked both rolled appearances for a hidden visual")
+assert(backCalls[1].transmogID == SOURCE[BACK], "took the hide visual's source even though it is not flagged valid")
+local drawnVisuals = {
+    [VISUAL[HEAD]] = true, [ALTERNATE_VISUAL] = true, [WRONG_CLASS_VISUAL] = true,
+    [VISUAL[BACK]] = true, [VISUAL[LEGS]] = true,
+}
+assert(#hiddenChecks > 0, "checked drawn appearances for a hidden visual")
 for _, checked in ipairs(hiddenChecks) do
-    assert(rolledVisuals[checked], "asked whether the visual ID was hidden, not the source ID")
+    assert(drawnVisuals[checked], "asked whether the visual ID was hidden, not the source ID")
 end
 
+-- The head's second draw lands on the appearance the character may not wear, so
+-- this roll only produces a pending change if the draw moves on to another.
 driver.scripts.OnUpdate(driver, 0.09)
 assert(#pendingFor(HEAD) == 2, "kept rolling while the button was held")
+assert(pendingFor(HEAD)[2].transmogID ~= WRONG_CLASS_SOURCE, "drew again past the appearance the character may not wear")
 
 driver.scripts.OnUpdate(driver, 0.01)
 assert(#pendingFor(HEAD) == 2, "waited out the interval between rolls")
@@ -329,6 +350,13 @@ assert(headCalls[#headCalls - 2].transmogID ~= lastRoll.transmogID,
 for _, call in ipairs(headCalls) do
     assert(collectedAndUsable[call.transmogID], "queued only collected sources of usable appearances")
 end
+
+local wearable = { [SOURCE[LEGS]] = false, [WRONG_CLASS_SOURCE] = false }
+for _, call in ipairs(pendingCalls) do
+    assert(wearable[call.transmogID] == nil,
+        "never queued a source the character may not wear, which would leave the slot stuck in an error state")
+end
+assert(#pendingFor(LEGS) == 0, "carried on leaving the unwearable slot alone for the whole spin")
 
 -- A fresh spin does not re-send a slot it never rolled.
 
