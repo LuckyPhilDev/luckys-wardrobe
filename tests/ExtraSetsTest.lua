@@ -239,6 +239,42 @@ local unarmouredEntry = ExtraSets.BuildEntry(validRecord({ armorType = 0 }), stu
 assert(ExtraSets.UnwearableNotice(unarmouredEntry, "armour", 1) == S.notUsable,
     "a set in no armour type at all names no armour")
 
+-- The dev dump: one row per piece, carrying the client's answers rather than a
+-- verdict drawn from them.
+
+local function detailResolver(unwearableSourceID)
+    return {
+        sourceValidity = validity(unwearableSourceID),
+        sourceDetail = function(sourceID)
+            if not sourceStates[sourceID] then return nil end
+            local refused = sourceID == unwearableSourceID
+            return {
+                itemID = sourceID + 90000,
+                itemLoaded = true,
+                wardrobe = not refused,
+                valid = not refused,
+                useError = refused and "You cannot use this appearance" or nil,
+            }
+        end,
+    }
+end
+
+local diagnosis, diagnosedReason = ExtraSets.PieceDiagnosis(garb, CLOTH_CLASS, detailResolver(2003))
+assert(#diagnosis == 3, "one row per piece of the set")
+assert(diagnosedReason == "other", "reported the same reason the details panel shows")
+assert(diagnosis[1].slot == "HEAD" and diagnosis[1].state == "collected", "rows carry the piece as the page has it")
+assert(diagnosis[1].valid == true and diagnosis[1].useError == nil, "a piece the client accepts says so")
+assert(diagnosis[2].valid == false and diagnosis[2].useError ~= nil,
+    "the one refused piece is named, with the client's own words for it")
+assert(diagnosis[2].itemID == 92003, "a record carrying no item ID falls back to the one the source reports")
+
+-- A piece the client will not answer for at all has to read differently from
+-- one it refuses, or the dump cannot tell a cold cache from a real refusal.
+local unanswered = ExtraSets.PieceDiagnosis(loadingSet, CLOTH_CLASS, detailResolver())
+assert(unanswered[3].valid == nil and unanswered[3].itemLoaded == false,
+    "a source this client has no data for is unanswered, not refused")
+assert(unanswered[3].itemID == nil, "an unresolvable piece reports no item")
+
 local ghost = entries[3]
 assert(ghost.total == 0 and ghost.unavailable == 3, "a set with no valid sources stays visible")
 

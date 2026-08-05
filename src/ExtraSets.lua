@@ -276,6 +276,29 @@ function ExtraSets.UnwearableNotice(entry, reason, classID)
     return S.notUsable
 end
 
+-- One row per piece of a set, saying what the client answers about its source,
+-- alongside the reason the set as a whole was called out of reach. A refusal
+-- the set-level notice can only call "other" is one piece answering no, and
+-- this is what says which piece and, where the client offers one, in what
+-- words. Dev dump only: the page never asks this of a set it is not showing.
+function ExtraSets.PieceDiagnosis(entry, classID, resolver)
+    local rows = {}
+    for index, piece in ipairs(entry.pieces) do
+        local detail = resolver.sourceDetail(piece.sourceID)
+        rows[index] = {
+            slot = piece.slot,
+            state = piece.state,
+            sourceID = piece.sourceID,
+            itemID = piece.itemID or (detail and detail.itemID),
+            itemLoaded = detail ~= nil and detail.itemLoaded,
+            wardrobe = detail ~= nil and detail.wardrobe,
+            valid = detail and detail.valid,
+            useError = detail and detail.useError,
+        }
+    end
+    return rows, ExtraSets.UnwearableReason(entry, classID, resolver.sourceValidity)
+end
+
 function ExtraSets.IsComplete(entry)
     return not entry.loading and entry.total > 0 and entry.collected == entry.total
 end
@@ -409,6 +432,24 @@ function ExtraSets.LiveResolver()
             if not sourceInfo then return nil end
             if not sourceInfo.itemID or not C_Item.GetItemInfo(sourceInfo.itemID) then return nil end
             return sourceInfo.isValidSourceForPlayer and true or false
+        end,
+        -- Everything the client will say about one source, gathered for the dev
+        -- dump. Each question is one the page already asks somewhere; what the
+        -- dump adds is asking them together, so a refusal can be read against
+        -- the state it was made in. wardrobe is whether the appearance API
+        -- claimed the source at all, which it declines to do for looks outside
+        -- the player's own wardrobe context.
+        sourceDetail = function(sourceID)
+            local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+            if not sourceInfo then return nil end
+            local itemID = sourceInfo.itemID
+            return {
+                itemID = itemID,
+                itemLoaded = itemID ~= nil and C_Item.GetItemInfo(itemID) ~= nil,
+                wardrobe = C_TransmogCollection.GetAppearanceInfoBySource(sourceID) ~= nil,
+                valid = sourceInfo.isValidSourceForPlayer and true or false,
+                useError = sourceInfo.useError,
+            }
         end,
         playerClassID = function()
             local _, _, classID = UnitClass("player")
@@ -1025,6 +1066,7 @@ function ExtraSets:CreatePage(wardrobe)
     end)
     page.Refresh = rebuildNow
     page.RefreshCameras = refreshCamera
+    page.SelectedEntry = function() return selectedEntry end
     page.OnSearchUpdate = function() end
     -- What the wardrobe calls on the frame that owns the tooltip once Tab has
     -- moved the index along.
@@ -1053,6 +1095,42 @@ function ExtraSets:CreatePage(wardrobe)
     LuckysWardrobe.DevLog("Extra Sets page built; model level=" .. model:GetFrameLevel()
         .. " details level=" .. detailsFrame:GetFrameLevel())
     return page
+end
+
+-- The client answers yes, no, or nothing at all, and the third is worth telling
+-- apart from the second: a piece it has not judged is not a piece it refused.
+local function answer(value)
+    local S = LuckysWardrobe.Strings.extraSets.report
+    if value == nil then return S.pieceUnanswered end
+    return value and S.pieceYes or S.pieceNo
+end
+
+function ExtraSets:PrintPieceReport()
+    local S = LuckysWardrobe.Strings.extraSets.report
+    local function say(line) print(LuckysWardrobe.Strings.addon.prefix .. " " .. line) end
+
+    local entry = extraPage and extraPage.SelectedEntry()
+    if not entry then
+        say(S.piecesNoSelection)
+        return
+    end
+
+    local resolver = ExtraSets.LiveResolver()
+    local classID = resolver.playerClassID()
+    local rows, reason = ExtraSets.PieceDiagnosis(entry, classID, resolver)
+    say(S.piecesHeader:format(entry.setID, entry.name, reason or S.piecesWearable))
+    for _, row in ipairs(rows) do
+        say(S.pieceLine:format(
+            row.slot,
+            row.state,
+            row.sourceID,
+            row.itemID or S.pieceNoItem,
+            answer(row.itemLoaded),
+            answer(row.wardrobe),
+            answer(row.valid)
+        ))
+        if row.useError then say(S.pieceUseErrorLine:format(row.useError)) end
+    end
 end
 
 function ExtraSets:TrackMissing(entry)
