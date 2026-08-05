@@ -1,4 +1,4 @@
--- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 122
 
 -- Lucky's Wardrobe: Sorting and filtering for Blizzard's official Sets tab.
@@ -15,25 +15,11 @@ local state = {
     sources = {},
 }
 
-local expansionNames = {
-    EXPANSION_NAME0,
-    EXPANSION_NAME1,
-    EXPANSION_NAME2,
-    EXPANSION_NAME3,
-    EXPANSION_NAME4,
-    EXPANSION_NAME5,
-    EXPANSION_NAME6,
-    EXPANSION_NAME7,
-    EXPANSION_NAME8,
-    EXPANSION_NAME9,
-    EXPANSION_NAME10,
-    EXPANSION_NAME11,
-}
+local Utils = LuckysWardrobe.Utils
+local expansionNames = Utils.EXPANSION_NAMES
 
--- Keyed by Blizzard's expansionID, which counts from 0 for Classic. The name
--- list is a Lua array counting from 1, so every lookup here is index - 1.
 local function setAllExpansions(shown)
-    for index = 1, #expansionNames do state.expansions[index - 1] = shown end
+    Utils.SetAllExpansions(state.expansions, shown)
 end
 
 local function setAllSources(shown)
@@ -43,9 +29,7 @@ end
 -- True while our own filters are hiding something, which is what makes the
 -- list differ from the one Blizzard's own filters produced.
 local function isNarrowed()
-    for index = 1, #expansionNames do
-        if not state.expansions[index - 1] then return true end
-    end
+    if Utils.AnyExpansionHidden(state.expansions) then return true end
     for _, category in ipairs(SetSources.Categories) do
         if not state.sources[category.id] then return true end
     end

@@ -1,3 +1,5 @@
+-- luacheck: globals EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11
+
 -- Lucky's Wardrobe: data and helpers more than one module needs.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.Utils = {}
@@ -28,4 +30,37 @@ Utils.SLOT_TOOLTIP_GLOBALS = {}
 for index, slot in ipairs(SLOTS) do
     Utils.ARMOUR_SLOTS[index] = slot.key
     Utils.SLOT_TOOLTIP_GLOBALS[slot.key] = slot.tooltipGlobal
+end
+
+-- Every expansion, named as the game names it, for the Expansion submenu both
+-- filter menus offer. A new expansion is one name added here.
+Utils.EXPANSION_NAMES = {
+    EXPANSION_NAME0,
+    EXPANSION_NAME1,
+    EXPANSION_NAME2,
+    EXPANSION_NAME3,
+    EXPANSION_NAME4,
+    EXPANSION_NAME5,
+    EXPANSION_NAME6,
+    EXPANSION_NAME7,
+    EXPANSION_NAME8,
+    EXPANSION_NAME9,
+    EXPANSION_NAME10,
+    EXPANSION_NAME11,
+}
+
+--- Turns every expansion's checkbox on or off. Keyed by Blizzard's expansionID,
+--- which counts from 0 for Classic, while the name list is a Lua array counting
+--- from 1, so every lookup is index - 1.
+function Utils.SetAllExpansions(expansions, shown)
+    for index = 1, #Utils.EXPANSION_NAMES do expansions[index - 1] = shown end
+end
+
+--- Whether any expansion has been unticked, which is what makes a filtered list
+--- differ from the whole of it.
+function Utils.AnyExpansionHidden(expansions)
+    for index = 1, #Utils.EXPANSION_NAMES do
+        if not expansions[index - 1] then return true end
+    end
+    return false
 end

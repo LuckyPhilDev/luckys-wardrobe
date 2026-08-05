@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -44,20 +44,7 @@ local PROGRESS_BAR_BORDER_MARGIN = 9
 -- the slots the addon knows.
 local SLOT_TOOLTIP_GLOBALS = LuckysWardrobe.Utils.SLOT_TOOLTIP_GLOBALS
 
-local expansionNames = {
-    EXPANSION_NAME0,
-    EXPANSION_NAME1,
-    EXPANSION_NAME2,
-    EXPANSION_NAME3,
-    EXPANSION_NAME4,
-    EXPANSION_NAME5,
-    EXPANSION_NAME6,
-    EXPANSION_NAME7,
-    EXPANSION_NAME8,
-    EXPANSION_NAME9,
-    EXPANSION_NAME10,
-    EXPANSION_NAME11,
-}
+local expansionNames = LuckysWardrobe.Utils.EXPANSION_NAMES
 
 -- Session-only view state behind the filter button, matching the Sets tab menu.
 -- The class is not in here: it narrows the catalogue before entries are built,
@@ -70,10 +57,8 @@ local filters = {
     sortDirection = "ascending",
 }
 
--- Keyed by Blizzard's expansionID, which counts from 0 for Classic. The name
--- list is a Lua array counting from 1, so every lookup here is index - 1.
 local function setAllExpansions(shown)
-    for index = 1, #expansionNames do filters.expansions[index - 1] = shown end
+    LuckysWardrobe.Utils.SetAllExpansions(filters.expansions, shown)
 end
 
 -- Which colourway each set is showing, keyed by group. Session-only, like the
@@ -82,10 +67,7 @@ local selectedVariants = {}
 
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
-    for index = 1, #expansionNames do
-        if not filters.expansions[index - 1] then return true end
-    end
-    return false
+    return LuckysWardrobe.Utils.AnyExpansionHidden(filters.expansions)
 end
 
 setAllExpansions(true)
