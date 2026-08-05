@@ -223,7 +223,7 @@ end
 local function families(entries)
     local byName, order = {}, {}
     for _, entry in ipairs(entries) do
-        local key = entry.armorType .. "|" .. ExtraSets.BaseName(entry.name)
+        local key = tostring(entry.armorType) .. "|" .. ExtraSets.BaseName(entry.name)
         if not byName[key] then
             byName[key] = { key = key }
             order[#order + 1] = byName[key]
@@ -252,6 +252,30 @@ local function containedIn(entry, family)
     end
 end
 
+-- The looks the Sets tab itself shows, shaped to stand in a family beside this
+-- page's own entries: named, keyed on their looks, and marked native so no row
+-- is ever built from one. A look the client answered nothing for has no key
+-- and cannot fold anything, so it is left out here.
+local function nativeRivals(nativeLooks)
+    local rivals = {}
+    for _, look in ipairs(nativeLooks or {}) do
+        local appearanceKey = ExtraSets.AppearanceKey(look.appearances)
+        if appearanceKey then
+            local total = 0
+            for _ in pairs(look.appearances) do total = total + 1 end
+            rivals[#rivals + 1] = {
+                native = true,
+                name = look.name,
+                armorType = look.armorType,
+                appearances = look.appearances,
+                appearanceKey = appearanceKey,
+                total = total,
+            }
+        end
+    end
+    return rivals
+end
+
 -- Folds the sets that are the same look into one row. Wowhead names a single
 -- appearance twice, once "(... Recolor)" and once "(... Lookalike)", and the
 -- snapshot carries each as its own set: around a fifth of the catalogue is a
@@ -265,8 +289,19 @@ end
 --
 -- The surviving row keeps the names it absorbed, so searching for one still
 -- finds it.
-function ExtraSets.CollapseDuplicates(entries)
+--
+-- The Sets tab's own looks fold by the same two rules, which is what keeps a
+-- tier's "(... Recolor)" listings off this page: different items, but the very
+-- looks the tab already shows under the tier's difficulty dropdown. A set
+-- folded into a native look leaves no row and no absorbed name, because the
+-- place to see it is the Sets tab; it is answered for in the second return,
+-- which is what the report and the find command read.
+function ExtraSets.CollapseDuplicates(entries, nativeLooks)
+    local rivals = nativeRivals(nativeLooks)
     local survivorOf, firstOfLook, kept = {}, {}, {}
+    for _, rival in ipairs(rivals) do
+        if not firstOfLook[rival.appearanceKey] then firstOfLook[rival.appearanceKey] = rival end
+    end
     for _, entry in ipairs(entries) do
         local twin = entry.appearanceKey and firstOfLook[entry.appearanceKey]
         if twin then
@@ -277,22 +312,38 @@ function ExtraSets.CollapseDuplicates(entries)
         end
     end
 
-    for _, family in ipairs(families(kept)) do
+    -- Native looks stand first in their family, so a set they contain folds to
+    -- the Sets tab rather than into a larger row of this page.
+    local candidates = {}
+    for _, rival in ipairs(rivals) do candidates[#candidates + 1] = rival end
+    for _, entry in ipairs(kept) do candidates[#candidates + 1] = entry end
+    for _, family in ipairs(families(candidates)) do
         for _, entry in ipairs(family) do
-            survivorOf[entry] = containedIn(entry, family)
+            if not entry.native then
+                survivorOf[entry] = containedIn(entry, family)
+            end
         end
     end
 
     -- Names are gathered against the row that survives, following a chain of
     -- containments to its end: each step holds strictly more looks than the
-    -- last, so the walk always finishes.
-    local absorbedNames = {}
+    -- last, so the walk always finishes. A chain ending at a native look has
+    -- no row to gather against, so the whole chain is folded away with it.
+    local absorbedNames, nativeFolds = {}, {}
     for _, entry in ipairs(entries) do
         local survivor = survivorOf[entry]
         if survivor then
             while survivorOf[survivor] do survivor = survivorOf[survivor] end
-            absorbedNames[survivor] = absorbedNames[survivor] or {}
-            table.insert(absorbedNames[survivor], entry.name)
+            if survivor.native then
+                nativeFolds[#nativeFolds + 1] = {
+                    setID = entry.setID,
+                    name = entry.name,
+                    nativeName = survivor.name,
+                }
+            else
+                absorbedNames[survivor] = absorbedNames[survivor] or {}
+                table.insert(absorbedNames[survivor], entry.name)
+            end
         end
     end
 
@@ -303,7 +354,7 @@ function ExtraSets.CollapseDuplicates(entries)
             rows[#rows + 1] = entry
         end
     end
-    return rows
+    return rows, nativeFolds
 end
 
 -- One row standing for a set's several colourways: named for the set, counting
@@ -694,6 +745,19 @@ function ExtraSets.Records()
     return LuckysWardrobe.ExtraSetsCatalog:GetRecords()
 end
 
+-- The looks the Sets tab already shows the chosen class, each stamped with the
+-- armour that class wears so it can stand in a family beside this page's rows.
+-- The stamp is what lets a "(... Recolor)" fold into its tier by containment;
+-- identical looks fold without it.
+function ExtraSets.NativeLooks(classID)
+    local armourType = LuckysWardrobe.Classes:ArmourType(classID)
+    local looks = {}
+    for _, look in ipairs(LuckysWardrobe.ExtraSetsCatalog:OfficialLooks(classID)) do
+        looks[#looks + 1] = { name = look.name, armorType = armourType, appearances = look.appearances }
+    end
+    return looks
+end
+
 -- How many sets the page folded into another row as the same look. Without it
 -- the report's own count of what this class is shown looks short by hundreds
 -- with nothing to say why.
@@ -710,6 +774,7 @@ end
 -- built once for the chosen class and kept until something the client owns
 -- actually changes.
 local cachedEntries
+local cachedNativeFolds = {}
 local selectedClassID
 
 function ExtraSets.InvalidateEntries()
@@ -736,13 +801,23 @@ end
 function ExtraSets.Entries()
     if not cachedEntries then
         LuckysWardrobe.Perf:Begin("entries built")
-        cachedEntries = ExtraSets.CollapseDuplicates(ExtraSets.BuildEntries(
-            ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
-            ExtraSets.LiveResolver()
-        ))
+        cachedEntries, cachedNativeFolds = ExtraSets.CollapseDuplicates(
+            ExtraSets.BuildEntries(
+                ExtraSets.RecordsForClass(ExtraSets.Records(), selectedClassID),
+                ExtraSets.LiveResolver()
+            ),
+            ExtraSets.NativeLooks(selectedClassID)
+        )
         LuckysWardrobe.Perf:End("entries built")
     end
     return cachedEntries
+end
+
+-- The sets the last build folded away because the Sets tab already shows their
+-- looks to the class the page is listing. What the report counts and the find
+-- command names when a set is not where the bundled list says it should be.
+function ExtraSets.NativeFolds()
+    return cachedNativeFolds
 end
 
 -- Page UI. Mirrors the native Sets layout: list on the left, dressing-room

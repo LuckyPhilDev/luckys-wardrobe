@@ -188,6 +188,64 @@ local function buildRecord(setID, set, armorType)
     }
 end
 
+-- Sharing a number with a listed set is one way to duplicate the Sets tab;
+-- wearing its looks under another name is the other. Wowhead lists "Recolor"
+-- and "Lookalike" sets for the off-set items that share a tier's appearances,
+-- and those appearances are already on the Sets tab under the tier itself, so
+-- the page folds such sets away by looks. These are the looks it folds
+-- against: every set the tab lists the class, difficulty variants included,
+-- as the appearances the client counts towards each.
+--
+-- Built the first time a class is asked about and kept for the session: which
+-- sets the tab lists, and which looks they hold, do not change while a client
+-- runs. Collected state changes, but it plays no part here.
+local officialLooks
+
+function Catalog:OfficialLooks(classID)
+    if not report then return {} end
+
+    officialLooks = officialLooks or {}
+    local classKey = classID or 0
+    if officialLooks[classKey] then return officialLooks[classKey] end
+
+    local looks, seen = {}, {}
+    local function add(setID, name)
+        if seen[setID] then return end
+        seen[setID] = true
+        local appearances = {}
+        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
+            if appearance.appearanceID then appearances[appearance.appearanceID] = true end
+        end
+        -- A set the client answers no looks for cannot fold anything.
+        if next(appearances) then
+            looks[#looks + 1] = { setID = setID, name = name or "", appearances = appearances }
+        end
+    end
+
+    -- The mask keys come out of a hash table, so they are walked in a fixed
+    -- order and the result is the same list every time it is built.
+    local setIDs = {}
+    for setID in pairs(report.officialClasses) do setIDs[#setIDs + 1] = setID end
+    table.sort(setIDs)
+
+    local classBit = classID and 2 ^ (classID - 1)
+    for _, setID in ipairs(setIDs) do
+        if not classBit or math.floor(report.officialClasses[setID] / classBit) % 2 == 1 then
+            add(setID, report.official[setID])
+            -- The tab offers a set's difficulties through a dropdown rather
+            -- than as rows of their own, so a variant is as listed as its set.
+            -- A variant's own name is often blank; the set's stands in.
+            for _, variant in ipairs(C_TransmogSets.GetVariantSets(setID) or {}) do
+                local name = variant.name
+                add(variant.setID, (name and name ~= "" and name) or report.official[setID])
+            end
+        end
+    end
+
+    officialLooks[classKey] = looks
+    return looks
+end
+
 -- Set IDs are the keys of a hash table, so the work list fixes an order once
 -- and the stepper walks it across frames from there.
 local function workList()
@@ -242,6 +300,7 @@ function Catalog:StartBuild()
 
     local version, buildNumber = GetBuildInfo()
     records = {}
+    officialLooks = nil
     report = {
         snapshot = LuckysWardrobe.ExtraSetsData.snapshot,
         build = version .. "." .. buildNumber,
@@ -324,6 +383,7 @@ function Catalog:PrintReport(verbose)
     local shown = LuckysWardrobe.ExtraSets.Entries()
     say(S.shownLine:format(#shown))
     say(S.foldedLine:format(LuckysWardrobe.ExtraSets.FoldedCount(shown)))
+    say(S.nativeFoldedLine:format(#LuckysWardrobe.ExtraSets.NativeFolds()))
     say(S.officialLine:format(report.alsoOfficial))
     if report.identityMismatches > 0 then
         say(S.mismatchLine:format(report.identityMismatches))
@@ -358,15 +418,26 @@ function Catalog:PrintReport(verbose)
     end
 end
 
--- Every set whose name contains the query: listed, left out by a rule, or one
--- Blizzard lists natively. A set Blizzard lists is never also reported as
--- listed here, because the page drops it for the class it duplicates.
+-- Every set whose name contains the query: listed, folded behind a look the
+-- Sets tab already shows, left out by a rule, or one Blizzard lists natively.
+-- A set Blizzard lists is never also reported as listed here, because the page
+-- drops it for the class it duplicates. The folds are the page's, so they
+-- speak for the class it last built its list for.
 function Catalog:FindCandidates(query)
     local normalized = (query or ""):lower()
-    local listed, dropped, native = {}, {}, {}
+    local foldsBySetID = {}
+    for _, fold in ipairs(LuckysWardrobe.ExtraSets.NativeFolds()) do
+        foldsBySetID[fold.setID] = fold
+    end
+    local listed, dropped, native, folded = {}, {}, {}, {}
     for _, record in ipairs(records or {}) do
         if not record.officialClassMask and record.name:lower():find(normalized, 1, true) then
-            listed[#listed + 1] = record
+            local fold = foldsBySetID[record.setID]
+            if fold then
+                folded[#folded + 1] = fold
+            else
+                listed[#listed + 1] = record
+            end
         end
     end
     for _, rejection in ipairs(report and report.rejections or {}) do
@@ -380,7 +451,7 @@ function Catalog:FindCandidates(query)
         end
     end
     table.sort(native, function(left, right) return left.setID < right.setID end)
-    return listed, dropped, native
+    return listed, dropped, native, folded
 end
 
 function Catalog:PrintMatches(query)
@@ -396,8 +467,11 @@ function Catalog:PrintMatches(query)
         return
     end
 
-    local listed, dropped, native = self:FindCandidates(query)
-    if #listed == 0 and #dropped == 0 and #native == 0 then
+    -- The folds belong to the page's last build, so the page reads its
+    -- entries first and the answer is about the class it is showing now.
+    LuckysWardrobe.ExtraSets.Entries()
+    local listed, dropped, native, folded = self:FindCandidates(query)
+    if #listed == 0 and #dropped == 0 and #native == 0 and #folded == 0 then
         say(S.findNone:format(query))
         return
     end
@@ -405,6 +479,9 @@ function Catalog:PrintMatches(query)
     say(S.findHeader:format(query))
     for _, record in ipairs(listed) do
         say(S.foundListed:format(record.setID, record.name, #record.pieces))
+    end
+    for _, fold in ipairs(folded) do
+        say(S.foundFolded:format(fold.nativeName, fold.setID, fold.name))
     end
     for _, rejection in ipairs(dropped) do
         say(S.foundDropped:format(rejection.setID, rejection.name, rejection.category))

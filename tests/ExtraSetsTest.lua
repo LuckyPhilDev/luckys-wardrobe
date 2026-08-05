@@ -49,6 +49,7 @@ local CLOTH_CLASS, LEATHER_CLASS = 5, 4
 -- Record building has its own test (ExtraSetsCatalogTest.lua); here the
 -- catalogue module is stubbed so the page logic can be driven directly.
 local catalogRecords = {}
+local catalogLooks = {}
 local catalogReady = true
 local catalogBuildStarted = false
 local catalogReadyCallback
@@ -56,6 +57,7 @@ LuckysWardrobe.ExtraSetsCatalog = {
     StartBuild = function() catalogBuildStarted = true end,
     IsReady = function() return catalogReady end,
     GetRecords = function() return catalogRecords end,
+    OfficialLooks = function() return catalogLooks end,
     OnReady = function(_, callback) catalogReadyCallback = callback end,
 }
 
@@ -318,12 +320,13 @@ assert(partlyBundledEntry.total == 2, "unresolved pieces stay out of the collect
 sourceStates[5101] = { appearanceID = 9501, collected = true }
 sourceStates[5102] = { appearanceID = 9502, collected = true }
 sourceStates[5103] = { appearanceID = 9503, collected = true }
+sourceStates[5104] = { appearanceID = 9504, collected = true }
 sourceStates[5201] = { appearanceID = 9601, collected = true }
 sourceStates[5202] = { appearanceID = 9602, collected = false }
 sourceStates[5203] = { appearanceID = 9603, collected = false }
 
 local function colourway(setID, name, sourceIDs)
-    local slots = { "HEAD", "CHEST", "LEGS" }
+    local slots = { "HEAD", "CHEST", "LEGS", "HANDS" }
     local list = {}
     for index, sourceID in ipairs(sourceIDs) do
         list[index] = { slot = slots[index], sourceID = sourceID }
@@ -384,6 +387,62 @@ local pendingRecords = {
 local pendingRows = ExtraSets.CollapseDuplicates(
     ExtraSets.BuildEntries(pendingRecords, stubResolver(CLOTH_CLASS)))
 assert(#pendingRows == 2, "a set still loading is never folded away on what has resolved so far")
+
+-- The Sets tab's own looks fold by the same rules. Wowhead lists "(... Recolor)"
+-- sets for the off-set items that wear a tier's appearances, and those are the
+-- very looks the tab already shows under the tier's difficulty dropdown, so a
+-- listing wearing them belongs to the tab, not to this page.
+
+local tierLooks = {
+    { name = "Charm Vestments", armorType = CLOTH, appearances = { [9501] = true, [9502] = true, [9503] = true } },
+}
+
+local nativeRows, nativeFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(colourwayRecords, stubResolver(CLOTH_CLASS)), tierLooks)
+assert(#nativeRows == 2 and nativeRows[1].setID == 603 and nativeRows[2].setID == 605,
+    "the colourway the tab shows is gone; the ones it does not show remain")
+assert(#nativeFolds == 2 and nativeFolds[1].setID == 601 and nativeFolds[2].setID == 602,
+    "every listing of the tab's look folded away, identical twins included")
+assert(nativeFolds[1].name == "Charm Vestments (Heroic Recolor)"
+    and nativeFolds[1].nativeName == "Charm Vestments",
+    "each fold says which listing went and which of the tab's sets holds its look")
+assert(#nativeRows[1].alternateNames == 2, "the page's own folds are undisturbed beside the tab's")
+assert(nativeRows[1].alternateNames[1] == "Charm Vestments (Normal Lookalike)", "and keep their names")
+
+-- Containment against the tab's looks follows the same name rule as the page's
+-- own: a listing missing a piece of the tab's set folds only under that set's
+-- name, and one holding a look the tab does not show keeps its row.
+local nearMissRecords = {
+    colourway(621, "Charm Vestments (Dungeon Recolor)", { 5101, 5102 }),
+    colourway(622, "Unrelated Garb (Recolor)", { 5101, 5103 }),
+    colourway(623, "Charm Vestments (Grand Recolor)", { 5101, 5102, 5103, 5104 }),
+}
+local nearMissRows, nearMissFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(nearMissRecords, stubResolver(CLOTH_CLASS)), tierLooks)
+assert(#nearMissFolds == 1 and nearMissFolds[1].setID == 621,
+    "a listing the tab's set contains folds away under the set's own name")
+assert(#nearMissRows == 2 and nearMissRows[1].setID == 622 and nearMissRows[2].setID == 623,
+    "a contained look under another name stays, and so does one with a look the tab lacks")
+assert(nearMissRows[2].alternateNames == nil,
+    "the tab's set claimed the contained listing before any larger row here could")
+
+-- A chain is folded away whole: the twin of a listing the tab's set contains
+-- goes with it, leaving nothing behind.
+local chainedRecords = {
+    colourway(631, "Charm Vestments (Old Recolor)", { 5101, 5102 }),
+    colourway(632, "Charm Vestments (Old Lookalike)", { 5101, 5102 }),
+}
+local chainedRows, chainedFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(chainedRecords, stubResolver(CLOTH_CLASS)), tierLooks)
+assert(#chainedRows == 0 and #chainedFolds == 2, "both ends of the chain folded to the tab")
+assert(chainedFolds[2].nativeName == "Charm Vestments", "the twin answers for the tab's set too")
+
+-- A set still loading cannot be told apart from a shorter one, so the tab's
+-- looks never claim it early either.
+local slowRecords = { colourway(641, "Charm Vestments (Slow Recolor)", { 5101, 5102, 3002 }) }
+local slowRows, slowFolds = ExtraSets.CollapseDuplicates(
+    ExtraSets.BuildEntries(slowRecords, stubResolver(CLOTH_CLASS)), tierLooks)
+assert(#slowRows == 1 and #slowFolds == 0, "a loading set waits rather than folding to the tab")
 
 local rows = ExtraSets.BuildRows(collapsed)
 assert(#rows == 2, "the colourways of one set became one row, and the other set kept its own")
@@ -1495,5 +1554,33 @@ searchBox.scripts.OnTextChanged()
 -- The progress bar counts sets to collect: three survive the folding, two of
 -- them finished.
 assert(progressBar.value == 2 and progressBar.max == 3, "counted the sets left after folding, not the listings")
+
+-- The Sets tab's own looks, on the page: the catalogue names the looks the tab
+-- lists the chosen class, and the listings wearing them never become rows.
+
+catalogLooks = {
+    { setID = 901, name = "Charm Vestments", appearances = { [9501] = true, [9502] = true, [9503] = true } },
+}
+collectionUpdated()
+assert(#scrollBox.dataProvider == 2, "the tab's colourway is gone from the list")
+assert(scrollBox.dataProvider[1].setID == 603 and not scrollBox.dataProvider[1].isGroup,
+    "the colourway the tab does not show goes back to a plain row")
+local pageFolds = ExtraSets.NativeFolds()
+assert(#pageFolds == 2 and pageFolds[1].setID == 601 and pageFolds[2].setID == 602,
+    "the page answers for what it folded behind the Sets tab")
+assert(pageFolds[1].nativeName == "Charm Vestments", "naming the tab's set that holds the look")
+
+searchBox.text = "Heroic Recolor"
+searchBox.scripts.OnTextChanged()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].setID == 605,
+    "searching for a folded listing finds only sets still on the page")
+searchBox.text = ""
+searchBox.scripts.OnTextChanged()
+
+catalogLooks = {}
+collectionUpdated()
+assert(#scrollBox.dataProvider == 2 and scrollBox.dataProvider[1].isGroup,
+    "a tab that stops listing the look hands the row back")
+assert(#ExtraSets.NativeFolds() == 0, "and nothing is folded behind it any more")
 
 print("Lucky's Wardrobe extra sets tests passed")

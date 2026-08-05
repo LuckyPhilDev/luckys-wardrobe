@@ -99,6 +99,21 @@ LuckysWardrobe.ExtraSetsData = {
 
 local classFilter = 99
 
+-- The difficulty variants of set 10, as the client lists them: the set itself
+-- among its own variants, and a variant with no name of its own.
+local variantSets = {
+    [10] = { { setID = 10, name = "Fixture Official Regalia" }, { setID = 11, name = "" } },
+}
+
+-- The looks the client counts towards each listed set. Set 23 answers nothing,
+-- as a set with no primary appearances does.
+local setPrimaryAppearances = {
+    [10] = { { appearanceID = 81001, collected = true }, { appearanceID = 81002, collected = false } },
+    [11] = { { appearanceID = 81003, collected = false } },
+    [23] = {},
+}
+local primaryAppearanceAsks = 0
+
 C_TransmogSets = {
     GetTransmogSetsClassFilter = function() return classFilter end,
     SetTransmogSetsClassFilter = function(classID) classFilter = classID end,
@@ -112,6 +127,11 @@ C_TransmogSets = {
     GetSetInfo = function(setID) return transmogSetInfos[setID] end,
     GetAllSourceIDs = function(setID) return clientSetSources[setID] end,
     GetValidClassForSet = function(setID) return setID == 10 and 2 or nil end,
+    GetVariantSets = function(setID) return variantSets[setID] end,
+    GetSetPrimaryAppearances = function(setID)
+        primaryAppearanceAsks = primaryAppearanceAsks + 1
+        return setPrimaryAppearances[setID]
+    end,
 }
 
 C_TransmogCollection = {
@@ -144,8 +164,12 @@ local Catalog = LuckysWardrobe.ExtraSetsCatalog
 
 -- The report asks the page how many sets this character's class sees and how
 -- many it folded away as the same look, so the page stands in for itself here.
--- One of the two rows below speaks for a set listed again under another name.
+-- One of the two rows below speaks for a set listed again under another name,
+-- and one bundled set sits folded behind a look the Sets tab already shows.
 local shownEntries = { {}, { alternateNames = { "Live Name (Recolor)" } } }
+local nativeFolds = {
+    { setID = 21, name = "Fixture Chest And Robe", nativeName = "Fixture Official Regalia" },
+}
 LuckysWardrobe.ExtraSets = {
     Entries = function() return shownEntries end,
     FoldedCount = function(entries)
@@ -153,6 +177,7 @@ LuckysWardrobe.ExtraSets = {
         for _, entry in ipairs(entries) do folded = folded + #(entry.alternateNames or {}) end
         return folded
     end,
+    NativeFolds = function() return nativeFolds end,
 }
 
 local function runBuild()
@@ -281,12 +306,34 @@ assert(partly.officialClassMask == nil, "a set that only shares a number is nobo
 assert(Catalog:GetReport().alsoOfficial == 1,
     "counted the set the Sets tab really holds, not the one that shares its number")
 
+-- The looks the Sets tab already shows each class, difficulty variants
+-- included: what the page folds look-duplicates against.
+
+local classOneLooks = Catalog:OfficialLooks(1)
+assert(#classOneLooks == 2, "class 1 gets the set its tab lists and that set's variant, each once")
+assert(classOneLooks[1].setID == 10 and classOneLooks[1].name == "Fixture Official Regalia",
+    "a look carries the name the tab shows for it")
+assert(classOneLooks[1].appearances[81001] and classOneLooks[1].appearances[81002],
+    "and the appearances the client counts towards the set")
+assert(classOneLooks[2].setID == 11 and classOneLooks[2].name == "Fixture Official Regalia",
+    "a variant with no name of its own borrows its set's")
+
+-- Class 2's tab also lists its own 23, but the client answers no looks for it,
+-- so there is nothing of it to fold against.
+assert(#Catalog:OfficialLooks(2) == 2, "a set the client answers no looks for is left out")
+assert(#Catalog:OfficialLooks(nil) == 2, "no class chosen means every listed set's looks")
+
+local asksBefore = primaryAppearanceAsks
+assert(Catalog:OfficialLooks(1) == classOneLooks, "a class asked twice is answered from the session")
+assert(primaryAppearanceAsks == asksBefore, "without asking the client again")
+
 -- Same client, same catalogue.
 
 local first = fingerprint()
 Catalog:Rebuild()
 runBuild()
 assert(fingerprint() == first, "a rebuild on the same client produces the same catalogue")
+assert(Catalog:OfficialLooks(1) ~= classOneLooks, "a rebuild reads the Sets tab's looks afresh")
 
 -- Rejection grouping.
 
@@ -295,17 +342,21 @@ assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by re
 
 -- Looking a set up by name reaches all three places it can be.
 
-local listed, dropped, native = Catalog:FindCandidates("fixture")
-assert(#listed == 5 and #dropped == 1, "found both listed and left-out sets")
+local listed, dropped, native, folded = Catalog:FindCandidates("fixture")
+assert(#listed == 4 and #dropped == 1, "found both listed and left-out sets")
 -- Both sets the Sets tab lists are found by name, the collision among them:
 -- this list is the client's own, so it answers for the client's numbering.
 assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
     "found the sets Blizzard lists natively, in set order")
 for _, record in ipairs(listed) do
     assert(record.setID ~= 10, "a set the page drops as a duplicate is not reported as listed")
+    assert(record.setID ~= 21, "nor is one folded behind a look the Sets tab shows")
 end
-local none, alsoNone, stillNone = Catalog:FindCandidates("nothing named this")
-assert(#none == 0 and #alsoNone == 0 and #stillNone == 0, "an unknown name matches nothing")
+assert(#folded == 1 and folded[1].setID == 21 and folded[1].nativeName == "Fixture Official Regalia",
+    "a folded set is reported behind the tab's set that holds its look")
+local none, alsoNone, stillNone, noneFolded = Catalog:FindCandidates("nothing named this")
+assert(#none == 0 and #alsoNone == 0 and #stillNone == 0 and #noneFolded == 0,
+    "an unknown name matches nothing")
 
 -- The report, as a player reads it in chat.
 
@@ -321,6 +372,8 @@ assert(reportText:find("6 of 7 set%(s%) listed"), "counted what was listed again
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
 assert(reportText:find("folded into another row as the same look: 1"),
     "accounted for the sets the page folded away, so the count is not short with nothing to say why")
+assert(reportText:find("hidden as looks the Sets tab already shows this class: 1"),
+    "counted the sets folded behind the tab's own looks")
 assert(reportText:find("hidden as Blizzard's own Sets tab lists them: 1"), "counted the overlap it hides")
 assert(reportText:find("no appearance for: 2"), "counted the pieces this client could not resolve")
 
