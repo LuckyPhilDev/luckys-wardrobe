@@ -1,4 +1,5 @@
--- luacheck: globals LuckysWardrobe EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11
+-- luacheck: globals LuckysWardrobe CreateFrame UnitClass GetNumClasses C_ClassColor C_CreatureInfo C_Item C_TransmogCollection EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11
+-- luacheck: ignore 121
 
 LuckysWardrobe = {}
 
@@ -7,8 +8,31 @@ LuckysWardrobe.DevLog = function(message) devLogs[#devLogs + 1] = message end
 
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
+-- The paced build hands itself to an OnUpdate, so the frame is stubbed to hand
+-- the handler back and the test drives the frames itself.
+local stepHandler
+function CreateFrame()
+    return {
+        SetScript = function(_, script, handler)
+            assert(script == "OnUpdate", "the build paces itself with OnUpdate")
+            stepHandler = handler
+        end,
+    }
+end
+
+GetNumClasses = function() return 13 end
+C_CreatureInfo = {
+    GetClassInfo = function(classID)
+        return { classFile = "CLASS" .. classID, className = "Class " .. classID }
+    end,
+}
+C_ClassColor = {
+    GetClassColor = function() return { WrapTextInColorCode = function(_, text) return text end } end,
+}
+
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
+dofile("src/Classes.lua")
 dofile("src/Perf.lua")
 local clock = 0
 LuckysWardrobe.Perf.Clock = function()
@@ -277,6 +301,123 @@ assert(#wearable == 2 and wearable[1] == partialSet and wearable[2] == emptySet,
 -- page every time it opened.
 assert(#TransmogExtraSets.WearableEntries(everySet, 1, function() return nil end) == 3,
     "sets the client has said nothing about are still offered")
+
+-- Judged a slice at a time, which is how the page spreads the work across
+-- frames. The verdicts have to gather into the same list, in the same order, as
+-- judging the lot in one go.
+refusedSources[2002] = true
+local wholeVerdict = TransmogExtraSets.WearableEntries(everySet, 1, validity)
+local slicedVerdict = {}
+for _, set in ipairs(everySet) do
+    TransmogExtraSets.WearableEntries({ set }, 1, validity, slicedVerdict)
+end
+assert(#slicedVerdict == #wholeVerdict, "slicing the rows keeps the same sets")
+for index, judged in ipairs(wholeVerdict) do
+    assert(slicedVerdict[index] == judged, "and keeps them in the same order")
+end
 refusedSources = {}
+
+-- The build paced across frames. Spending a fifth of a second in one frame is a
+-- hitch a player sees, so ahead of a visit the rows are built a slice at a time.
+-- What matters is that the slow way and the paced way answer alike: a page built
+-- over forty frames has to be the page one call would have built.
+
+do
+    -- A client with enough sets to need several slices, and a duplicate look so
+    -- the folding has something to fold across a slice boundary.
+    local slots = LuckysWardrobe.Utils.ARMOUR_SLOTS
+    local sources, records = {}, {}
+    for setID = 1, 200 do
+        local setPieces = {}
+        for slot = 1, 6 do
+            local sourceID = setID * 100 + slot
+            -- Every tenth set wears the first set's looks, which is the shape
+            -- that makes a row fold into an earlier one, and it folds across a
+            -- slice boundary as readily as inside one.
+            local appearanceID = (setID % 10 == 0) and (100 + slot) or sourceID
+            sources[sourceID] = {
+                appearanceID = appearanceID,
+                collected = setID % 3 == 0,
+                -- The last sets are ones the client refuses, so the judging
+                -- stage has rows to drop as well as rows to keep.
+                valid = setID < 195,
+            }
+            setPieces[slot] = { slot = slots[slot], sourceID = sourceID, itemID = sourceID }
+        end
+        records[setID] = {
+            setID = setID,
+            name = "Paced Set " .. setID,
+            armorType = CLOTH,
+            classMask = 0,
+            pieces = setPieces,
+        }
+    end
+
+    UnitClass = function() return "Class 5", "CLASS5", 5 end
+    C_Item = { GetItemInfo = function(itemID) return "Item " .. itemID end }
+    C_TransmogCollection = {
+        GetAppearanceInfoBySource = function(sourceID)
+            local source = sources[sourceID]
+            if not source then return nil end
+            return { appearanceID = source.appearanceID, appearanceIsCollected = source.collected }
+        end,
+        GetSourceInfo = function(sourceID)
+            local source = sources[sourceID]
+            if not source then return nil end
+            return {
+                visualID = source.appearanceID,
+                isCollected = source.collected,
+                itemID = sourceID,
+                isValidSourceForPlayer = source.valid,
+                useErrorType = nil,
+                useError = "no",
+            }
+        end,
+    }
+    LuckysWardrobe.ExtraSetsCatalog = {
+        IsReady = function() return true end,
+        GetRecords = function() return records end,
+        OfficialLooks = function() return {} end,
+    }
+
+    TransmogExtraSets.InvalidateEntries()
+    local atOnce = TransmogExtraSets.Entries()
+    assert(#atOnce > 0 and #atOnce < 200,
+        "fixture: sets fold into one another and the client refuses others")
+
+    TransmogExtraSets.InvalidateEntries()
+    TransmogExtraSets.BuildAhead()
+    assert(stepHandler, "building ahead paces itself across frames")
+
+    -- The build clears its own handler when it runs out of slices, so this ends
+    -- on its own. The count guards against a stage that never advances hanging
+    -- the suite instead of failing it.
+    local frames = 0
+    while stepHandler do
+        stepHandler()
+        frames = frames + 1
+        assert(frames < 500, "the paced build runs out of slices rather than forever")
+    end
+
+    local paced = TransmogExtraSets.Entries()
+    assert(#paced == #atOnce, "the paced build lists the same sets as the one-shot build")
+    for index, row in ipairs(atOnce) do
+        assert(paced[index].key == row.key, "in the same order")
+        assert(paced[index].collected == row.collected and paced[index].total == row.total,
+            "with the same counts")
+    end
+    assert(TransmogExtraSets.PageSignature(paced) == TransmogExtraSets.PageSignature(atOnce),
+        "so the page cannot tell which way it was built")
+    assert(frames > 1, "and it really did take more than one frame")
+
+    -- A player who reaches the tab mid-build wants a page, not a progress bar:
+    -- asking finishes the build there and then and stops the slices.
+    TransmogExtraSets.InvalidateEntries()
+    TransmogExtraSets.BuildAhead()
+    stepHandler()
+    local interrupted = TransmogExtraSets.Entries()
+    assert(TransmogExtraSets.PageSignature(interrupted) == TransmogExtraSets.PageSignature(atOnce),
+        "a build cut short still hands over the whole page")
+end
 
 print("Lucky's Wardrobe transmog extra sets tests passed")

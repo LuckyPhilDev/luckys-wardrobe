@@ -293,6 +293,28 @@ assert(bothListings[2].fromEnsemble and bothListings[2].ensembles[1] == 70001,
 assert(#ExtraSets.BuildEntries({ soldAsEnsemble, soldAsEnsemble }, stubResolver(1)) == 1,
     "while the same set twice in one listing is still one row")
 
+-- Built a slice at a time, which is how the transmogrifier page spreads the
+-- work across frames rather than spending a fifth of a second in one of them.
+-- The answer has to be the one a single call gives, duplicates included: a set
+-- listed twice can have its second listing land in any slice.
+
+do
+    local sliced, sliceSeen = {}, {}
+    for _, record in ipairs(records) do
+        ExtraSets.BuildEntries({ record }, stubResolver(1), sliced, sliceSeen)
+    end
+    assert(#sliced == #entries, "slicing the records builds the same number of rows")
+    for index, built in ipairs(entries) do
+        assert(sliced[index].key == built.key, "and builds them in the same order")
+    end
+
+    local split, splitSeen = {}, {}
+    ExtraSets.BuildEntries({ soldAsEnsemble }, stubResolver(1), split, splitSeen)
+    ExtraSets.BuildEntries({ soldAsEnsemble }, stubResolver(1), split, splitSeen)
+    assert(#split == 1,
+        "a set whose second listing lands in another slice is still dropped as a duplicate")
+end
+
 assert(#ExtraSets.EnsembleNames(bothListings[2], function() return "Ensemble: Test Garb" end) == 1,
     "an ensemble is named the way the client names the item")
 assert(#ExtraSets.EnsembleNames(bothListings[2], function() return nil end) == 0,

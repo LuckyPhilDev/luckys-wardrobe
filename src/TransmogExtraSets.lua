@@ -18,11 +18,6 @@ local Utils = LuckysWardrobe.Utils
 -- faster for.
 local ITEM_LOAD_BUDGET = 200
 
--- How long after the transmogrifier opens the rows are built. Long enough for
--- the transmog UI to have finished loading itself, short enough to be done
--- before a player has read their way along the tab strip.
-local PREBUILD_DELAY_SECONDS = 0.5
-
 -- The grid spacing Blizzard gives the native Sets tab's card grid.
 local CARD_GRID_X_PADDING = 27
 local CARD_GRID_Y_PADDING = 19
@@ -91,8 +86,12 @@ end
 -- A set the client has said nothing about stays. Its verdict comes from item
 -- data the client loads only once asked, and a cold cache is not a refusal:
 -- hiding on one would empty the page every time it opened.
-function TransmogExtraSets.WearableEntries(entries, classID, sourceValidity)
-    local wearable = {}
+--
+-- wearable is for a caller judging the rows a slice at a time across several
+-- frames: handing back the same list each slice gathers the verdicts into it in
+-- order, and leaving it out judges the whole lot in one go.
+function TransmogExtraSets.WearableEntries(entries, classID, sourceValidity, wearable)
+    wearable = wearable or {}
     for _, entry in ipairs(entries) do
         if not LuckysWardrobe.ExtraSets.UnwearableReason(entry, classID, sourceValidity) then
             wearable[#wearable + 1] = entry
@@ -202,7 +201,26 @@ end
 local cachedRows
 local cachedEntries
 
+-- Building the rows in one go is a fifth of a second, and a fifth of a second is
+-- a frame a player feels wherever it is spent. Ahead of a visit there is no
+-- reason to spend it all at once, so it is built the way the catalogue builds
+-- itself: a slice per frame, small enough to be lost in the noise of a frame.
+--
+-- The pacing counts pieces rather than sets, for the catalogue's own reason: a
+-- tier is nine pieces and an ensemble can teach over a hundred, so a fixed
+-- number of sets would make one frame twenty times the work of another.
+local PIECES_PER_BUILD_STEP = 400
+
+local buildFrame
+local build
+
+local function stopPacedBuild()
+    build = nil
+    if buildFrame then buildFrame:SetScript("OnUpdate", nil) end
+end
+
 function TransmogExtraSets.InvalidateEntries()
+    stopPacedBuild()
     cachedRows = nil
     cachedEntries = nil
 end
@@ -211,7 +229,84 @@ end
 -- landing calls for: the sets have not changed, only what the client will say
 -- about them.
 function TransmogExtraSets.RejudgeEntries()
+    stopPacedBuild()
     cachedEntries = nil
+end
+
+-- One frame's worth of the build, and whether there is more of it left. The
+-- stages run in order: rows built from the records, the looks the Sets tab
+-- already shows gathered, the rows folded against them, then each row judged
+-- against what this character can wear.
+local function pacedBuildStep()
+    local ExtraSets = LuckysWardrobe.ExtraSets
+
+    if build.stage == "looks" then
+        build.nativeLooks = ExtraSets.NativeLooks(build.classID)
+        build.stage = "collapse"
+        return true
+    end
+
+    if build.stage == "collapse" then
+        build.rows = ExtraSets.CollapseDuplicates(build.rows, build.nativeLooks)
+        -- Published here rather than at the end, so a player who reaches the tab
+        -- mid-build only has the judging left to pay for rather than the lot.
+        cachedRows = build.rows
+        build.stage = "judge"
+        build.cursor = 0
+        return true
+    end
+
+    local source = build.stage == "rows" and build.records or build.rows
+    local slice, pieces = {}, 0
+    while pieces < PIECES_PER_BUILD_STEP do
+        local item = source[build.cursor + 1]
+        if not item then break end
+        build.cursor = build.cursor + 1
+        pieces = pieces + #item.pieces
+        slice[#slice + 1] = item
+    end
+
+    if build.stage == "rows" then
+        ExtraSets.BuildEntries(slice, build.resolver, build.rows, build.seen)
+        if build.cursor >= #build.records then build.stage = "looks" end
+        return true
+    end
+
+    TransmogExtraSets.WearableEntries(slice, build.classID, build.resolver.sourceValidity, build.wearable)
+    return build.cursor < #build.rows
+end
+
+local function runPacedBuild()
+    LuckysWardrobe.Perf:Begin("transmog build step")
+    local more = pacedBuildStep()
+    LuckysWardrobe.Perf:End("transmog build step")
+    if more then return end
+
+    cachedEntries = build.wearable
+    stopPacedBuild()
+end
+
+--- Starts building the rows ahead of the visit that wants them, a slice a frame.
+--- Does nothing when they are already built, or a build is already running.
+--- Rows already built are kept and only judged, which is what a rejudge leaves.
+function TransmogExtraSets.BuildAhead()
+    if build or cachedEntries then return end
+
+    local ExtraSets = LuckysWardrobe.ExtraSets
+    local resolver = ExtraSets.LiveResolver()
+    local classID = resolver.playerClassID()
+    build = {
+        resolver = resolver,
+        classID = classID,
+        stage = cachedRows and "judge" or "rows",
+        records = not cachedRows and ExtraSets.RecordsForClass(ExtraSets.Records(), classID) or nil,
+        rows = cachedRows or {},
+        seen = {},
+        cursor = 0,
+        wearable = {},
+    }
+    buildFrame = buildFrame or CreateFrame("Frame")
+    buildFrame:SetScript("OnUpdate", runPacedBuild)
 end
 
 -- Whether any row is still waiting on the client to name one of its pieces.
@@ -226,6 +321,10 @@ end
 
 function TransmogExtraSets.Entries()
     if not cachedEntries then
+        -- Half a build is no use to somebody who wants a page now, and the rows
+        -- it did get through are already published, so the rest is finished here
+        -- and the slices stop.
+        stopPacedBuild()
         LuckysWardrobe.Perf:Begin("transmog entries built")
         local ExtraSets = LuckysWardrobe.ExtraSets
         local resolver = ExtraSets.LiveResolver()
@@ -312,11 +411,8 @@ end
 -- asked about twice, so the rounds run out on their own.
 local warmingItems = false
 
--- The rows the tab lists, built before the visit that wants them. Building them
--- is by far the most expensive thing here, a good tenth of a second, and a tenth
--- of a second spent while a player is still picking through the Items tab is one
--- they never notice. The same tenth spent the moment they click Extra Sets is
--- the tab hanging on them.
+-- The rows the tab lists, started before the visit that wants them so the slices
+-- are through by the time anyone clicks.
 --
 -- Held back until the transmogrifier has been opened, so a player who never goes
 -- near one never pays for a page they are not going to look at, and until the
@@ -326,7 +422,7 @@ local warmingItems = false
 local function prebuildRows()
     if not attachedWardrobe or warmingItems then return end
     if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then return end
-    TransmogExtraSets.Entries()
+    TransmogExtraSets.BuildAhead()
 end
 
 local function warmItemData()
@@ -756,8 +852,15 @@ function TransmogExtraSets:CreatePage(wardrobe)
 
     -- The rows have already been thrown away by the time this runs; what the
     -- delay collapses is the burst of them that learning one appearance sets off.
+    -- On screen the page wants drawing now, so the rows are rebuilt on the spot.
+    -- Off it, they are built back a slice at a time, which has the next visit
+    -- opening on rows that were ready before anybody asked for them.
     afterCollectionChanged = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
-        if page:IsShown() then refreshAndWarm() end
+        if page:IsShown() then
+            refreshAndWarm()
+        else
+            prebuildRows()
+        end
     end)
 
     filterButton:SetIsDefaultCallback(function()
@@ -899,12 +1002,6 @@ function TransmogExtraSets:Attach(transmogFrame)
         if page:IsShown() then page.Refresh() end
         prebuildRows()
     end)
-
-    -- A moment after the frame opens rather than during it: Blizzard_Transmog is
-    -- loading itself here, and building the rows is work that can wait for a
-    -- quieter frame. A player who beats it to the tab builds them on the click
-    -- as before, and this finds them already built.
-    C_Timer.After(PREBUILD_DELAY_SECONDS, prebuildRows)
 
     LuckysWardrobe.DevLog("Transmog Extra Sets: tab " .. tostring(extraTabID) .. " added beside Sets.")
 end
