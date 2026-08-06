@@ -12,6 +12,8 @@ One folder per settings group, named after the group in `Settings.lua`, and
 Images/
 ├── icons/
 │   └── tracked-appearance.tga
+├── tooltips/
+│   └── show-set-information.tga
 └── transmog/
     ├── show-situation-values.tga
     └── show-situation-tooltips.tga

@@ -73,6 +73,8 @@ function LuckysWardrobe.Settings:Init(db)
     tooltips:Toggle({
         label = S.settings.tooltipSetProgress.label,
         desc = S.settings.tooltipSetProgress.desc,
+        image = "tooltips/show-set-information",
+        imageSize = { 461, 399 },
         checked = db.tooltipSetProgress,
         onToggle = function(checked)
             db.tooltipSetProgress = checked
