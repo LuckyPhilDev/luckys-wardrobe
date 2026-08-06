@@ -34,10 +34,19 @@ end
 
 local tracked = {}
 local hintedSource
+local missingBySet = {}
 LuckysWardrobe = {
     Strings = { tracking = { hovered = "You are tracking this appearance." } },
     SetTracking = {
         IsTracking = function(_, sourceID) return tracked[sourceID] == true end,
+        IsTrackingAll = function(_, sourceIDs)
+            if #sourceIDs == 0 then return false end
+            for _, sourceID in ipairs(sourceIDs) do
+                if not tracked[sourceID] then return false end
+            end
+            return true
+        end,
+        MissingSourcesForSet = function(_, setID) return missingBySet[setID] or {} end,
         AddTrackHint = function(_, _, sourceID)
             hintedSource = sourceID
             return false
@@ -79,7 +88,17 @@ local setsCollection = {
     },
     DisplaySet = function() end,
     RefreshAppearanceTooltip = function() end,
+    GetDefaultSetIDForBaseSet = function(_, setID) return setID end,
 }
+
+-- The list's own rows, one per set. ForEachFrame stands in for the ScrollBox
+-- walking whatever is currently visible.
+local setRow = { setID = 10, IconFrame = ItemFrame() }
+local listScrollBox = {
+    Update = function() end,
+    ForEachFrame = function(_, callback) callback(setRow) end,
+}
+setsCollection.ListContainer = { ScrollBox = listScrollBox }
 
 WardrobeCollectionFrame = { SetsCollectionFrame = setsCollection }
 
@@ -137,6 +156,17 @@ tracked[102] = nil
 events.handler()
 assert(not marked(setPieces[2]), "cleared the mark when tracking stopped")
 
+-- The list's own rows mark by set rather than by piece: every last piece the
+-- set is missing has to be tracked before the row earns the crosshair.
+missingBySet[10] = { 201, 202 }
+tracked[201] = true
+listScrollBox:Update()
+assert(not marked(setRow.IconFrame), "left a set's row alone until every last piece is tracked")
+
+tracked[202] = true
+listScrollBox:Update()
+assert(marked(setRow.IconFrame), "marked a set's row once every missing piece was tracked")
+
 -- The Extra Sets tab hands its own pieces over as it draws them, and a piece
 -- this client cannot resolve hands over nothing.
 local extraPiece = ItemFrame()
@@ -152,11 +182,13 @@ tracked[101] = true
 setsCollection:DisplaySet(1)
 db.markTrackedAppearances = false
 TrackedAppearances:Refresh()
-assert(not marked(setPieces[1]) and not marked(extraPiece), "cleared every mark when the setting was turned off")
+assert(not marked(setPieces[1]) and not marked(extraPiece) and not marked(setRow.IconFrame),
+    "cleared every mark when the setting was turned off")
 
 db.markTrackedAppearances = true
 TrackedAppearances:Refresh()
-assert(marked(setPieces[1]) and marked(extraPiece), "marked them again when the setting came back on")
+assert(marked(setPieces[1]) and marked(extraPiece) and marked(setRow.IconFrame),
+    "marked them again when the setting came back on")
 
 -- The tooltip line goes quiet with the setting, so the two never disagree.
 db.markTrackedAppearances = false

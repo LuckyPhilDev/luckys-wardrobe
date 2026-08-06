@@ -2,6 +2,10 @@
 
 ## 1.5.2
 
+### Added
+
+- A set you are fully hunting now carries the same crosshair mark its pieces do, in the Sets tab and the Extra Sets tab, so a completed hunt shows at a glance in the list too.
+
 ### Fixed
 
 - Shift-clicking a tracked set again now stops tracking all of it, instead of doing nothing. (Thanks for the report Tuulani)

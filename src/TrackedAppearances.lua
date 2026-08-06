@@ -131,6 +131,22 @@ function TrackedAppearances:Init(database)
             end
         end)
 
+        -- The list's own rows, one per set rather than per piece. Its ScrollBox
+        -- redraws them on every scroll, sort and filter change, and marking
+        -- them from that one spot catches all of it rather than chasing each
+        -- cause separately, the way SetsBrowser already reorders the same list
+        -- from the same ScrollBox.
+        local listScrollBox = setsCollection.ListContainer and setsCollection.ListContainer.ScrollBox
+        if listScrollBox then
+            hooksecurefunc(listScrollBox, "Update", function(scrollBox)
+                scrollBox:ForEachFrame(function(button)
+                    if not button.setID then return end
+                    local setID = setsCollection:GetDefaultSetIDForBaseSet(button.setID) or button.setID
+                    TrackedAppearances:MarkSet(button.IconFrame, LuckysWardrobe.SetTracking:MissingSourcesForSet(setID))
+                end)
+            end)
+        end
+
         -- Every drawing of a piece's tooltip lands here, the first hover and
         -- each press of Tab that cycles to another item with the same look. A
         -- piece already tracked is told so, then offered the shift-click that
