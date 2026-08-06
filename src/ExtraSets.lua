@@ -1818,6 +1818,7 @@ function ExtraSets:CreatePage(wardrobe)
         button.IconFrame.Cover:SetShown(not complete)
         button.IconFrame.Favorite:Hide()
         button.New:Hide()
+        LuckysWardrobe.TrackedAppearances:MarkSet(button.IconFrame, ExtraSets.MissingSources(entry))
         button.SelectedTexture:SetShown(selectedEntry and entry.key == selectedEntry.key)
 
         local showProgress = not entry.loading and entry.collected > 0 and not complete
@@ -2233,18 +2234,25 @@ function ExtraSets:PrintLooks(query)
     for _, line in ipairs(lines) do say(line) end
 end
 
--- Shift-clicking a set tracks everything left in it, across every colourway it
--- stands for: the row says how much of the whole set is missing, so tracking it
--- is expected to go after all of it. Shift-clicking it again calls all of that
--- off, the way a single piece already toggles.
-function ExtraSets:TrackMissing(entry)
+-- Every source still missing from an entry, across every colourway it stands
+-- for. Shared by the shift-click, which goes after all of it, and the
+-- set-level crosshair, which asks whether all of it is already being hunted.
+function ExtraSets.MissingSources(entry)
     local missing = {}
     for _, variant in ipairs(entry.variants or { entry }) do
         for _, piece in ipairs(variant.pieces) do
             if piece.state == "missing" then missing[#missing + 1] = piece.sourceID end
         end
     end
-    LuckysWardrobe.SetTracking:ToggleSources(missing, entry.name)
+    return missing
+end
+
+-- Shift-clicking a set tracks everything left in it: the row says how much of
+-- the whole set is missing, so tracking it is expected to go after all of it.
+-- Shift-clicking it again calls all of that off, the way a single piece
+-- already toggles.
+function ExtraSets:TrackMissing(entry)
+    LuckysWardrobe.SetTracking:ToggleSources(ExtraSets.MissingSources(entry), entry.name)
 end
 
 -- Blizzard hangs the class dropdown above the Sets page rather than inside it,

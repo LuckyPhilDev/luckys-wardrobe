@@ -86,18 +86,23 @@ local function trackAll(sourceIDs)
     return tracked, failed, lastError
 end
 
-function SetTracking:TrackSet(setID)
-    local setInfo = C_TransmogSets.GetSetInfo(setID)
-    -- Despite the field name, appearanceID holds an itemModifiedAppearanceID
-    -- (source ID); Blizzard's own sets UI feeds it straight to GetSourceInfo.
+-- Despite the field name, appearanceID holds an itemModifiedAppearanceID
+-- (source ID); Blizzard's own sets UI feeds it straight to GetSourceInfo.
+-- Shared by the shift-click and the set-level crosshair, so both agree on what
+-- "everything this set is missing" means.
+function SetTracking:MissingSourcesForSet(setID)
     local missingSources = {}
     for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
         if not appearance.collected then
             missingSources[#missingSources + 1] = appearance.appearanceID
         end
     end
+    return missingSources
+end
 
-    self:ToggleSources(missingSources, (setInfo and setInfo.name) or tostring(setID))
+function SetTracking:TrackSet(setID)
+    local setInfo = C_TransmogSets.GetSetInfo(setID)
+    self:ToggleSources(self:MissingSourcesForSet(setID), (setInfo and setInfo.name) or tostring(setID))
 end
 
 -- Tracks exact appearance sources by ID, used by the Extra Sets page where the
@@ -139,16 +144,18 @@ end
 -- still be tracked for the next shift-click to mean "call it off" rather than
 -- "go after whatever's left", so calling off one piece by hand leaves the rest
 -- alone instead of being swept up in a set-wide untrack it never asked for.
-local function isTrackingAll(sourceIDs)
+-- Also what the set-level crosshair asks, to know whether a whole set earns
+-- the mark its own pieces already get one at a time.
+function SetTracking:IsTrackingAll(sourceIDs)
     if #sourceIDs == 0 then return false end
     for _, sourceID in ipairs(sourceIDs) do
-        if not SetTracking:IsTracking(sourceID) then return false end
+        if not self:IsTracking(sourceID) then return false end
     end
     return true
 end
 
 function SetTracking:ToggleSources(sourceIDs, setName)
-    if isTrackingAll(sourceIDs) then
+    if self:IsTrackingAll(sourceIDs) then
         local stopped = 0
         for _, sourceID in ipairs(sourceIDs) do
             stopped = stopped + stopTracking(sourceID)

@@ -41,8 +41,21 @@ function TrackedAppearances:IsMarked(sourceID)
     return LuckysWardrobe.SetTracking:IsTracking(sourceID)
 end
 
+-- Whether a whole set carries the mark: every last piece it is missing has to
+-- be tracked, the same all-or-nothing rule the set's own shift-click toggle
+-- uses to decide track from untrack.
+function TrackedAppearances:IsSetMarked(sourceIDs)
+    if not db.markTrackedAppearances or not sourceIDs then return false end
+    return LuckysWardrobe.SetTracking:IsTrackingAll(sourceIDs)
+end
+
 local function refreshFrame(itemFrame)
-    local hunted = TrackedAppearances:IsMarked(itemFrame.luckysTrackedSourceID)
+    local hunted
+    if itemFrame.luckysTrackedSourceIDs then
+        hunted = TrackedAppearances:IsSetMarked(itemFrame.luckysTrackedSourceIDs)
+    else
+        hunted = TrackedAppearances:IsMarked(itemFrame.luckysTrackedSourceID)
+    end
 
     -- A piece nobody is hunting is left as the page drew it, so the mark costs
     -- nothing until there is something to mark.
@@ -64,15 +77,28 @@ function TrackedAppearances:AddTooltipLine(tooltip, sourceID)
     return true
 end
 
+local function register(itemFrame)
+    if itemFrame.luckysTrackedRegistered then return end
+    itemFrame.luckysTrackedRegistered = true
+    marked[#marked + 1] = itemFrame
+end
+
 -- Which piece a frame is showing, so it can be marked now and answer tracking
 -- changes later. Pass no source for a piece this client cannot resolve.
 function TrackedAppearances:Mark(itemFrame, sourceID)
-    if not itemFrame.luckysTrackedRegistered then
-        itemFrame.luckysTrackedRegistered = true
-        marked[#marked + 1] = itemFrame
-    end
-
+    register(itemFrame)
+    itemFrame.luckysTrackedSourceIDs = nil
     itemFrame.luckysTrackedSourceID = sourceID
+    refreshFrame(itemFrame)
+end
+
+-- Which set a row or card stands for, so the same crosshair can say a whole
+-- set is being hunted, not just one piece of it. Pass every source the set is
+-- still missing; a set with nothing missing never earns the mark.
+function TrackedAppearances:MarkSet(itemFrame, sourceIDs)
+    register(itemFrame)
+    itemFrame.luckysTrackedSourceID = nil
+    itemFrame.luckysTrackedSourceIDs = sourceIDs
     refreshFrame(itemFrame)
 end
 
