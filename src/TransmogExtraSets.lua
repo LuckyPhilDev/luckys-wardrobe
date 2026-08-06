@@ -449,7 +449,17 @@ local function warmItemData()
 
     local ExtraSets = LuckysWardrobe.ExtraSets
     local resolver = ExtraSets.LiveResolver()
-    local records = ExtraSets.RecordsForClass(ExtraSets.Records(), resolver.playerClassID())
+    local classID = resolver.playerClassID()
+    local records = ExtraSets.RecordsForClass(ExtraSets.Records(), classID)
+
+    -- The looks the Sets tab already shows this class, worked out here rather
+    -- than mid-build. It is the same frame's work wherever it is spent, and at
+    -- login it is spent where nothing is waiting on it. The answer is kept for
+    -- the session and both pages read the same one, so whichever is opened first
+    -- finds it already worked out.
+    LuckysWardrobe.Perf:Begin("transmog looks gathered")
+    ExtraSets.NativeLooks(classID)
+    LuckysWardrobe.Perf:End("transmog looks gathered")
 
     local function round()
         if not requestUnjudgedItems(records) then
