@@ -559,7 +559,6 @@ function CustomSets:Attach(wardrobe)
     )
     customTab:SetID(customTabID)
     customTab:SetText(LuckysWardrobe.Strings.customSets.tab)
-    customTab.minWidth = 75
     PanelTemplates_TabResize(customTab, 0)
     customTab:SetScript("OnClick", function()
         wardrobe:ClickTab(customTab)

@@ -348,7 +348,9 @@ LuckysWardrobe.Strings = {
         },
     },
     customSets = {
-        tab = "Custom Sets",
+        -- Short, because the tab strip has four names to fit and Blizzard's own
+        -- "Custom Sets" is one word too many for the room left.
+        tab = "Custom",
         empty = "You have not saved any custom sets yet. Save one at a transmogrifier and it appears here.",
         noResults = "No custom sets match the current search.",
         select = "Select a custom set to preview it.",
