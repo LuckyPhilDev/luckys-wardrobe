@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+### Fixed
+
+- The Extra Sets tab no longer lists a handful of entries that only ever had one piece to them.
+
 ## 1.5.1
 
 ### Added
