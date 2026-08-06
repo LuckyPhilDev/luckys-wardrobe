@@ -347,6 +347,13 @@ LuckysWardrobe.Strings = {
             andMore = "  ...and %d more",
         },
     },
+    customSets = {
+        tab = "Custom Sets",
+        empty = "You have not saved any custom sets yet. Save one at a transmogrifier and it appears here.",
+        noResults = "No custom sets match the current search.",
+        select = "Select a custom set to preview it.",
+        counts = "%d/%d collected",
+    },
     perf = {
         header = "Work measured this session:",
         nothing = "Nothing has been measured yet. Open the Extra Sets tab first.",

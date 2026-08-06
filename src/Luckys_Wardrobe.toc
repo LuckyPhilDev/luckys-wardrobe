@@ -33,6 +33,7 @@ LootAlerts.lua
 Randomiser.lua
 ExtraSetsCatalog.lua
 ExtraSets.lua
+CustomSets.lua
 TransmogSets.lua
 TransmogSetNames.lua
 TransmogExtraSets.lua
