@@ -9,6 +9,7 @@
 ### Improved
 
 - Improved the loading logic of the Extra Sets tab at the transmogrifier.
+- Wowhead addresses have moved from ctrl-click to alt-click, so ctrl-click goes back to opening the dressing room preview and you can use both.
 
 ## 1.5.0
 
