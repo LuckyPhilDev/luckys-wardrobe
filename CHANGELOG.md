@@ -5,11 +5,13 @@
 ### Added
 
 - The Sets tab at the transmog NPC can now be narrowed to the expansions you are working through, from its own Filter button. (Thanks for the suggestion Razørokk)
+- The Extra Sets tab at the transmog NPC takes the same Expansion filter, and the sets the game will not date now sit in an Unknown box of their own so they can be put away with the rest.
 
 ### Improved
 
-- Improved the loading logic of the Extra Sets tab at the transmogrifier.
+- The Extra Sets tab at the transmogrifier opens straight onto a finished page, instead of catching for a moment on the click and then shuffling its cards about while the models loaded.
 - Wowhead addresses have moved from ctrl-click to alt-click, so ctrl-click goes back to opening the dressing room preview and you can use both. (Thanks for the suggestion Tuulani)
+- The tooltip setting that names an item's set is now called Show Set Information, and its description leads with the line it actually adds.
 
 ## 1.5.0
 
