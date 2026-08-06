@@ -209,7 +209,11 @@ local cachedEntries
 -- The pacing counts pieces rather than sets, for the catalogue's own reason: a
 -- tier is nine pieces and an ensemble can teach over a hundred, so a fixed
 -- number of sets would make one frame twenty times the work of another.
-local PIECES_PER_BUILD_STEP = 400
+--
+-- Lower than the catalogue's own count because a piece costs more here: the
+-- catalogue asks the client one question about each, where building a row asks
+-- one and judging it asks two, every one of them handing back a table.
+local PIECES_PER_BUILD_STEP = 150
 
 local buildFrame
 local build
@@ -234,20 +238,36 @@ function TransmogExtraSets.RejudgeEntries()
 end
 
 -- One frame's worth of the build, and whether there is more of it left. The
--- stages run in order: rows built from the records, the looks the Sets tab
--- already shows gathered, the rows folded against them, then each row judged
--- against what this character can wear.
+-- stages run in order: this character's records picked out, rows built from
+-- them, the looks the Sets tab already shows gathered, the rows folded against
+-- those, then each row judged against what this character can wear.
+--
+-- Three of the five are one frame each and take as long as they take. They are
+-- timed under their own names so a report says which of them, if any, is the
+-- frame worth slicing next.
 local function pacedBuildStep()
     local ExtraSets = LuckysWardrobe.ExtraSets
 
+    if build.stage == "records" then
+        LuckysWardrobe.Perf:Begin("transmog records picked")
+        build.records = ExtraSets.RecordsForClass(ExtraSets.Records(), build.classID)
+        LuckysWardrobe.Perf:End("transmog records picked")
+        build.stage = "rows"
+        return true
+    end
+
     if build.stage == "looks" then
+        LuckysWardrobe.Perf:Begin("transmog looks gathered")
         build.nativeLooks = ExtraSets.NativeLooks(build.classID)
+        LuckysWardrobe.Perf:End("transmog looks gathered")
         build.stage = "collapse"
         return true
     end
 
     if build.stage == "collapse" then
+        LuckysWardrobe.Perf:Begin("transmog rows folded")
         build.rows = ExtraSets.CollapseDuplicates(build.rows, build.nativeLooks)
+        LuckysWardrobe.Perf:End("transmog rows folded")
         -- Published here rather than at the end, so a player who reaches the tab
         -- mid-build only has the judging left to pay for rather than the lot.
         cachedRows = build.rows
@@ -294,12 +314,10 @@ function TransmogExtraSets.BuildAhead()
 
     local ExtraSets = LuckysWardrobe.ExtraSets
     local resolver = ExtraSets.LiveResolver()
-    local classID = resolver.playerClassID()
     build = {
         resolver = resolver,
-        classID = classID,
-        stage = cachedRows and "judge" or "rows",
-        records = not cachedRows and ExtraSets.RecordsForClass(ExtraSets.Records(), classID) or nil,
+        classID = resolver.playerClassID(),
+        stage = cachedRows and "judge" or "records",
         rows = cachedRows or {},
         seen = {},
         cursor = 0,
