@@ -83,6 +83,8 @@ function LuckysWardrobe.Settings:Init(db)
     tooltips:Toggle({
         label = S.settings.tooltipModel.label,
         desc = S.settings.tooltipModel.desc,
+        image = "tooltips/show-a-preview-model",
+        imageSize = { 635, 386 },
         checked = db.tooltipModel,
         onToggle = function(checked)
             db.tooltipModel = checked

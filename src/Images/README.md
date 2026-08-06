@@ -13,6 +13,7 @@ Images/
 ├── icons/
 │   └── tracked-appearance.tga
 ├── tooltips/
+│   ├── show-a-preview-model.tga
 │   └── show-set-information.tga
 └── transmog/
     ├── show-situation-values.tga
