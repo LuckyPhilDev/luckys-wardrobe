@@ -12,6 +12,9 @@ local CROSSHAIR_FILE_SIZE = 64
 -- A badge in the corner of a piece's icon rather than a mark across it, so the
 -- item art it belongs to still reads.
 local CROSSHAIR_SIZE = 16
+-- A set has no icon of its own to share a corner with, so its row can carry a
+-- bigger mark without crowding anything else.
+local SET_CROSSHAIR_SIZE = 24
 local CROSSHAIR_INSET = 2
 -- The settings panel's accentLight, so the mark reads as this addon's rather
 -- than part of the game's own collection art.
@@ -20,22 +23,16 @@ local CROSSHAIR_COLOUR = { r = 0.910, g = 0.690, b = 0.251 }
 local db
 local marked = {}
 
--- A piece is marked in the corner of its own icon. A set has no icon of its
--- own to badge, so its row carries the mark beside its name instead, at the
--- bottom right of the name cell; nameFrame says which frame that is.
-local function crosshairFor(itemFrame, nameFrame)
+-- Anchored by its own bottom-right corner, inset from the frame it sits in, so
+-- it tucks into that corner rather than hanging past the frame's edge: a
+-- piece's icon corner, or a set row's own corner when there is no icon to share.
+local function crosshairFor(itemFrame, size)
     if not itemFrame.luckysTrackedCrosshair then
         local crosshair = itemFrame:CreateTexture(nil, "OVERLAY", nil, 7)
         crosshair:SetTexture(CROSSHAIR)
-        crosshair:SetSize(CROSSHAIR_SIZE, CROSSHAIR_SIZE)
+        crosshair:SetSize(size, size)
         crosshair:SetVertexColor(CROSSHAIR_COLOUR.r, CROSSHAIR_COLOUR.g, CROSSHAIR_COLOUR.b)
-        if nameFrame then
-            crosshair:SetPoint("BOTTOMLEFT", nameFrame, "BOTTOMRIGHT", CROSSHAIR_INSET, 0)
-        else
-            -- The icon is inset from the frame it sits in, so the mark is inset
-            -- by the same amount to land on the icon's own corner.
-            crosshair:SetPoint("BOTTOMRIGHT", -CROSSHAIR_INSET, CROSSHAIR_INSET)
-        end
+        crosshair:SetPoint("BOTTOMRIGHT", -CROSSHAIR_INSET, CROSSHAIR_INSET)
         itemFrame.luckysTrackedCrosshair = crosshair
     end
     return itemFrame.luckysTrackedCrosshair
@@ -58,8 +55,10 @@ end
 
 local function refreshFrame(itemFrame)
     local hunted
+    local size = CROSSHAIR_SIZE
     if itemFrame.luckysTrackedSourceIDs then
         hunted = TrackedAppearances:IsSetMarked(itemFrame.luckysTrackedSourceIDs)
+        size = SET_CROSSHAIR_SIZE
     else
         hunted = TrackedAppearances:IsMarked(itemFrame.luckysTrackedSourceID)
     end
@@ -68,7 +67,7 @@ local function refreshFrame(itemFrame)
     -- nothing until there is something to mark.
     if not hunted and not itemFrame.luckysTrackedCrosshair then return end
 
-    crosshairFor(itemFrame, itemFrame.luckysTrackedNameFrame):SetShown(hunted)
+    crosshairFor(itemFrame, size):SetShown(hunted)
 end
 
 -- A mark on an icon is only half an answer, so hovering the piece says it in
@@ -101,13 +100,11 @@ end
 
 -- Which set a row stands for, so the same crosshair can say a whole set is
 -- being hunted, not just one piece of it. Pass every source the set is still
--- missing, a set with nothing missing never earns the mark, and the frame
--- that carries its name, since the mark rides beside that rather than an icon.
-function TrackedAppearances:MarkSet(itemFrame, sourceIDs, nameFrame)
+-- missing; a set with nothing missing never earns the mark.
+function TrackedAppearances:MarkSet(itemFrame, sourceIDs)
     register(itemFrame)
     itemFrame.luckysTrackedSourceID = nil
     itemFrame.luckysTrackedSourceIDs = sourceIDs
-    itemFrame.luckysTrackedNameFrame = nameFrame
     refreshFrame(itemFrame)
 end
 
@@ -151,7 +148,7 @@ function TrackedAppearances:Init(database)
                 scrollBox:ForEachFrame(function(button)
                     if not button.setID then return end
                     local setID = setsCollection:GetDefaultSetIDForBaseSet(button.setID) or button.setID
-                    TrackedAppearances:MarkSet(button, LuckysWardrobe.SetTracking:MissingSourcesForSet(setID), button.Label)
+                    TrackedAppearances:MarkSet(button, LuckysWardrobe.SetTracking:MissingSourcesForSet(setID))
                 end)
             end)
         end

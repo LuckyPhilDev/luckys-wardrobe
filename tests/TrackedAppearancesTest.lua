@@ -95,7 +95,6 @@ local setsCollection = {
 -- walking whatever is currently visible.
 local setRow = ItemFrame()
 setRow.setID = 10
-setRow.Label = {}
 local listScrollBox = {
     Update = function() end,
     ForEachFrame = function(_, callback) callback(setRow) end,
@@ -169,10 +168,10 @@ tracked[202] = true
 listScrollBox:Update()
 assert(marked(setRow), "marked a set's row once every missing piece was tracked")
 
--- A set has no icon of its own, so its mark rides beside its name instead of
--- in a corner.
-assert(crosshair(setRow).point[1] == "BOTTOMLEFT" and crosshair(setRow).point[2] == setRow.Label,
-    "sat the mark at the bottom right of the name cell")
+-- A set's mark sits in its own row's corner the same way a piece's sits in its
+-- icon's, just bigger since there is no icon to share the corner with.
+assert(crosshair(setRow).point[1] == "BOTTOMRIGHT", "sat the mark in the corner of the row")
+assert(crosshair(setRow).width > crosshair(setPieces[2]).width, "made the set's mark bigger than a piece's")
 
 -- The Extra Sets tab hands its own pieces over as it draws them, and a piece
 -- this client cannot resolve hands over nothing.

@@ -1342,14 +1342,12 @@ LuckysWardrobe.SetTracking = {
 
 local markedSources = {}
 local markedSetSources = {}
-local markedSetNameFrame = {}
 LuckysWardrobe.TrackedAppearances = {
     Mark = function(_, itemFrame, sourceID)
         markedSources[itemFrame] = sourceID or false
     end,
-    MarkSet = function(_, itemFrame, sourceIDs, nameFrame)
+    MarkSet = function(_, itemFrame, sourceIDs)
         markedSetSources[itemFrame] = sourceIDs
-        markedSetNameFrame[itemFrame] = nameFrame
     end,
     AddTooltipLine = function(_, target, sourceID)
         if sourceID ~= huntedSource then return false end
@@ -1712,7 +1710,6 @@ local button = newRowButton()
 capturedView.initializer(button, entry)
 assert(button.Name.text == "Live Name", "row shows the set name")
 assert(#markedSetSources[button] == 0, "marked the row with what the set is missing")
-assert(markedSetNameFrame[button] == button.Label, "anchored the mark beside the row's name rather than its icon")
 
 shiftDown = true
 button.scripts.OnClick(button, "LeftButton")
