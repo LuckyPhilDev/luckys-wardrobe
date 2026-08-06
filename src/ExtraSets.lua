@@ -698,9 +698,15 @@ end
 -- resolver.sourceState(sourceID) returns nil when the source does not exist on
 -- this client, or { appearanceID, collected } where collected == nil means the
 -- appearance data has not loaded yet.
-function ExtraSets.BuildEntries(records, resolver)
-    local entries = {}
-    local seenSetIDs = {}
+--
+-- entries and seenSetIDs are for a caller building the list a slice at a time
+-- across several frames: handing back the same two each slice gives the same
+-- answer as one call over the whole lot, because a set listed twice is dropped
+-- whichever slice its second listing lands in. Left out, one call builds both
+-- and the whole list comes back at once.
+function ExtraSets.BuildEntries(records, resolver, entries, seenSetIDs)
+    entries = entries or {}
+    seenSetIDs = seenSetIDs or {}
 
     for _, record in ipairs(records) do
         local key = ExtraSets.RecordKey(record)

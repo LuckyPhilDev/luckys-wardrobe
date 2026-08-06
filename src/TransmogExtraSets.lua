@@ -86,8 +86,12 @@ end
 -- A set the client has said nothing about stays. Its verdict comes from item
 -- data the client loads only once asked, and a cold cache is not a refusal:
 -- hiding on one would empty the page every time it opened.
-function TransmogExtraSets.WearableEntries(entries, classID, sourceValidity)
-    local wearable = {}
+--
+-- wearable is for a caller judging the rows a slice at a time across several
+-- frames: handing back the same list each slice gathers the verdicts into it in
+-- order, and leaving it out judges the whole lot in one go.
+function TransmogExtraSets.WearableEntries(entries, classID, sourceValidity, wearable)
+    wearable = wearable or {}
     for _, entry in ipairs(entries) do
         if not LuckysWardrobe.ExtraSets.UnwearableReason(entry, classID, sourceValidity) then
             wearable[#wearable + 1] = entry
@@ -104,6 +108,24 @@ function TransmogExtraSets.VisibleEntries(entries, filterState, query)
     local narrowed = TransmogExtraSets.FilterByCollected(
         entries, filterState.collected, filterState.uncollected)
     return ExtraSets.SortEntries(ExtraSets.FilterEntries(narrowed, query), "completion", "ascending")
+end
+
+-- What the page draws, as one comparable value: the cards in the order they sit
+-- in, each with the counts printed on it. Two lists agreeing here draw the same
+-- page, so the cards already on screen can be left where they are.
+--
+-- Worth asking before drawing because drawing is not cheap: the card grid
+-- releases every model on the page and dresses it again from nothing, which a
+-- player watches as the page loading a second time. Most of what asks the page
+-- to draw itself again, a pass over the client's verdicts above all, changes
+-- none of what it would draw.
+function TransmogExtraSets.PageSignature(entries)
+    local parts = {}
+    for index, entry in ipairs(entries) do
+        parts[index] = ("%s %d/%d%s"):format(
+            entry.key, entry.collected, entry.total, entry.loading and " loading" or "")
+    end
+    return table.concat(parts, "\n")
 end
 
 -- Whether the outfit on show is wearing this set: every slot the set covers is
@@ -179,7 +201,36 @@ end
 local cachedRows
 local cachedEntries
 
+-- Building the rows in one go is a fifth of a second, and a fifth of a second is
+-- a frame a player feels wherever it is spent. Ahead of a visit there is no
+-- reason to spend it all at once, so it is built the way the catalogue builds
+-- itself: a slice per frame, small enough to be lost in the noise of a frame.
+--
+-- The pacing counts pieces rather than sets, for the catalogue's own reason: a
+-- tier is nine pieces and an ensemble can teach over a hundred, so a fixed
+-- number of sets would make one frame twenty times the work of another.
+--
+-- Lower than the catalogue's own count because a piece costs more here: the
+-- catalogue asks the client one question about each, where building a row asks
+-- one and judging it asks two, every one of them handing back a table.
+--
+-- Not much lower, though, because the build is racing the player to the tab.
+-- Thin slices sit lighter on a frame but take more of them, and a build still
+-- running when the tab opens is one the player waits on the rest of. Two or
+-- three milliseconds a slice is the trade: light enough not to drop a frame,
+-- few enough to be finished before anyone has read the tab strip.
+local PIECES_PER_BUILD_STEP = 250
+
+local buildFrame
+local build
+
+local function stopPacedBuild()
+    build = nil
+    if buildFrame then buildFrame:SetScript("OnUpdate", nil) end
+end
+
 function TransmogExtraSets.InvalidateEntries()
+    stopPacedBuild()
     cachedRows = nil
     cachedEntries = nil
 end
@@ -188,11 +239,116 @@ end
 -- landing calls for: the sets have not changed, only what the client will say
 -- about them.
 function TransmogExtraSets.RejudgeEntries()
+    stopPacedBuild()
     cachedEntries = nil
+end
+
+-- One frame's worth of the build, and whether there is more of it left. The
+-- stages run in order: this character's records picked out, rows built from
+-- them, the looks the Sets tab already shows gathered, the rows folded against
+-- those, then each row judged against what this character can wear.
+--
+-- Three of the five are one frame each and take as long as they take. They are
+-- timed under their own names so a report says which of them, if any, is the
+-- frame worth slicing next.
+local function pacedBuildStep()
+    local ExtraSets = LuckysWardrobe.ExtraSets
+
+    if build.stage == "records" then
+        LuckysWardrobe.Perf:Begin("transmog records picked")
+        build.records = ExtraSets.RecordsForClass(ExtraSets.Records(), build.classID)
+        LuckysWardrobe.Perf:End("transmog records picked")
+        build.stage = "rows"
+        return true
+    end
+
+    if build.stage == "looks" then
+        LuckysWardrobe.Perf:Begin("transmog looks gathered")
+        build.nativeLooks = ExtraSets.NativeLooks(build.classID)
+        LuckysWardrobe.Perf:End("transmog looks gathered")
+        build.stage = "collapse"
+        return true
+    end
+
+    if build.stage == "collapse" then
+        LuckysWardrobe.Perf:Begin("transmog rows folded")
+        build.rows = ExtraSets.CollapseDuplicates(build.rows, build.nativeLooks)
+        LuckysWardrobe.Perf:End("transmog rows folded")
+        -- Published here rather than at the end, so a player who reaches the tab
+        -- mid-build only has the judging left to pay for rather than the lot.
+        cachedRows = build.rows
+        build.stage = "judge"
+        build.cursor = 0
+        return true
+    end
+
+    local source = build.stage == "rows" and build.records or build.rows
+    local slice, pieces = {}, 0
+    while pieces < PIECES_PER_BUILD_STEP do
+        local item = source[build.cursor + 1]
+        if not item then break end
+        build.cursor = build.cursor + 1
+        pieces = pieces + #item.pieces
+        slice[#slice + 1] = item
+    end
+
+    if build.stage == "rows" then
+        ExtraSets.BuildEntries(slice, build.resolver, build.rows, build.seen)
+        if build.cursor >= #build.records then build.stage = "looks" end
+        return true
+    end
+
+    TransmogExtraSets.WearableEntries(slice, build.classID, build.resolver.sourceValidity, build.wearable)
+    return build.cursor < #build.rows
+end
+
+local function runPacedBuild()
+    LuckysWardrobe.Perf:Begin("transmog build step")
+    local more = pacedBuildStep()
+    LuckysWardrobe.Perf:End("transmog build step")
+    if more then return end
+
+    cachedEntries = build.wearable
+    stopPacedBuild()
+end
+
+--- Starts building the rows ahead of the visit that wants them, a slice a frame.
+--- Does nothing when they are already built, or a build is already running.
+--- Rows already built are kept and only judged, which is what a rejudge leaves.
+function TransmogExtraSets.BuildAhead()
+    if build or cachedEntries then return end
+
+    local ExtraSets = LuckysWardrobe.ExtraSets
+    local resolver = ExtraSets.LiveResolver()
+    build = {
+        resolver = resolver,
+        classID = resolver.playerClassID(),
+        stage = cachedRows and "judge" or "records",
+        rows = cachedRows or {},
+        seen = {},
+        cursor = 0,
+        wearable = {},
+    }
+    buildFrame = buildFrame or CreateFrame("Frame")
+    buildFrame:SetScript("OnUpdate", runPacedBuild)
+end
+
+-- Whether any row is still waiting on the client to name one of its pieces.
+-- Such a row counted that piece as neither collected nor missing, so what it
+-- says is provisional: it has to be built again rather than only judged again.
+local function rowsWaiting()
+    for _, entry in ipairs(cachedRows or {}) do
+        if entry.loading then return true end
+    end
+    return false
 end
 
 function TransmogExtraSets.Entries()
     if not cachedEntries then
+        -- Half a build is no use to somebody who wants a page now, and the rows
+        -- it did get through are already published, so the rest is finished here
+        -- and the slices stop.
+        stopPacedBuild()
         LuckysWardrobe.Perf:Begin("transmog entries built")
         local ExtraSets = LuckysWardrobe.ExtraSets
         local resolver = ExtraSets.LiveResolver()
@@ -222,11 +378,14 @@ local requestedItems = {}
 -- a lock that keeps a character out of one covers every piece of it, so its
 -- first piece answers for the rest. Says whether anything was asked for, which
 -- is the only reason to look again.
-local function requestUnjudgedItems(entries)
+--
+-- Takes catalogue records as readily as built entries: both carry the pieces,
+-- and a record has no verdict on a piece to skip it by.
+local function requestUnjudgedItems(sets)
     local asked = 0
-    for _, entry in ipairs(entries) do
+    for _, set in ipairs(sets) do
         if asked >= ITEM_LOAD_BUDGET then break end
-        for _, piece in ipairs(entry.pieces) do
+        for _, piece in ipairs(set.pieces) do
             if piece.state ~= "unavailable" and piece.itemID then
                 if not requestedItems[piece.itemID] and not C_Item.GetItemInfo(piece.itemID) then
                     requestedItems[piece.itemID] = true
@@ -238,6 +397,95 @@ local function requestUnjudgedItems(entries)
         end
     end
     return asked > 0
+end
+
+-- Told after each round of answers lands, so the page can read the verdicts
+-- again. Set once the page exists; the rounds run whether it does or not.
+local afterItemsLoaded
+
+-- Told when the collection has changed under the rows, so the page can build
+-- itself again. Set once the page exists, as the rows are dropped either way.
+local afterCollectionChanged
+
+-- Building the rows is the most expensive thing this tab does, a good tenth of
+-- a second, and the collection changing is what makes them wrong. The page used
+-- to throw them away every time it opened, because it only listened for that
+-- while it was on screen and so could not know whether anything had happened
+-- while it was away. Listening for the whole session answers that: a tab opened
+-- again on a collection nothing has happened to opens on the rows it was left
+-- with, and pays nothing for them.
+local function watchCollection()
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
+    watcher:SetScript("OnEvent", function(_, event)
+        LuckysWardrobe.Perf:Count("event " .. event)
+        TransmogExtraSets.InvalidateEntries()
+        if afterCollectionChanged then afterCollectionChanged() end
+    end)
+end
+
+-- A set the client has not judged stays on the page, because a cold cache is
+-- not a refusal. So a page built before the answers are in lists sets that
+-- disappear from it as they arrive, and what a player sees is the cards
+-- shuffling under them for a second or two after the tab opens.
+--
+-- The cure is to have asked already. Asking starts as soon as there are sets to
+-- ask about, which is at login rather than at the transmogrifier, and carries
+-- on a budget at a time until every set has been asked about once. Nothing is
+-- asked about twice, so the rounds run out on their own.
+local warmingItems = false
+
+-- The rows the tab lists, started before the visit that wants them so the slices
+-- are through by the time anyone clicks.
+--
+-- Held back until the transmogrifier has been opened, so a player who never goes
+-- near one never pays for a page they are not going to look at, and until the
+-- client has answered what it is going to about the sets, so the rows are built
+-- against settled verdicts and the tab opens on its final list rather than
+-- settling onto it while the player watches.
+local function prebuildRows()
+    if not attachedWardrobe or warmingItems then return end
+    if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then return end
+    TransmogExtraSets.BuildAhead()
+end
+
+local function warmItemData()
+    if warmingItems then return end
+    warmingItems = true
+
+    local ExtraSets = LuckysWardrobe.ExtraSets
+    local resolver = ExtraSets.LiveResolver()
+    local classID = resolver.playerClassID()
+    local records = ExtraSets.RecordsForClass(ExtraSets.Records(), classID)
+
+    -- The looks the Sets tab already shows this class, worked out here rather
+    -- than mid-build. It is the same frame's work wherever it is spent, and at
+    -- login it is spent where nothing is waiting on it. The answer is kept for
+    -- the session and both pages read the same one, so whichever is opened first
+    -- finds it already worked out.
+    --
+    -- On the next frame rather than this one. The warm-up starts from inside the
+    -- last step of the catalogue's own build, and hanging this off the end of it
+    -- makes that one step ten times the size of every other.
+    C_Timer.After(0, function()
+        LuckysWardrobe.Perf:Begin("transmog looks gathered")
+        ExtraSets.NativeLooks(classID)
+        LuckysWardrobe.Perf:End("transmog looks gathered")
+    end)
+
+    local function round()
+        if not requestUnjudgedItems(records) then
+            warmingItems = false
+            prebuildRows()
+            return
+        end
+        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
+            TransmogExtraSets.RejudgeEntries()
+            if afterItemsLoaded then afterItemsLoaded() end
+            round()
+        end)
+    end
+    round()
 end
 
 -- Locale-free record slots to the outfit slots the transmogrifier's API
@@ -577,18 +825,29 @@ function TransmogExtraSets:CreatePage(wardrobe)
     page.GetOutfitSlotSavedState = function() return outfitSlotSaved end
     page.SetOutfitSlotSavedState = function(saved) outfitSlotSaved = saved end
 
-    local function refresh()
-        LuckysWardrobe.Perf:Begin("transmog page refresh")
-        local entries = TransmogExtraSets.Entries()
-        local visible = TransmogExtraSets.VisibleEntries(entries, filters, searchBox:GetText())
+    -- What the cards on screen are showing, so a pass that would draw the same
+    -- page again can leave them alone.
+    local paintedSignature
 
+    local function paint(visible)
+        LuckysWardrobe.Perf:Begin("transmog page painted")
         local elements = {}
         for _, entry in ipairs(visible) do
             elements[#elements + 1] = { templateKey = "EXTRA_SET", entry = entry, page = page }
         end
         local retainCurrentPage = true
         pagedContent:SetDataProvider(CreateDataProvider({ { elements = elements } }), retainCurrentPage)
+        LuckysWardrobe.Perf:End("transmog page painted")
+    end
 
+    local function refresh()
+        LuckysWardrobe.Perf:Begin("transmog page refresh")
+        local entries = TransmogExtraSets.Entries()
+        local visible = TransmogExtraSets.VisibleEntries(entries, filters, searchBox:GetText())
+
+        -- Why the page has nothing on it can change while the page itself does
+        -- not: an empty page whose catalogue has finished building is an answer
+        -- rather than a wait, so the line is told before the cards are asked.
         if not LuckysWardrobe.ExtraSetsCatalog:IsReady() then
             noEntriesText:SetText(S.building)
         elseif #entries == 0 then
@@ -596,36 +855,52 @@ function TransmogExtraSets:CreatePage(wardrobe)
         else
             noEntriesText:SetText(S.noResults)
         end
-        noEntriesText:SetShown(#elements == 0)
+        noEntriesText:SetShown(#visible == 0)
+
+        local signature = TransmogExtraSets.PageSignature(visible)
+        if signature == paintedSignature then
+            LuckysWardrobe.Perf:Count("transmog page unchanged")
+        else
+            paintedSignature = signature
+            paint(visible)
+        end
         LuckysWardrobe.Perf:End("transmog page refresh")
     end
 
-    -- A set is only kept off the page once the client has refused it, and the
-    -- client will not judge a set whose items it has not loaded. So each rebuild
-    -- asks for what it is missing and reads the answers a moment later, which is
-    -- what settles the page onto the sets this character can really wear.
-    local warmRun = 0
-    local function warmVerdicts(run, pass)
-        if not requestUnjudgedItems(TransmogExtraSets.Entries()) then return end
-
-        C_Timer.After(Utils.ITEM_LOAD_DELAY_SECONDS, function()
-            -- A rebuild since this pass started has a warm-up of its own.
-            if run ~= warmRun or not page:IsShown() then return end
-            TransmogExtraSets.RejudgeEntries()
-            refresh()
-            if pass < Utils.ITEM_LOAD_PASSES then warmVerdicts(run, pass + 1) end
-        end)
-    end
-
-    local function rebuildNow()
-        TransmogExtraSets.InvalidateEntries()
+    -- The page drawn again whether or not it would come out any different,
+    -- which is what a rebuilt player model calls for: the cards are wearing the
+    -- old one until the grid dresses them from scratch.
+    local function repaint()
+        paintedSignature = nil
         refresh()
-        warmRun = warmRun + 1
-        warmVerdicts(warmRun, 1)
     end
 
-    local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
-        if page:IsShown() then rebuildNow() end
+    -- Everything a visit to the tab asks for: the page drawn from the rows as
+    -- they stand, and the item data behind any set the client has still not
+    -- judged asked for. Neither costs anything when there is nothing to do.
+    local function refreshAndWarm()
+        refresh()
+        warmItemData()
+    end
+
+    -- A round of item answers is what moves the client's verdicts, and a verdict
+    -- is what keeps a set off the page, so the page reads them again each time a
+    -- round lands. Off screen it reads nothing: coming back reads everything.
+    afterItemsLoaded = function()
+        if page:IsShown() then refresh() end
+    end
+
+    -- The rows have already been thrown away by the time this runs; what the
+    -- delay collapses is the burst of them that learning one appearance sets off.
+    -- On screen the page wants drawing now, so the rows are rebuilt on the spot.
+    -- Off it, they are built back a slice at a time, which has the next visit
+    -- opening on rows that were ready before anybody asked for them.
+    afterCollectionChanged = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
+        if page:IsShown() then
+            refreshAndWarm()
+        else
+            prebuildRows()
+        end
     end)
 
     filterButton:SetIsDefaultCallback(function()
@@ -660,7 +935,6 @@ function TransmogExtraSets:CreatePage(wardrobe)
     end)
 
     page:SetScript("OnShow", function(self)
-        self:RegisterEvent("TRANSMOG_COLLECTION_UPDATED")
         self:RegisterEvent("VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS")
         self:RegisterEvent("UI_SCALE_CHANGED")
         self:RegisterEvent("DISPLAY_SIZE_CHANGED")
@@ -669,13 +943,15 @@ function TransmogExtraSets:CreatePage(wardrobe)
             self:RegisterUnitEvent("UNIT_FORM_CHANGED", "player")
             self.inAlternateForm = inAlternateForm
         end
-        -- The collection can change while the page is off screen and its
-        -- events are unregistered, so coming back always reads it fresh.
-        rebuildNow()
+        -- The collection is watched all session, so the rows this tab was left
+        -- with are still the right ones and are opened on. A row still waiting
+        -- on the client is the exception: what it counted is provisional until
+        -- the client has named the piece, so those are counted again.
+        if rowsWaiting() then TransmogExtraSets.InvalidateEntries() end
+        refreshAndWarm()
     end)
 
     page:SetScript("OnHide", function(self)
-        self:UnregisterEvent("TRANSMOG_COLLECTION_UPDATED")
         self:UnregisterEvent("VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS")
         self:UnregisterEvent("UI_SCALE_CHANGED")
         self:UnregisterEvent("DISPLAY_SIZE_CHANGED")
@@ -684,9 +960,7 @@ function TransmogExtraSets:CreatePage(wardrobe)
 
     page:SetScript("OnEvent", function(self, event)
         LuckysWardrobe.Perf:Count("event " .. event)
-        if event == "TRANSMOG_COLLECTION_UPDATED" then
-            queueRebuild()
-        elseif event == "VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS" then
+        if event == "VIEWED_TRANSMOG_OUTFIT_SLOT_SAVE_SUCCESS" then
             -- Saving marks the applied card with the native flash. Already set
             -- means a multi-slot save is mid-burst, and is left alone.
             if not outfitSlotSaved then
@@ -701,13 +975,13 @@ function TransmogExtraSets:CreatePage(wardrobe)
                 local _hasAlternateForm, inAlternateForm = C_PlayerInfo.GetAlternateFormInfo()
                 if self.inAlternateForm ~= inAlternateForm then
                     self.inAlternateForm = inAlternateForm
-                    refresh()
+                    repaint()
                 end
             end
         end
     end)
 
-    page.Refresh = rebuildNow
+    page.Refresh = refreshAndWarm
     LuckysWardrobe.DevLog("Transmog Extra Sets page built.")
     return page
 end
@@ -762,10 +1036,11 @@ function TransmogExtraSets:Attach(transmogFrame)
     wardrobe.TabHeaders:MarkDirty()
 
     -- The catalogue may still be building when the page first shows; repaint
-    -- the moment it lands.
+    -- the moment it lands, and take that as the cue to build the rows too.
     LuckysWardrobe.ExtraSetsCatalog:OnReady(function()
         TransmogExtraSets.InvalidateEntries()
         if page:IsShown() then page.Refresh() end
+        prebuildRows()
     end)
 
     LuckysWardrobe.DevLog("Transmog Extra Sets: tab " .. tostring(extraTabID) .. " added beside Sets.")
@@ -774,6 +1049,12 @@ end
 function TransmogExtraSets:Init()
     filters.collected = true
     filters.uncollected = true
+    watchCollection()
+    -- The catalogue is built at the first entry into the world, so the sets are
+    -- there to ask the client about hours before anyone stands at a
+    -- transmogrifier. Asking then is what has the tab open on the sets this
+    -- character can wear rather than settle onto them while the player watches.
+    LuckysWardrobe.ExtraSetsCatalog:OnReady(warmItemData)
     -- Blizzard_Transmog loads on demand at the first transmogrifier visit, and
     -- the catalogue takes about a second to build, so starting it here has the
     -- sets ready by the time a player can reach the tab.
