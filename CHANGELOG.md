@@ -2,6 +2,10 @@
 
 ## 1.5.1
 
+### Added
+
+- The Sets tab at the transmog NPC can now be narrowed to the expansions you are working through, from its own Filter button.
+
 ### Improved
 
 - Improved the loading logic of the Extra Sets tab at the transmogrifier.
