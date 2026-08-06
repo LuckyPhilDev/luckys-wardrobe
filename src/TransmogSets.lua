@@ -1,4 +1,4 @@
--- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum EventUtil Menu TransmogFrame UnitClass
+-- luacheck: globals C_Item C_TransmogCollection C_TransmogSets CHECK_ALL Enum EventUtil Menu MenuResponse TransmogFrame UNCHECK_ALL UnitClass
 
 -- Lucky's Wardrobe: Blizzard's own Sets tab at the transmogrifier, narrowed to
 -- the sets this character could actually dress in. The tab lists a set the
@@ -6,12 +6,29 @@
 -- is offered warrior plate and priest cloth it can take nothing but the cloak
 -- from: pages of cards for the sake of one item each. The Collections journal is
 -- left alone, because browsing a set is not wearing it.
+--
+-- The tab's Filter button also gains the Expansion submenu the other two set
+-- lists carry, so a wall of cards can be cut down to the expansion you are
+-- actually working through.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.TransmogSets = {}
 
 local TransmogSets = LuckysWardrobe.TransmogSets
+local Utils = LuckysWardrobe.Utils
 
 local db
+
+-- Which expansions the tab is showing, keyed by Blizzard's expansionID. Held
+-- for the session rather than saved, as the other two set lists hold theirs: a
+-- filter that outlives a login is one you have forgotten setting when half your
+-- sets are missing a week later.
+local expansions = {}
+
+local function setAllExpansions(shown)
+    Utils.SetAllExpansions(expansions, shown)
+end
+
+setAllExpansions(true)
 
 -- The slots anybody can wear whatever their class. A cloak is cloth however
 -- plated the set it hangs off, so a set judged on its cloak would be kept for
@@ -54,6 +71,16 @@ function TransmogSets.WearableSets(sets, canWearSet)
         if canWearSet(set.setID) then wearable[#wearable + 1] = set end
     end
     return wearable
+end
+
+-- The sets from the expansions still ticked. shownExpansions is keyed by
+-- Blizzard's expansionID, which the client hands out with every set.
+function TransmogSets.SetsFromExpansions(sets, shownExpansions)
+    local kept = {}
+    for _, set in ipairs(sets) do
+        if shownExpansions[set.expansionID] then kept[#kept + 1] = set end
+    end
+    return kept
 end
 
 -- Live glue from here down.
@@ -119,6 +146,31 @@ function TransmogSets:Toggle()
     self:Refresh()
 end
 
+-- The Expansion submenu the Sets tab in the Collections journal and the Extra
+-- Sets tab both carry, so narrowing to the expansion you are working through
+-- reads the same wherever sets are listed.
+local function addExpansionFilter(rootDescription)
+    local menu = rootDescription:CreateButton(LuckysWardrobe.Strings.filterMenu.expansion)
+    menu:CreateButton(CHECK_ALL, function()
+        setAllExpansions(true)
+        TransmogSets:Refresh()
+        return MenuResponse.Refresh
+    end)
+    menu:CreateButton(UNCHECK_ALL, function()
+        setAllExpansions(false)
+        TransmogSets:Refresh()
+        return MenuResponse.Refresh
+    end)
+    menu:CreateDivider()
+    for index, name in ipairs(Utils.EXPANSION_NAMES) do
+        local expansionID = index - 1
+        menu:CreateCheckbox(name, function() return expansions[expansionID] end, function()
+            expansions[expansionID] = not expansions[expansionID]
+            TransmogSets:Refresh()
+        end)
+    end
+end
+
 -- The tab's own Filter button, where somebody narrowing the list is already
 -- looking. Blizzard tags the menu for exactly this, so the entry is appended to
 -- the menu they built rather than to one of ours built over the top: their
@@ -132,22 +184,28 @@ local function addFilterEntry(_owner, rootDescription)
     -- The set names belong under the same divider rather than behind one of
     -- their own, so everything this addon adds to the menu reads as one group.
     LuckysWardrobe.TransmogSetNames:AddFilterOption(rootDescription)
+    -- Below the switches rather than in among them, which is where the other two
+    -- set lists keep their submenus.
+    addExpansionFilter(rootDescription)
 end
 
 -- The button marks itself as holding a filter, and offers to put it back. Left
 -- alone it would answer for Blizzard's own boxes and quietly ignore ours, so a
--- list narrowed by this setting would look untouched and the reset would leave
--- it narrowed.
+-- list narrowed by ours would look untouched and the reset would leave it
+-- narrowed.
 local function claimFilterDefaults()
     local frame = setsFrame()
     local button = frame and frame.FilterButton
     if not button then return end
 
     button:SetIsDefaultCallback(function()
-        return db.hideUnwearableSets and C_TransmogSets.IsUsingDefaultSetsFilters()
+        return db.hideUnwearableSets
+            and not Utils.AnyExpansionHidden(expansions)
+            and C_TransmogSets.IsUsingDefaultSetsFilters()
     end)
     button:SetDefaultCallback(function()
         db.hideUnwearableSets = true
+        setAllExpansions(true)
         C_TransmogSets.SetDefaultSetsFilters()
         TransmogSets:Refresh()
     end)
@@ -166,7 +224,7 @@ function TransmogSets:Init(database)
     if TransmogSets.getAvailableSets or type(C_TransmogSets.GetAvailableSets) ~= "function" then return end
     TransmogSets.getAvailableSets = C_TransmogSets.GetAvailableSets
     C_TransmogSets.GetAvailableSets = function(...)
-        local sets = TransmogSets.getAvailableSets(...)
+        local sets = TransmogSets.SetsFromExpansions(TransmogSets.getAvailableSets(...), expansions)
         if not db.hideUnwearableSets then return sets end
 
         local wornArmour = wornArmourType()

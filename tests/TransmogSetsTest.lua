@@ -1,10 +1,16 @@
--- luacheck: globals C_Item C_TransmogCollection C_TransmogSets Enum EventUtil LuckysWardrobe Menu TransmogFrame UnitClass
+-- luacheck: globals C_Item C_TransmogCollection C_TransmogSets CHECK_ALL Enum EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe Menu MenuResponse TransmogFrame UNCHECK_ALL UnitClass
+-- luacheck: ignore 121
 
 -- Covers narrowing Blizzard's Sets tab at the transmogrifier to the sets this
--- character could dress in, and the setting that turns the narrowing off, in
--- the tab's own filter menu as well as the settings panel.
+-- character could dress in and to the expansions still ticked, and the switches
+-- that drive both, in the tab's own filter menu as well as the settings panel.
 
 LuckysWardrobe = {}
+
+CHECK_ALL = "Check All"
+UNCHECK_ALL = "Uncheck All"
+MenuResponse = { Refresh = 1 }
+for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
 local CLOTH, LEATHER, MAIL, PLATE = 1, 2, 3, 4
 local COSMETIC = 5
@@ -44,6 +50,7 @@ EventUtil = {
 }
 
 dofile("src/Strings.lua")
+dofile("src/Utils.lua")
 dofile("src/TransmogSets.lua")
 
 local TransmogSets = LuckysWardrobe.TransmogSets
@@ -124,7 +131,12 @@ C_TransmogSets = {
         return appearances
     end,
     GetAvailableSets = function()
-        return { { setID = 1 }, { setID = 2 }, { setID = 3 }, { setID = 4 } }
+        return {
+            { setID = 1, expansionID = 0 },
+            { setID = 2, expansionID = 1 },
+            { setID = 3, expansionID = 1 },
+            { setID = 4, expansionID = 1 },
+        }
     end,
 }
 
@@ -204,19 +216,36 @@ setsFrame.shown = true
 pendingAddOns["Blizzard_Transmog"]()
 
 local menuEntries = {}
+local submenus = {}
 local rootDescription = {
     CreateDivider = function() menuEntries[#menuEntries + 1] = { divider = true } end,
     CreateCheckbox = function(_, label, isSelected, setSelected)
         menuEntries[#menuEntries + 1] =
             { label = label, isSelected = isSelected, setSelected = setSelected }
     end,
+    CreateButton = function(_, label)
+        local submenu = { buttons = {}, checkboxes = {}, boxOrder = {} }
+        submenu.CreateDivider = function() end
+        submenu.CreateButton = function(_, buttonLabel, click)
+            submenu.buttons[buttonLabel] = click
+        end
+        submenu.CreateCheckbox = function(_, boxLabel, isChecked, toggle)
+            submenu.checkboxes[boxLabel] = { isChecked = isChecked, toggle = toggle }
+            submenu.boxOrder[#submenu.boxOrder + 1] = boxLabel
+        end
+        menuEntries[#menuEntries + 1] = { label = label, submenu = submenu }
+        submenus[label] = submenu
+        return submenu
+    end,
 }
 menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, rootDescription)
 
-assert(#menuEntries == 3 and menuEntries[1].divider,
+assert(#menuEntries == 4 and menuEntries[1].divider,
     "appended this addon's boxes, kept apart from the boxes Blizzard put there")
 assert(menuEntries[3].label == "Show Set Names",
     "brought the set names switch along under the same divider rather than behind one of its own")
+assert(menuEntries[4].label == LuckysWardrobe.Strings.filterMenu.expansion,
+    "put the expansion submenu last, below the switches")
 
 local checkbox = menuEntries[2]
 assert(checkbox.label == LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
@@ -248,6 +277,43 @@ refreshes = 0
 filterButton.restoreDefaults()
 assert(db.hideUnwearableSets == true and blizzardFiltersRestored and refreshes == 1,
     "the reset put our filter back alongside Blizzard's own and redrew the tab")
+
+-- Narrowing the tab to the expansions you are working through, the same submenu
+-- the Collections journal's Sets tab and the Extra Sets tab both carry.
+
+local expansions = submenus[LuckysWardrobe.Strings.filterMenu.expansion]
+assert(#expansions.boxOrder == 12, "listed a box for every expansion the game names")
+
+refreshes = 0
+expansions.checkboxes["Expansion 0"].toggle()
+assert(refreshes == 1, "unticking an expansion redrew the tab")
+assert(not expansions.checkboxes["Expansion 0"].isChecked(),
+    "the box reads the filter as it stands rather than a copy of it")
+
+local shown = C_TransmogSets.GetAvailableSets()
+assert(#shown == 1 and shown[1].setID == 3, "left out the sets from the expansion unticked")
+assert(not filterButton.isDefault(), "an expansion unticked marks the button too")
+
+-- The two filters are independent: browsing the lot again still leaves out the
+-- expansions you unticked.
+db.hideUnwearableSets = false
+assert(#C_TransmogSets.GetAvailableSets() == 3,
+    "the expansion filter narrows the list whether or not the armour one does")
+db.hideUnwearableSets = true
+
+refreshes = 0
+expansions.buttons[UNCHECK_ALL]()
+assert(#C_TransmogSets.GetAvailableSets() == 0 and refreshes == 1,
+    "unticking every expansion emptied the tab")
+
+expansions.buttons[CHECK_ALL]()
+assert(#C_TransmogSets.GetAvailableSets() == 2 and filterButton.isDefault(),
+    "ticking them all back handed the whole list over again")
+
+expansions.checkboxes["Expansion 1"].toggle()
+filterButton.restoreDefaults()
+assert(filterButton.isDefault() and #C_TransmogSets.GetAvailableSets() == 2,
+    "the reset put the expansions back alongside everything else")
 
 setsFrame.shown = false
 
