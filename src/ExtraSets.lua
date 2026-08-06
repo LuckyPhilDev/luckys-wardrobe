@@ -1818,7 +1818,7 @@ function ExtraSets:CreatePage(wardrobe)
         button.IconFrame.Cover:SetShown(not complete)
         button.IconFrame.Favorite:Hide()
         button.New:Hide()
-        LuckysWardrobe.TrackedAppearances:MarkSet(button.IconFrame, ExtraSets.MissingSources(entry))
+        LuckysWardrobe.TrackedAppearances:MarkSet(button, ExtraSets.MissingSources(entry), button.Label)
         button.SelectedTexture:SetShown(selectedEntry and entry.key == selectedEntry.key)
 
         local showProgress = not entry.loading and entry.collected > 0 and not complete

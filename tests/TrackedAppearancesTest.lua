@@ -59,7 +59,7 @@ local function Texture()
     function texture:SetTexture(path) self.path = path end
     function texture:SetSize(width, height) self.width, self.height = width, height end
     function texture:SetVertexColor(...) self.colour = { ... } end
-    function texture:SetPoint(point, x, y) self.point = { point, x, y } end
+    function texture:SetPoint(...) self.point = { ... } end
     function texture:SetShown(shown) self.shown = shown end
     return texture
 end
@@ -93,7 +93,9 @@ local setsCollection = {
 
 -- The list's own rows, one per set. ForEachFrame stands in for the ScrollBox
 -- walking whatever is currently visible.
-local setRow = { setID = 10, IconFrame = ItemFrame() }
+local setRow = ItemFrame()
+setRow.setID = 10
+setRow.Label = {}
 local listScrollBox = {
     Update = function() end,
     ForEachFrame = function(_, callback) callback(setRow) end,
@@ -161,11 +163,16 @@ assert(not marked(setPieces[2]), "cleared the mark when tracking stopped")
 missingBySet[10] = { 201, 202 }
 tracked[201] = true
 listScrollBox:Update()
-assert(not marked(setRow.IconFrame), "left a set's row alone until every last piece is tracked")
+assert(not marked(setRow), "left a set's row alone until every last piece is tracked")
 
 tracked[202] = true
 listScrollBox:Update()
-assert(marked(setRow.IconFrame), "marked a set's row once every missing piece was tracked")
+assert(marked(setRow), "marked a set's row once every missing piece was tracked")
+
+-- A set has no icon of its own, so its mark rides beside its name instead of
+-- in a corner.
+assert(crosshair(setRow).point[1] == "BOTTOMLEFT" and crosshair(setRow).point[2] == setRow.Label,
+    "sat the mark at the bottom right of the name cell")
 
 -- The Extra Sets tab hands its own pieces over as it draws them, and a piece
 -- this client cannot resolve hands over nothing.
@@ -182,12 +189,12 @@ tracked[101] = true
 setsCollection:DisplaySet(1)
 db.markTrackedAppearances = false
 TrackedAppearances:Refresh()
-assert(not marked(setPieces[1]) and not marked(extraPiece) and not marked(setRow.IconFrame),
+assert(not marked(setPieces[1]) and not marked(extraPiece) and not marked(setRow),
     "cleared every mark when the setting was turned off")
 
 db.markTrackedAppearances = true
 TrackedAppearances:Refresh()
-assert(marked(setPieces[1]) and marked(extraPiece) and marked(setRow.IconFrame),
+assert(marked(setPieces[1]) and marked(extraPiece) and marked(setRow),
     "marked them again when the setting came back on")
 
 -- The tooltip line goes quiet with the setting, so the two never disagree.
