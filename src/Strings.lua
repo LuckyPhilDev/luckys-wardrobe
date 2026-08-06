@@ -118,8 +118,8 @@ LuckysWardrobe.Strings = {
             desc = "Puts a crosshair on the corner of the pieces you are tracking when you open a set, in the Sets tab and the Extra Sets tab, so a set says which of its pieces you are out hunting for. Hover a marked piece and its tooltip says so too.",
         },
         wowheadLink = {
-            label = "Wowhead Address on Ctrl-Click",
-            desc = "Ctrl-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy. This takes ctrl-click off the dressing room preview.",
+            label = "Wowhead Address on Alt-Click",
+            desc = "Alt-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy.",
         },
         tooltipSetProgress = {
             label = "Show Set Information",

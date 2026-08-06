@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogCollection CLOSE EventUtil GetLocale IsControlKeyDown LuckysWardrobe StaticPopupDialogs StaticPopup_Show WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
+-- luacheck: globals C_TransmogCollection CLOSE EventUtil GetLocale IsAltKeyDown LuckysWardrobe StaticPopupDialogs StaticPopup_Show WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
 
 -- The address that lands in the popup is the whole feature, so these go through
 -- the popup rather than at the string building underneath it.
@@ -6,12 +6,12 @@
 CLOSE = "Close"
 
 local locale = "enUS"
-local controlDown = true
+local altDown = true
 local sources = {}
 local popupsShown = 0
 
 function GetLocale() return locale end
-function IsControlKeyDown() return controlDown end
+function IsAltKeyDown() return altDown end
 function StaticPopup_Show() popupsShown = popupsShown + 1 end
 
 StaticPopupDialogs = {}
@@ -66,7 +66,7 @@ dofile("src/WowheadLink.lua")
 local WowheadLink = LuckysWardrobe.WowheadLink
 local popup = StaticPopupDialogs["LUCKYS_WARDROBE_WOWHEAD_LINK"]
 
-local db = { wowheadLinkOnCtrlClick = true }
+local db = { wowheadLinkOnAltClick = true }
 WowheadLink:Init(db)
 
 local function FakeEditBox()
@@ -84,16 +84,16 @@ local function ShownURL()
     return editBox:GetText()
 end
 
-assert(WowheadLink:HandlesClick("LeftButton"), "claimed ctrl-left-click")
-assert(not WowheadLink:HandlesClick("RightButton"), "left ctrl-right-click alone")
+assert(WowheadLink:HandlesClick("LeftButton"), "claimed alt-left-click")
+assert(not WowheadLink:HandlesClick("RightButton"), "left alt-right-click alone")
 
-controlDown = false
+altDown = false
 assert(not WowheadLink:HandlesClick("LeftButton"), "left an unmodified click alone")
-controlDown = true
+altDown = true
 
-db.wowheadLinkOnCtrlClick = false
+db.wowheadLinkOnAltClick = false
 assert(not WowheadLink:HandlesClick("LeftButton"), "respected the disabled setting")
-db.wowheadLinkOnCtrlClick = true
+db.wowheadLinkOnAltClick = true
 
 assert(WowheadLink:ShowForSource(HELM_SOURCE), "found an address for a source with an item")
 assert(ShownURL() == "https://www.wowhead.com/item=5678", "showed the item's address")
@@ -127,19 +127,19 @@ assert(editBox:GetText() == "https://www.wowhead.com/item=5678", "held the addre
 local detailsItem = setmetatable({ sourceID = HELM_SOURCE }, { __index = WardrobeSetsDetailsItemMixin })
 before = popupsShown
 detailsItem:OnMouseDown("LeftButton")
-assert(popupsShown == before + 1, "answered a ctrl-click on a set piece")
-assert(stockDetailsClicks == 0, "took the ctrl-click off the dressing room")
+assert(popupsShown == before + 1, "answered an alt-click on a set piece")
+assert(stockDetailsClicks == 0, "left the stock handler out of an alt-click")
 
-controlDown = false
+altDown = false
 detailsItem:OnMouseDown("LeftButton")
 assert(stockDetailsClicks == 1, "left ordinary clicks on a set piece alone")
-controlDown = true
+altDown = true
 
 -- An appearance in Blizzard's Items tab.
 before = popupsShown
 helmModel.scripts.OnMouseDown(helmModel, "LeftButton")
-assert(popupsShown == before + 1, "answered a ctrl-click on an appearance")
-assert(stockModelClicks == 0, "took the ctrl-click off the dressing room")
+assert(popupsShown == before + 1, "answered an alt-click on an appearance")
+assert(stockModelClicks == 0, "left the stock handler out of an alt-click")
 
 -- Hide Helm and its siblings are not items, and illusions come back sourceless,
 -- so those clicks are handed back rather than swallowed.

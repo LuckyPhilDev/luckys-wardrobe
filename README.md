@@ -42,7 +42,7 @@ It adds to the collection journal instead of replacing it, so it stays light and
 ### Everywhere Else
 
 - **Item tooltips**: Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along that set is, as in "From set: Glyphed Garb 7/8". Sets that only appear on the Extra Sets tab are named too, so a world drop nobody would guess was part of anything still says what it belongs to.
-- **Wowhead addresses**: Ctrl-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
+- **Wowhead addresses**: Alt-click any item in your appearance collection, in the Appearances tab, in a set's details, or in the Extra Sets tab, to bring up its Wowhead address in a box ready to copy.
 - **Minimap button**: Shift-click for the sets you can finish where you are standing, or right-click for settings. Drag it to reposition it.
 - **A welcome note**: A hello at your first login, with the Discord address for anything the addon is still missing. `/wardrobe welcome` brings it back any time.
 
@@ -105,7 +105,7 @@ These report what the addon can see, for working out why something looks wrong.
 Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
 - **General**: Turn on dev mode for troubleshooting, and see version info.
-- **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn ctrl-click Wowhead addresses on or off.
+- **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn alt-click Wowhead addresses on or off.
 - **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it.
 - **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, choose whether set cards carry their names, and choose how much situation detail appears on saved outfits.
 - **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both. A button puts the list back in the corner if you drag it somewhere you cannot reach.
@@ -114,7 +114,6 @@ Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
 ## Known Issues & Notes
 
-- Wowhead addresses take ctrl-click off the dressing room preview. Turn them off in **Appearances** if you would rather keep the preview.
 - The Extra Sets catalogue is read from your client the first time you open Appearances. On a cold client it takes a moment, and the tab says so while it works.
 - The Extra Sets tab in the transmogrify window takes a second or two to settle. Its set cards dress themselves as they load, so the page looks half drawn while it works, and a card can show the wrong pieces until it lands. It corrects itself, so no reload is needed.
 - Some pieces are not on every client build. A set that holds one says how many it cannot show, and those pieces cannot be previewed or applied.
