@@ -63,9 +63,9 @@ function LuckysWardrobe.Settings:Init(db)
     appearances:Toggle({
         label = S.settings.wowheadLink.label,
         desc = S.settings.wowheadLink.desc,
-        checked = db.wowheadLinkOnCtrlClick,
+        checked = db.wowheadLinkOnAltClick,
         onToggle = function(checked)
-            db.wowheadLinkOnCtrlClick = checked
+            db.wowheadLinkOnAltClick = checked
         end,
     })
 

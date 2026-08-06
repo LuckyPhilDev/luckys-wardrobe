@@ -1,6 +1,6 @@
--- luacheck: globals C_TransmogCollection CLOSE EventUtil GetLocale IsControlKeyDown StaticPopupDialogs StaticPopup_Show WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
+-- luacheck: globals C_TransmogCollection CLOSE EventUtil GetLocale IsAltKeyDown StaticPopupDialogs StaticPopup_Show WardrobeCollectionFrame WardrobeSetsDetailsItemMixin
 
--- Lucky's Wardrobe: Ctrl-clicking an item in Collections hands back its Wowhead
+-- Lucky's Wardrobe: Alt-clicking an item in Collections hands back its Wowhead
 -- address. The game has no clipboard API, so the address arrives in a popup with
 -- its text already selected, ready for Ctrl+C.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -59,12 +59,12 @@ StaticPopupDialogs[POPUP] = {
     end,
 }
 
--- Stock ctrl-click opens the dressing room, so a click this answers has to be
--- taken off the handler underneath rather than added alongside it. Every place
--- that claims a click asks here, which is also where turning the setting off
--- hands ctrl-click back to the dressing room.
+-- Stock ctrl-click opens the dressing room and stock shift-click posts the item
+-- to chat, so alt-click is the one modifier left that costs a player nothing.
+-- Every place that claims a click asks here, which is also where turning the
+-- setting off hands alt-click back.
 function WowheadLink:HandlesClick(button)
-    return button == "LeftButton" and IsControlKeyDown() and db.wowheadLinkOnCtrlClick
+    return button == "LeftButton" and IsAltKeyDown() and db.wowheadLinkOnAltClick
 end
 
 local function showURL(path)
@@ -113,8 +113,8 @@ local function showLinkForDetailsItem(itemFrame)
 end
 
 -- A click with no address behind it, an illusion or a hidden visual, falls
--- through to the dressing room rather than being swallowed.
-local function claimCtrlClick(frame, showLink)
+-- through to the handler underneath rather than being swallowed.
+local function claimClick(frame, showLink)
     local stockMouseDown = frame:GetScript("OnMouseDown")
     frame:SetScript("OnMouseDown", function(self, button, ...)
         if WowheadLink:HandlesClick(button) and showLink(self) then
@@ -143,7 +143,7 @@ function WowheadLink:Init(database)
         end
 
         for _, model in ipairs(WardrobeCollectionFrame.ItemsCollectionFrame.Models) do
-            claimCtrlClick(model, showLinkForModel)
+            claimClick(model, showLinkForModel)
         end
     end)
 end

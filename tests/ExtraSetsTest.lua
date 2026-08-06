@@ -1318,10 +1318,10 @@ LuckysWardrobe.TrackedAppearances = {
     end,
 }
 
-local ctrlDown = false
+local altDown = false
 local linkedSource
 LuckysWardrobe.WowheadLink = {
-    HandlesClick = function(_, buttonName) return ctrlDown and buttonName == "LeftButton" end,
+    HandlesClick = function(_, buttonName) return altDown and buttonName == "LeftButton" end,
     ShowForSource = function(_, sourceID)
         linkedSource = sourceID
         return true
@@ -1774,13 +1774,13 @@ shiftDown = false
 collectedPiece.scripts.OnEnter(collectedPiece)
 assert(not wardrobe.tooltipCycle, "one item behind a look means nothing to cycle through")
 
--- Ctrl-click hands back a piece's Wowhead address, and shift-click still tracks.
+-- Alt-click hands back a piece's Wowhead address, and shift-click still tracks.
 toggledPiece = nil
-ctrlDown = true
+altDown = true
 missingPiece.scripts.OnClick(missingPiece, "LeftButton")
-assert(linkedSource == missingPiece.piece.sourceID, "ctrl-click asked for the piece's address")
-assert(toggledPiece == nil, "ctrl-click did not also track the piece")
-ctrlDown = false
+assert(linkedSource == missingPiece.piece.sourceID, "alt-click asked for the piece's address")
+assert(toggledPiece == nil, "alt-click did not also track the piece")
+altDown = false
 
 -- The click is a toggle, and which way it goes is decided where tracking lives,
 -- so the page only says which piece was clicked.
