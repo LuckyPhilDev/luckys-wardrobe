@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+### Fixed
+
+- Shift-clicking a tracked set again now stops tracking all of it, instead of doing nothing. (Thanks for the report Tuulani)
+
 ## 1.5.1
 
 ### Added

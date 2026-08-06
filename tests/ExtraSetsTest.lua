@@ -1323,7 +1323,7 @@ local shiftClickTracks = true
 -- mark shows on it and the shift-click offered over it is the one that stops.
 local huntedSource
 LuckysWardrobe.SetTracking = {
-    TrackSources = function(_, sourceIDs, setName)
+    ToggleSources = function(_, sourceIDs, setName)
         trackedSources, trackedName = sourceIDs, setName
     end,
     TogglePiece = function(_, sourceID, setName)

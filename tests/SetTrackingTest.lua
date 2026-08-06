@@ -6,7 +6,7 @@ LuckysWardrobe = {
         tracking = {
             hint = "Shift-click to track this appearance.",
             stopHint = "Shift-click to stop tracking it.",
-            stopped = "Stopped tracking one from %s.",
+            stopped = "Stopped tracking %d from %s.",
             tracked = "Tracking %d from %s.",
             failed = "%d failed.",
             nothing = "Nothing from %s.",
@@ -150,6 +150,15 @@ assert(#tracked == 1 and tracked[1] == 201, "tracked a collectible source for ea
 assert(#errors == 0, "did not report an error for a tracked set")
 assert(stockClicks == 2, "consumed Shift-left-click")
 
+-- Shift-clicking the set again calls all of it off, the way a single piece
+-- already toggles, as long as every last piece it tracked is still tracked.
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 103 or sourceID == 201 end
+setRow:OnClick("LeftButton")
+assert(#stopped == 2 and stopped[1].id == 201 and stopped[2].id == 103,
+    "called off the whole set it had just tracked")
+assert(#tracked == 1, "tracked nothing new on the untracking click")
+C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 103 end
+
 -- Source 101 is not itself tracked, but 201 teaches the same look and is, which
 -- is what the crosshair on a set's pieces asks about.
 assert(LuckysWardrobe.SetTracking:IsTracking(103), "saw a source tracked outright")
@@ -194,12 +203,12 @@ assert(tooltip.lines[2] == LuckysWardrobe.Strings.tracking.stopHint, "offered th
 local trackedSoFar = #tracked
 piece:OnMouseDown("LeftButton")
 assert(#tracked == trackedSoFar, "did not track a piece that is already tracked")
-assert(#stopped == 1 and stopped[1].id == 201, "stopped tracking it instead")
-assert(stopped[1].stopType == Enum.ContentTrackingStopType.Manual, "and stopped it as a deliberate choice")
+assert(#stopped == 3 and stopped[3].id == 201, "stopped tracking it instead")
+assert(stopped[3].stopType == Enum.ContentTrackingStopType.Manual, "and stopped it as a deliberate choice")
 
 local sharedLookPiece = setmetatable({ sourceID = 101, collected = false }, { __index = WardrobeSetsDetailsItemMixin })
 sharedLookPiece:OnMouseDown("LeftButton")
-assert(#stopped == 2 and stopped[2].id == 201,
+assert(#stopped == 4 and stopped[4].id == 201,
     "called off the item that taught the look, not the one clicked")
 
 C_ContentTracking.IsTracking = function(_, sourceID) return sourceID == 103 end

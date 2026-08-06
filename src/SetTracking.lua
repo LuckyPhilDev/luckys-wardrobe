@@ -97,7 +97,7 @@ function SetTracking:TrackSet(setID)
         end
     end
 
-    reportTracking((setInfo and setInfo.name) or tostring(setID), trackAll(missingSources))
+    self:ToggleSources(missingSources, (setInfo and setInfo.name) or tostring(setID))
 end
 
 -- Tracks exact appearance sources by ID, used by the Extra Sets page where the
@@ -108,7 +108,7 @@ end
 
 -- Whichever item taught the look is the one being tracked, and it is not always
 -- the one clicked, so every item that teaches it is called off.
-local function untrackAppearance(sourceID, setName)
+local function stopTracking(sourceID)
     local stopped = 0
     for _, candidateID in ipairs(getCandidates(sourceID)) do
         if C_ContentTracking.IsTracking(APPEARANCE, candidateID) then
@@ -116,10 +116,12 @@ local function untrackAppearance(sourceID, setName)
             stopped = stopped + 1
         end
     end
+    return stopped
+end
 
+local function reportStopped(setName, stopped)
     if stopped == 0 then return end
-
-    LuckysWardrobe.Utils.Say(LuckysWardrobe.Strings.tracking.stopped:format(setName or "?"))
+    LuckysWardrobe.Utils.Say(LuckysWardrobe.Strings.tracking.stopped:format(stopped, setName or "?"))
     PlaySound(SOUNDKIT.CONTENT_TRACKING_STOP_TRACKING)
 end
 
@@ -127,9 +129,33 @@ end
 -- next calls it off, the way the game's own appearance list works.
 function SetTracking:TogglePiece(sourceID, setName)
     if self:IsTracking(sourceID) then
-        untrackAppearance(sourceID, setName)
+        reportStopped(setName, stopTracking(sourceID))
     else
         self:TrackSources({ sourceID }, setName)
+    end
+end
+
+-- A whole set toggles the same way: every last piece it started hunting has to
+-- still be tracked for the next shift-click to mean "call it off" rather than
+-- "go after whatever's left", so calling off one piece by hand leaves the rest
+-- alone instead of being swept up in a set-wide untrack it never asked for.
+local function isTrackingAll(sourceIDs)
+    if #sourceIDs == 0 then return false end
+    for _, sourceID in ipairs(sourceIDs) do
+        if not SetTracking:IsTracking(sourceID) then return false end
+    end
+    return true
+end
+
+function SetTracking:ToggleSources(sourceIDs, setName)
+    if isTrackingAll(sourceIDs) then
+        local stopped = 0
+        for _, sourceID in ipairs(sourceIDs) do
+            stopped = stopped + stopTracking(sourceID)
+        end
+        reportStopped(setName, stopped)
+    else
+        self:TrackSources(sourceIDs, setName)
     end
 end
 

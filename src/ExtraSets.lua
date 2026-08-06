@@ -2235,7 +2235,8 @@ end
 
 -- Shift-clicking a set tracks everything left in it, across every colourway it
 -- stands for: the row says how much of the whole set is missing, so tracking it
--- is expected to go after all of it.
+-- is expected to go after all of it. Shift-clicking it again calls all of that
+-- off, the way a single piece already toggles.
 function ExtraSets:TrackMissing(entry)
     local missing = {}
     for _, variant in ipairs(entry.variants or { entry }) do
@@ -2243,7 +2244,7 @@ function ExtraSets:TrackMissing(entry)
             if piece.state == "missing" then missing[#missing + 1] = piece.sourceID end
         end
     end
-    LuckysWardrobe.SetTracking:TrackSources(missing, entry.name)
+    LuckysWardrobe.SetTracking:ToggleSources(missing, entry.name)
 end
 
 -- Blizzard hangs the class dropdown above the Sets page rather than inside it,
