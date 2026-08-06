@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1
+
+### Improved
+
+- Improved the loading logic of the Extra Sets tab at the transmogrifier.
+
 ## 1.5.0
 
 Lucky's Wardrobe takes over from Lucky's Better Wardrobe. It is a ground-up rebuild that adds to Blizzard's collection journal instead of replacing it, so it is much lighter and far less likely to break when a patch lands. Your collected appearances are untouched, they live on Blizzard's side. Settings and saved data from Better Wardrobe do not carry over, and a few of its features have not been rebuilt yet.
