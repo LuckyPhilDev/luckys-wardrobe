@@ -26,32 +26,22 @@ local CARD_GRID_Y_PADDING = 19
 local SLOT_KEYS = Utils.ARMOUR_SLOTS
 
 -- Session-only state behind the filter button, mirroring the native Sets tab
--- menu: fully collected sets and everything short of that.
+-- menu: fully collected sets and everything short of that, and which expansions
+-- are on show. No source boxes, which the Collections page offers and this one
+-- has no room beside the card grid for.
 local filters = {
     collected = true,
     uncollected = true,
+    expansions = {},
 }
+
+LuckysWardrobe.ExtraSets.SetAllExpansions(filters.expansions, true)
 
 local attachedWardrobe
 local extraTabID
 
 -- Pure catalogue logic. Everything below takes plain tables plus injected
 -- resolvers so the rules stay testable outside the client.
-
--- The filter button's two checkboxes, with the Sets tab's meaning: "collected"
--- is a set with every look owned, and everything short of that, half done or
--- untouched, sits behind "not collected".
-function TransmogExtraSets.FilterByCollected(entries, showCollected, showUncollected)
-    local result = {}
-    for _, entry in ipairs(entries) do
-        if LuckysWardrobe.ExtraSets.IsComplete(entry) then
-            if showCollected then result[#result + 1] = entry end
-        elseif showUncollected then
-            result[#result + 1] = entry
-        end
-    end
-    return result
-end
 
 -- Where this tab belongs in the strip: directly after the Sets tab, as a number
 -- midway between Sets and whichever tab currently follows it. Everything else
@@ -103,10 +93,13 @@ end
 -- The cards in the order the page shows them: nearest to finished first, so
 -- everything wearable sits on the early pages and the untouched tail keeps to
 -- the back of the book.
+--
+-- The Collections page's own narrowing does the filtering, so the boxes the two
+-- share mean the same thing on both. It reads the source boxes only when a page
+-- offers them, and this one does not.
 function TransmogExtraSets.VisibleEntries(entries, filterState, query)
     local ExtraSets = LuckysWardrobe.ExtraSets
-    local narrowed = TransmogExtraSets.FilterByCollected(
-        entries, filterState.collected, filterState.uncollected)
+    local narrowed = ExtraSets.ApplyFilters(entries, filterState)
     return ExtraSets.SortEntries(ExtraSets.FilterEntries(narrowed, query), "completion", "ascending")
 end
 
@@ -905,11 +898,13 @@ function TransmogExtraSets:CreatePage(wardrobe)
 
     filterButton:SetIsDefaultCallback(function()
         return filters.collected and filters.uncollected
+            and not LuckysWardrobe.ExtraSets.AnyExpansionHidden(filters.expansions)
     end)
 
     filterButton:SetDefaultCallback(function()
         filters.collected = true
         filters.uncollected = true
+        LuckysWardrobe.ExtraSets.SetAllExpansions(filters.expansions, true)
         refresh()
     end)
 
@@ -922,6 +917,7 @@ function TransmogExtraSets:CreatePage(wardrobe)
             filters.uncollected = not filters.uncollected
             refresh()
         end)
+        LuckysWardrobe.ExtraSets.AddExpansionFilter(rootDescription, filters.expansions, refresh)
         -- Behind a divider because it decides how the cards are drawn rather
         -- than which of them are here, and the Default button leaves it alone
         -- for the same reason: it is a setting, not a filter.
@@ -1049,6 +1045,7 @@ end
 function TransmogExtraSets:Init()
     filters.collected = true
     filters.uncollected = true
+    LuckysWardrobe.ExtraSets.SetAllExpansions(filters.expansions, true)
     watchCollection()
     -- The catalogue is built at the first entry into the world, so the sets are
     -- there to ask the client about hours before anyone stands at a

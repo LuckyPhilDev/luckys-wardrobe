@@ -918,11 +918,38 @@ assert(ExtraSets.IsComplete({ loading = false, total = 2, collected = 2 }), "a f
 assert(not ExtraSets.IsComplete({ loading = true, total = 2, collected = 2 }), "loading sets are not complete yet")
 assert(not ExtraSets.IsComplete({ loading = false, total = 0, collected = 0 }), "empty sets are never complete")
 
+do
+local UNKNOWN = ExtraSets.UNKNOWN_EXPANSION
+
+-- Which box each set answers to. Only sets the client itself named carry an
+-- expansion, so the rest have a box of their own rather than riding along with
+-- whatever else is ticked.
+local shownExpansions = { true, true }
+shownExpansions[UNKNOWN] = true
+assert(ExtraSets.ExpansionBox(2, shownExpansions) == 2, "a dated set answers to its own expansion")
+assert(ExtraSets.ExpansionBox(nil, shownExpansions) == UNKNOWN, "an undated set answers to Unknown")
+assert(ExtraSets.ExpansionBox(9, shownExpansions) == UNKNOWN,
+    "and so does a set dated to an expansion this version has no box for")
+
+local everyBox = {}
+ExtraSets.SetAllExpansions(everyBox, true)
+assert(everyBox[0] and everyBox[11] and everyBox[UNKNOWN],
+    "checking them all covers Unknown alongside the expansions themselves")
+assert(not ExtraSets.AnyExpansionHidden(everyBox), "which reads as nothing hidden")
+everyBox[UNKNOWN] = false
+assert(ExtraSets.AnyExpansionHidden(everyBox), "and Unknown alone unticked still narrows the list")
+
 local completeEntry = { loading = false, total = 2, collected = 2, expansionID = 2, armorType = CLOTH }
 local partialEntry = { loading = false, total = 2, collected = 1, expansionID = 2, armorType = CLOTH }
 local unknownEntry = { loading = false, total = 3, collected = 0, armorType = LEATHER }
 local filterEntries = { completeEntry, partialEntry, unknownEntry }
-local filterState = { collected = true, uncollected = true, expansions = { true, true } }
+local function expansionsShowing(first, second, unknown)
+    local expansions = { first, second }
+    expansions[UNKNOWN] = unknown
+    return expansions
+end
+local filterState = { collected = true, uncollected = true,
+    expansions = expansionsShowing(true, true, true) }
 
 assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 3, "default filters keep everything")
 filterState.collected = false
@@ -933,13 +960,17 @@ filterState.uncollected = false
 local collectedOnly = ExtraSets.ApplyFilters(filterEntries, filterState)
 assert(#collectedOnly == 1 and collectedOnly[1] == completeEntry, "unchecking Not Collected hides incomplete sets")
 filterState.uncollected = true
-filterState.expansions = { true, false }
+filterState.expansions = expansionsShowing(true, false, true)
 local narrowedExpansions = ExtraSets.ApplyFilters(filterEntries, filterState)
 assert(#narrowedExpansions == 1 and narrowedExpansions[1] == unknownEntry,
-    "expansion narrowing hides matching sets but keeps unclassifiable ones")
-filterState.expansions = { false, false }
-assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 0, "unchecking every expansion empties the list")
-filterState.expansions = { true, true }
+    "unticking an expansion hides the sets it dates and leaves the undated ones alone")
+filterState.expansions = expansionsShowing(true, true, false)
+local dated = ExtraSets.ApplyFilters(filterEntries, filterState)
+assert(#dated == 2 and dated[1] == completeEntry,
+    "unticking Unknown hides the undated sets and leaves the dated ones alone")
+filterState.expansions = expansionsShowing(false, false, false)
+assert(#ExtraSets.ApplyFilters(filterEntries, filterState) == 0, "unchecking every box empties the list")
+end
 
 -- Source filter. The snapshot's bits are 1 crafted, 2 drop, 4 PvP, 8 quest,
 -- 16 vendor, and Wowhead sets undocumented ones above them.
@@ -960,8 +991,12 @@ local undocumentedEntry = { loading = false, total = 2, collected = 1, sourceMas
 local sourceEntries = { droppedEntry, craftedEntry, bothEntry, sourcelessEntry, undocumentedEntry }
 local allSources = { [1] = true, [2] = true, [4] = true, [8] = true, [16] = true }
 
+-- None of these carry an expansion, so Unknown is the box holding all of them
+-- while the source boxes are what the assertions below move.
 local function withSources(sources)
-    return { collected = true, uncollected = true, expansions = { true, true }, sources = sources }
+    local expansions = { true, true }
+    expansions[ExtraSets.UNKNOWN_EXPANSION] = true
+    return { collected = true, uncollected = true, expansions = expansions, sources = sources }
 end
 
 assert(#ExtraSets.ApplyFilters(sourceEntries, withSources(allSources)) == 5,
@@ -984,8 +1019,7 @@ assert(#ExtraSets.ApplyFilters(sourceEntries, withSources({})) == 0,
 
 -- A page that has never opened the menu has no source state at all, which must
 -- filter nothing rather than everything.
-assert(#ExtraSets.ApplyFilters(sourceEntries, { collected = true, uncollected = true,
-    expansions = { true, true } }) == 5, "no source state filters nothing")
+assert(#ExtraSets.ApplyFilters(sourceEntries, withSources(nil)) == 5, "no source state filters nothing")
 end
 
 -- UI harness: enough of the client to run CreatePage and Attach for real.
@@ -1962,9 +1996,16 @@ toggles[COLLECTED]()
 -- The record carries expansionID 3, so it is the box labelled "Expansion 3"
 -- that hides it. Keying the filter as a 1-based array put every set one
 -- expansion out of step with its own checkbox.
+assert(expansionToggles.Unknown, "offered an Unknown box for the sets the client will not date")
 expansionToggles["Expansion 3"]()
 assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 500,
-    "unchecking a set's expansion hides it but keeps unclassifiable sets")
+    "unchecking a set's expansion hides it and leaves the undated set to its own box")
+
+expansionToggles["Expansion 3"]()
+expansionToggles.Unknown()
+assert(#scrollBox.dataProvider == 1 and scrollBox.dataProvider[1].key == 20,
+    "and unchecking Unknown hides the undated set instead, leaving the dated one")
+
 menuActions.Expansion[UNCHECK_ALL]()
 assert(#scrollBox.dataProvider == 0, "unchecking every expansion empties the list")
 

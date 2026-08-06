@@ -220,6 +220,9 @@ LuckysWardrobe.Strings = {
         ascending = "Ascending",
         descending = "Descending",
         expansion = "Expansion",
+        -- The box for sets the client will not date. Only the Extra Sets lists
+        -- offer it: Blizzard dates every set it lists itself.
+        unknownExpansion = "Unknown",
         source = "Source",
         byName = "Name",
         byCompletion = "Completion",
