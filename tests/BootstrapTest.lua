@@ -114,6 +114,13 @@ LuckysWardrobe.ItemTooltips = {
     end,
 }
 
+local tooltipModelDB
+LuckysWardrobe.TooltipModel = {
+    Init = function(_, db)
+        tooltipModelDB = db
+    end,
+}
+
 LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }
@@ -225,6 +232,7 @@ assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved vari
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
 assert(itemTooltipsDB == LuckysWardrobeDB, "initialized item tooltips with saved variables")
+assert(tooltipModelDB == LuckysWardrobeDB, "initialized the tooltip preview model with saved variables")
 assert(catalogueStarted, "set the Extra Sets catalogue building without waiting for Collections")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")

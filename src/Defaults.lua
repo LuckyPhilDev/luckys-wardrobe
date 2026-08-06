@@ -11,6 +11,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     markTrackedAppearances = true,
     wowheadLinkOnAltClick = true,
     tooltipSetProgress = true,
+    tooltipModel = true,
     situationPresets = {},
     showSituationValues = true,
     showSituationTooltips = true,

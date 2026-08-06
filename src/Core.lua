@@ -23,6 +23,7 @@ local function initialize()
     LuckysWardrobe.TrackedAppearances:Init(LuckysWardrobeDB)
     LuckysWardrobe.WowheadLink:Init(LuckysWardrobeDB)
     LuckysWardrobe.ItemTooltips:Init(LuckysWardrobeDB)
+    LuckysWardrobe.TooltipModel:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetCompletion:Init(LuckysWardrobeDB)
     LuckysWardrobe.LootAlerts:Init(LuckysWardrobeDB)
     LuckysWardrobe.Catalyst:Init()
@@ -66,6 +67,15 @@ local function initialize()
                 LuckysWardrobe.Welcome:Reset()
             else
                 LuckysWardrobe.Welcome:Show()
+            end
+        elseif command == "preview" then
+            local slot, facing, zoom, height, side =
+                argument:match("^(%S*)%s*(%S*)%s*(%S*)%s*(%S*)%s*(%S*)$")
+            if slot == "" then
+                LuckysWardrobe.TooltipModel:PrintFraming()
+            else
+                LuckysWardrobe.TooltipModel:SetFraming(
+                    slot, tonumber(facing), tonumber(zoom), tonumber(height), tonumber(side))
             end
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()

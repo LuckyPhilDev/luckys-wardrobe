@@ -80,6 +80,15 @@ function LuckysWardrobe.Settings:Init(db)
             db.tooltipSetProgress = checked
         end,
     })
+    tooltips:Toggle({
+        label = S.settings.tooltipModel.label,
+        desc = S.settings.tooltipModel.desc,
+        checked = db.tooltipModel,
+        onToggle = function(checked)
+            db.tooltipModel = checked
+            LuckysWardrobe.TooltipModel:Refresh()
+        end,
+    })
 
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({

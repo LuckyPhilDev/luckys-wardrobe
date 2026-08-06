@@ -125,6 +125,10 @@ LuckysWardrobe.Strings = {
             label = "Show Set Information",
             desc = "Adds a line to an item's tooltip naming the set it belongs to and how much of that set you have, so a drop says what it is worth at a glance. Example: \"From set: Glyphed Garb 7/8\"",
         },
+        tooltipModel = {
+            label = "Show a Preview Model",
+            desc = "Shows the piece itself beside its tooltip, close up and with nothing else in the frame. Weapons, shields and off-hands are models in their own right and are shown on their own. Armour is not something the game has a model of, only a character wearing one, so those are shown close up on the bare figure the transmogrifier previews on, framed on the slot the piece sits in.",
+        },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
@@ -170,6 +174,18 @@ LuckysWardrobe.Strings = {
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
+    },
+    tooltipModel = {
+        nothingHovered = "Nothing has been hovered yet, so there is nothing to say about a piece.",
+        lastPiece = "Last piece hovered: item %d, slot %s, appearance %s, source %s, camera %s.",
+        cameraReads = "  The client describes that camera, so the piece is framed from where the camera puts it.",
+        cameraSilent = "  The client will not describe that camera, so it frames nothing and the piece is framed from where the model opens.",
+        cameraMissing = "  The client gave no camera for that piece, so it is framed from where the model opens.",
+        aloneModel = "  Shown as a model of its own, and the client loaded file %s for it.",
+        framingHeader = "How the tooltip preview frames each slot:",
+        framingLine = "  %s: facing %.2f, zoom %.2f, height %.2f, side %.2f",
+        framingSet = "Framing %s at facing %.2f, zoom %.2f, height %.2f, side %.2f. Hover a piece in that slot to see it.",
+        framingUsage = "Use /wardrobe preview <slot> <facing> <zoom> <height> <side> to try another. Facing is a fraction of a full turn, zoom is how far the camera sits back so under 1 is closer, height lifts the figure to bring what is below into shot, and side slides it across.",
     },
     tooltips = {
         -- The set's name and its count, each coloured in its own right, so the
