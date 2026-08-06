@@ -176,6 +176,10 @@ end
 -- the menu they built rather than to one of ours built over the top: their
 -- boxes stay theirs, and a patch that adds another brings it along.
 local function addFilterEntry(_owner, rootDescription)
+    -- The expansion submenu joins Blizzard's own boxes above the divider, since
+    -- it narrows the list exactly as they do. That leaves the divider marking
+    -- off what this addon adds rather than sitting in the middle of the filters.
+    addExpansionFilter(rootDescription)
     rootDescription:CreateDivider()
     rootDescription:CreateCheckbox(
         LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
@@ -184,9 +188,6 @@ local function addFilterEntry(_owner, rootDescription)
     -- The set names belong under the same divider rather than behind one of
     -- their own, so everything this addon adds to the menu reads as one group.
     LuckysWardrobe.TransmogSetNames:AddFilterOption(rootDescription)
-    -- Below the switches rather than in among them, which is where the other two
-    -- set lists keep their submenus.
-    addExpansionFilter(rootDescription)
 end
 
 -- The button marks itself as holding a filter, and offers to put it back. Left

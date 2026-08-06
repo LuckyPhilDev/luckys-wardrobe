@@ -240,14 +240,14 @@ local rootDescription = {
 }
 menuModifiers["MENU_TRANSMOG_SETS_FILTER"](nil, rootDescription)
 
-assert(#menuEntries == 4 and menuEntries[1].divider,
-    "appended this addon's boxes, kept apart from the boxes Blizzard put there")
-assert(menuEntries[3].label == "Show Set Names",
+assert(#menuEntries == 4 and menuEntries[2].divider,
+    "appended this addon's own switches, kept apart from the filters above them")
+assert(menuEntries[1].label == LuckysWardrobe.Strings.filterMenu.expansion,
+    "left the expansion submenu above the divider, among the filters Blizzard put there")
+assert(menuEntries[4].label == "Show Set Names",
     "brought the set names switch along under the same divider rather than behind one of its own")
-assert(menuEntries[4].label == LuckysWardrobe.Strings.filterMenu.expansion,
-    "put the expansion submenu last, below the switches")
 
-local checkbox = menuEntries[2]
+local checkbox = menuEntries[3]
 assert(checkbox.label == LuckysWardrobe.Strings.settings.hideUnwearableSets.label,
     "the menu and the settings panel name the one switch the same way")
 assert(checkbox.isSelected(), "the box reads the setting as it stands rather than a copy of it")
