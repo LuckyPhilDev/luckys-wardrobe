@@ -48,8 +48,6 @@ local PROGRESS_BAR_BORDER_MARGIN = 9
 -- the slots the addon knows.
 local SLOT_TOOLTIP_GLOBALS = Utils.SLOT_TOOLTIP_GLOBALS
 
-local expansionNames = Utils.EXPANSION_NAMES
-
 -- Where the snapshot says a set comes from, as the source bits Wowhead sets. A
 -- set carries as many as apply: a tier that dropped in a raid and was sold by a
 -- vendor later is both, which is why these are checkboxes rather than a radio.
@@ -74,6 +72,63 @@ function ExtraSets.MaskHas(mask, bit)
     return mask % (bit + bit) >= bit
 end
 
+-- The box for sets that cannot be dated, keyed by a name rather than a number so
+-- it can never collide with an expansionID. Both Extra Sets lists carry it and
+-- neither Sets tab does: Blizzard dates every set it lists itself, while these
+-- come from a bundled snapshot the client may know nothing about.
+ExtraSets.UNKNOWN_EXPANSION = "unknown"
+
+--- Which box an entry answers to. A set the client cannot name carries no
+--- expansion at all, and a set dated to an expansion this version has no box for
+--- is just as unplaceable, so both answer to Unknown rather than to a box that
+--- does not describe them or to none at all.
+function ExtraSets.ExpansionBox(expansionID, expansions)
+    if expansionID ~= nil and expansions[expansionID] ~= nil then return expansionID end
+    return ExtraSets.UNKNOWN_EXPANSION
+end
+
+--- Utils' own pair, plus the Unknown box, for the two lists that offer it.
+function ExtraSets.SetAllExpansions(expansions, shown)
+    Utils.SetAllExpansions(expansions, shown)
+    expansions[ExtraSets.UNKNOWN_EXPANSION] = shown
+end
+
+function ExtraSets.AnyExpansionHidden(expansions)
+    if not expansions[ExtraSets.UNKNOWN_EXPANSION] then return true end
+    return Utils.AnyExpansionHidden(expansions)
+end
+
+--- The Expansion submenu both Extra Sets lists carry, built once so the two
+--- cannot drift apart. onChange redraws whichever page asked for it.
+function ExtraSets.AddExpansionFilter(rootDescription, expansions, onChange)
+    local S = LuckysWardrobe.Strings.filterMenu
+    local menu = rootDescription:CreateButton(S.expansion)
+    menu:CreateButton(CHECK_ALL, function()
+        ExtraSets.SetAllExpansions(expansions, true)
+        onChange()
+        return MenuResponse.Refresh
+    end)
+    menu:CreateButton(UNCHECK_ALL, function()
+        ExtraSets.SetAllExpansions(expansions, false)
+        onChange()
+        return MenuResponse.Refresh
+    end)
+    menu:CreateDivider()
+
+    local function addBox(key, label)
+        menu:CreateCheckbox(label, function() return expansions[key] end, function()
+            expansions[key] = not expansions[key]
+            onChange()
+        end)
+    end
+
+    for index, name in ipairs(Utils.EXPANSION_NAMES) do addBox(index - 1, name) end
+    -- Behind a divider, because it holds whatever the other boxes could not
+    -- place rather than an expansion of its own.
+    menu:CreateDivider()
+    addBox(ExtraSets.UNKNOWN_EXPANSION, S.unknownExpansion)
+end
+
 -- Session-only view state behind the filter button, matching the Sets tab menu.
 -- The class is not in here: it narrows the catalogue before entries are built,
 -- rather than hiding rows that have already been worked out.
@@ -87,7 +142,7 @@ local filters = {
 }
 
 local function setAllExpansions(shown)
-    Utils.SetAllExpansions(filters.expansions, shown)
+    ExtraSets.SetAllExpansions(filters.expansions, shown)
 end
 
 local function setAllSources(shown)
@@ -108,7 +163,7 @@ end
 local function isNarrowed()
     if not (filters.collected and filters.uncollected) then return true end
     if anySourceHidden() then return true end
-    return Utils.AnyExpansionHidden(filters.expansions)
+    return ExtraSets.AnyExpansionHidden(filters.expansions)
 end
 
 setAllExpansions(true)
@@ -943,18 +998,8 @@ local function sourceShown(entry, filterState, anySource)
 end
 
 -- Collected/Not Collected, source, and expansion narrowing, mirroring the Sets
--- tab filter menu. Only sets the client itself knows carry an expansion, so the
--- rest stay visible while any expansion is still checked rather than vanishing
--- behind a box that does not describe them.
+-- tab filter menu.
 function ExtraSets.ApplyFilters(entries, filterState)
-    local anyExpansion = false
-    for _, shown in pairs(filterState.expansions) do
-        if shown then
-            anyExpansion = true
-            break
-        end
-    end
-
     local anySource = false
     for _, shown in pairs(filterState.sources or {}) do
         if shown then
@@ -975,11 +1020,8 @@ function ExtraSets.ApplyFilters(entries, filterState)
             shown = sourceShown(entry, filterState, anySource)
         end
         if shown then
-            if entry.expansionID ~= nil and filterState.expansions[entry.expansionID] ~= nil then
-                shown = filterState.expansions[entry.expansionID]
-            else
-                shown = anyExpansion
-            end
+            shown = filterState.expansions[
+                ExtraSets.ExpansionBox(entry.expansionID, filterState.expansions)] == true
         end
         if shown then result[#result + 1] = entry end
     end
@@ -1931,25 +1973,7 @@ function ExtraSets:CreatePage(wardrobe)
             end)
         end
 
-        local expansions = root:CreateButton(menu.expansion)
-        expansions:CreateButton(CHECK_ALL, function()
-            setAllExpansions(true)
-            refresh()
-            return MenuResponse.Refresh
-        end)
-        expansions:CreateButton(UNCHECK_ALL, function()
-            setAllExpansions(false)
-            refresh()
-            return MenuResponse.Refresh
-        end)
-        expansions:CreateDivider()
-        for index, name in ipairs(expansionNames) do
-            local expansionID = index - 1
-            expansions:CreateCheckbox(name, function() return filters.expansions[expansionID] end, function()
-                filters.expansions[expansionID] = not filters.expansions[expansionID]
-                refresh()
-            end)
-        end
+        ExtraSets.AddExpansionFilter(root, filters.expansions, refresh)
     end)
 
     -- Collecting an appearance changes what these sets have collected, so the

@@ -126,34 +126,71 @@ assert(completeSet.collected == 2 and ExtraSets.IsComplete(completeSet), "fixtur
 assert(partialSet.collected == 1 and not ExtraSets.IsComplete(partialSet), "fixture: partial set is not")
 assert(emptySet.collected == 0, "fixture: empty set has nothing collected")
 
--- The filter button's two checkboxes.
+-- The filter button's boxes, read through the page's own narrowing. The tab
+-- borrows the Collections page's filter, so a box means the same on both.
 
-local narrowed = TransmogExtraSets.FilterByCollected({ completeSet, partialSet, emptySet }, true, false)
+local function shownWith(collected, uncollected)
+    local expansions = {}
+    ExtraSets.SetAllExpansions(expansions, true)
+    return { collected = collected, uncollected = uncollected, expansions = expansions }
+end
+
+local function visibleFrom(entries, filterState, query)
+    return TransmogExtraSets.VisibleEntries(entries, filterState, query or "")
+end
+
+local threeSets = { completeSet, partialSet, emptySet }
+
+local narrowed = visibleFrom(threeSets, shownWith(true, false))
 assert(#narrowed == 1 and narrowed[1] == completeSet, "collected alone keeps only finished sets")
 
-narrowed = TransmogExtraSets.FilterByCollected({ completeSet, partialSet, emptySet }, false, true)
+narrowed = visibleFrom(threeSets, shownWith(false, true))
 assert(#narrowed == 2 and narrowed[1] == partialSet and narrowed[2] == emptySet,
     "not collected keeps everything short of finished, half done or untouched")
 
-narrowed = TransmogExtraSets.FilterByCollected({ completeSet, partialSet, emptySet }, true, true)
+narrowed = visibleFrom(threeSets, shownWith(true, true))
 assert(#narrowed == 3, "both boxes keep everything")
 
-assert(#TransmogExtraSets.FilterByCollected({ unresolvableSet }, true, false) == 0,
+assert(#visibleFrom({ unresolvableSet }, shownWith(true, false)) == 0,
     "a set with nothing resolvable is never called collected")
+
+-- Narrowing by expansion, including the box for the sets the client will not
+-- date. These fixtures carry no expansion, which is what that box is for.
+
+do
+local datedSet = ExtraSets.BuildEntry({
+    setID = 14,
+    name = "Dated Finery",
+    armorType = CLOTH,
+    classMask = 0,
+    expansionID = 3,
+    pieces = pieces({ "HEAD", 2001 }),
+}, resolver)
+
+local state = shownWith(true, true)
+assert(#visibleFrom({ datedSet, partialSet }, state) == 2, "every box ticked shows both")
+
+state.expansions[3] = false
+local kept = visibleFrom({ datedSet, partialSet }, state)
+assert(#kept == 1 and kept[1] == partialSet, "unticking an expansion hides the sets it dates")
+
+state.expansions[3] = true
+state.expansions[ExtraSets.UNKNOWN_EXPANSION] = false
+kept = visibleFrom({ datedSet, partialSet }, state)
+assert(#kept == 1 and kept[1] == datedSet,
+    "and unticking Unknown hides the sets the client would not date instead")
+end
 
 -- The page order: nearest to finished first, and search narrows by name.
 
-local visible = TransmogExtraSets.VisibleEntries(
-    { emptySet, partialSet, completeSet }, { collected = true, uncollected = true }, "")
+local visible = visibleFrom({ emptySet, partialSet, completeSet }, shownWith(true, true))
 assert(visible[1] == completeSet and visible[2] == partialSet and visible[3] == emptySet,
     "cards run from finished to untouched")
 
-visible = TransmogExtraSets.VisibleEntries(
-    { emptySet, partialSet, completeSet }, { collected = true, uncollected = true }, "half")
+visible = visibleFrom({ emptySet, partialSet, completeSet }, shownWith(true, true), "half")
 assert(#visible == 1 and visible[1] == partialSet, "search narrows the cards by name")
 
-visible = TransmogExtraSets.VisibleEntries(
-    { emptySet, partialSet, completeSet }, { collected = false, uncollected = true }, "")
+visible = visibleFrom({ emptySet, partialSet, completeSet }, shownWith(false, true))
 assert(#visible == 2 and visible[1] == partialSet, "filters narrow before the sort orders")
 
 -- What the page has drawn, so a pass that would draw the same thing again is
