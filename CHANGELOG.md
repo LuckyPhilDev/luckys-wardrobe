@@ -1,14 +1,16 @@
 # Changelog
 
-## 1.5.2
+## 1.6.0
 
 ### Added
 
+- Hover a piece of gear anywhere in the game and the piece itself now appears beside its tooltip, close up and with nothing else in the frame, so you can see an appearance without opening the dressing room. Weapons, shields and off-hands are shown as models on their own, and armour close up on a bare figure framed on the slot it sits in. Turn it on or off under Tooltips, Show a Preview Model.
 - A set you are fully hunting now carries the same crosshair mark its pieces do, in the Sets tab and the Extra Sets tab, so a completed hunt shows at a glance in the list too.
 
 ### Fixed
 
 - Shift-clicking a tracked set again now stops tracking all of it, instead of doing nothing. (Thanks for the report Tuulani)
+- The Extra Sets tab no longer lists sets that come down to a single piece, which read as an ordinary item rather than a set worth hunting.
 
 ## 1.5.1
 
