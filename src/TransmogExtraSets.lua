@@ -213,7 +213,13 @@ local cachedEntries
 -- Lower than the catalogue's own count because a piece costs more here: the
 -- catalogue asks the client one question about each, where building a row asks
 -- one and judging it asks two, every one of them handing back a table.
-local PIECES_PER_BUILD_STEP = 150
+--
+-- Not much lower, though, because the build is racing the player to the tab.
+-- Thin slices sit lighter on a frame but take more of them, and a build still
+-- running when the tab opens is one the player waits on the rest of. Two or
+-- three milliseconds a slice is the trade: light enough not to drop a frame,
+-- few enough to be finished before anyone has read the tab strip.
+local PIECES_PER_BUILD_STEP = 250
 
 local buildFrame
 local build
@@ -457,9 +463,15 @@ local function warmItemData()
     -- login it is spent where nothing is waiting on it. The answer is kept for
     -- the session and both pages read the same one, so whichever is opened first
     -- finds it already worked out.
-    LuckysWardrobe.Perf:Begin("transmog looks gathered")
-    ExtraSets.NativeLooks(classID)
-    LuckysWardrobe.Perf:End("transmog looks gathered")
+    --
+    -- On the next frame rather than this one. The warm-up starts from inside the
+    -- last step of the catalogue's own build, and hanging this off the end of it
+    -- makes that one step ten times the size of every other.
+    C_Timer.After(0, function()
+        LuckysWardrobe.Perf:Begin("transmog looks gathered")
+        ExtraSets.NativeLooks(classID)
+        LuckysWardrobe.Perf:End("transmog looks gathered")
+    end)
 
     local function round()
         if not requestUnjudgedItems(records) then
