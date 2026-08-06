@@ -60,6 +60,9 @@ local WEARABLE_ARMOUR = { [1] = true, [2] = true, [3] = true, [4] = true }
 
 local REJECT = {
     unresolvable = "no piece this client can resolve",
+    -- A single piece is not a set a player can tell apart from any other item
+    -- carrying that look, and would sit in the tab looking like a mistake.
+    singlePiece = "only one piece this client can resolve",
 }
 
 local stepFrame = CreateFrame("Frame")
@@ -194,6 +197,9 @@ local function buildRecord(setID, set, armorType)
     local pieces, unresolved, pieceArmour = buildPieces(set.pieces)
     if #pieces == 0 then
         return reject(setID, set.name, REJECT.unresolvable)
+    end
+    if #pieces == 1 then
+        return reject(setID, set.name, REJECT.singlePiece)
     end
 
     report.unresolvedPieces = report.unresolvedPieces + unresolved

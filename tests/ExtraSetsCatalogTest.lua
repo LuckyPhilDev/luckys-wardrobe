@@ -30,7 +30,7 @@ local items = {
     [62001] = "INVTYPE_HEAD", [62002] = "INVTYPE_SHOULDER",
     [62003] = "INVTYPE_ROBE", [62004] = "INVTYPE_LEGS",
     [62101] = "INVTYPE_CHEST", [62102] = "INVTYPE_ROBE", [62103] = "INVTYPE_HEAD",
-    [62301] = "INVTYPE_HEAD", [62302] = "INVTYPE_CHEST",
+    [62301] = "INVTYPE_HEAD", [62302] = "INVTYPE_CHEST", [62303] = "INVTYPE_SHOULDER",
     [64001] = "INVTYPE_HEAD", [64002] = "INVTYPE_CHEST", [64003] = "INVTYPE_WEAPON",
     [64101] = "INVTYPE_HEAD", [64102] = "INVTYPE_CHEST",
     [65001] = "INVTYPE_HEAD", [65002] = "INVTYPE_CHEST", [65003] = "INVTYPE_LEGS",
@@ -56,7 +56,7 @@ local itemAppearances = {
     [62001] = { 92001, 2001 }, [62002] = { 92002, 2002 },
     [62003] = { 92003, 2003 }, [62004] = { 92004, 2004 },
     [62101] = { 92101, 2101 }, [62102] = { 92102, 2102 }, [62103] = { 92103, 2103 },
-    [62301] = { 92301, 2301 },
+    [62301] = { 92301, 2301 }, [62303] = { 92303, 2303 },
     [64001] = { 94001, 4001 }, [64002] = { 94002, 4002 }, [64003] = { 94003, 4003 },
     -- Both of these answer with the same source, which no set should list twice.
     [64101] = { 94101, 4101 }, [64102] = { 94101, 4101 },
@@ -107,7 +107,7 @@ LuckysWardrobe.ExtraSetsData = {
             [20] = { name = "Fixture Hidden Garb (snapshot)", classMask = 0, pieces = { 62004, 62003, 62001, 62002 } },
             [21] = { name = "Fixture Chest And Robe", classMask = 0, pieces = { 62102, 62103, 62101 } },
             [22] = { name = "Fixture Ghost Set", classMask = 0, pieces = { 69001, 69002 } },
-            [23] = { name = "Fixture Partly Missing", classMask = 128, pieces = { 62301, 62302, 69003 } },
+            [23] = { name = "Fixture Partly Missing", classMask = 128, pieces = { 62301, 62302, 69003, 62303 } },
             [10] = { name = "Fixture Official Regalia", classMask = 0, pieces = { 61001, 61002 } },
         },
         plate = {
@@ -292,7 +292,7 @@ assert(immediate, "a callback added after the build runs at once")
 
 -- Records: what the client can resolve, in display order.
 
-assert(#Catalog:GetRecords() == 8, "listed every set with at least one resolvable piece")
+assert(#Catalog:GetRecords() == 7, "listed every set with more than one resolvable piece")
 
 local garb = recordFor(20)
 assert(garb, "listed a set the client never shows in the Sets tab")
@@ -332,8 +332,12 @@ assert(armed.armorType == 4 and pieceKeys(armed) == "HEAD=4001@64001,CHEST=4002@
     "left the weapon out of an armour set")
 assert(armed.unresolvedPieces == 0, "a weapon is not a piece this client failed to resolve")
 
-local twiceListed = recordFor(41)
-assert(#twiceListed.pieces == 1, "counted a source listed twice as one piece")
+-- Deduplicating sources can leave a set down to one piece, which is left out
+-- the same way a set with nothing resolvable at all is.
+assert(not recordFor(41), "left out a set a source dedupe reduces to a single piece")
+local twiceListed = rejectionFor(41)
+assert(twiceListed and twiceListed.name == "Fixture Twice Listed", "named the set it left out")
+assert(twiceListed.category == "only one piece this client can resolve", "said why")
 
 -- The ensembles. Their numbering is the client's own, so the set the client
 -- holds under the number is the set the ensemble teaches, and nothing about it
@@ -364,7 +368,7 @@ assert(Catalog:GetReport().fromEnsembles == 2, "counted the sets that came from 
 -- Pieces this client cannot answer for are counted, never guessed at.
 
 assert(partly.unresolvedPieces == 2, "counted the piece with no appearance and the one that never shipped")
-assert(pieceKeys(partly) == "HEAD=2301@62301", "kept the piece that did resolve")
+assert(pieceKeys(partly) == "HEAD=2301@62301,SHOULDER=2303@62303", "kept the pieces that did resolve")
 assert(Catalog:GetReport().unresolvedPieces == 2, "the report totals unresolved pieces across the catalogue")
 
 assert(not recordFor(22), "left out a set with nothing this client can resolve")
@@ -417,12 +421,15 @@ assert(Catalog:OfficialLooks(1) ~= classOneLooks, "a rebuild reads the Sets tab'
 -- Rejection grouping.
 
 local summary = Catalog:SummarizeRejections()
-assert(#summary == 1 and summary[1].count == 1, "grouped the left-out sets by reason")
+assert(#summary == 2, "grouped the left-out sets by reason")
+assert(summary[1].count == 1 and summary[2].count == 1, "each reason left out one set")
+assert(summary[1].category == "no piece this client can resolve", "a tie between counts breaks alphabetically")
+assert(summary[2].category == "only one piece this client can resolve", "a tie between counts breaks alphabetically")
 
 -- Looking a set up by name reaches all three places it can be.
 
 local listed, dropped, native, folded = Catalog:FindCandidates("fixture")
-assert(#listed == 6 and #dropped == 1, "found both listed and left-out sets")
+assert(#listed == 5 and #dropped == 2, "found both listed and left-out sets")
 -- Both sets the Sets tab lists are found by name, the collision among them:
 -- this list is the client's own, so it answers for the client's numbering.
 assert(#native == 2 and native[1].setID == 10 and native[2].setID == 23,
@@ -447,7 +454,7 @@ print = realPrint
 
 local reportText = table.concat(printed, "\n")
 assert(reportText:find("2026%-08%-04"), "named the snapshot the sets came from")
-assert(reportText:find("8 of 9 set%(s%) listed"), "counted what was listed against what was bundled")
+assert(reportText:find("7 of 9 set%(s%) listed"), "counted what was listed against what was bundled")
 assert(reportText:find("an ensemble teaches: 2"), "counted the sets that reached the list as ensembles")
 assert(reportText:find("shown for this character's class: 2"), "counted the sets this character's class sees")
 assert(reportText:find("folded into another row as the same look: 1"),
