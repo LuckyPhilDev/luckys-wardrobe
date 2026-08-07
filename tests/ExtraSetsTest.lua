@@ -1428,6 +1428,8 @@ wardrobe = {
     progressBar = nativeProgressBar(),
     ContentFrames = {},
     GetName = function(self) return self.name end,
+    -- Unset until a test says the wardrobe has been laid out on screen.
+    GetRight = function(self) return self.right end,
 }
 wardrobe.SetsCollectionFrame.searchType = 2
 
@@ -1534,24 +1536,48 @@ end
 
 -- The third tab reaches into where Blizzard parked the progress bar, so both
 -- the native bar and the addon's own copy move past the end of the tab strip.
--- Nothing has been laid out on screen yet, so there is no gap to measure.
+-- Nothing has been laid out on screen yet, so there is no room to measure and
+-- the bar keeps its full width.
 
 for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
     assert(#bar.points == 1, "gave the progress bar a single anchor")
     local point, relativeTo, relativePoint, x = bar:GetPoint()
-    assert(point == "TOP" and relativeTo == extraTab and relativePoint == "TOPRIGHT",
+    assert(point == "TOPLEFT" and relativeTo == extraTab and relativePoint == "TOPRIGHT",
         "anchored the progress bar to the end of the tab strip")
-    assert(x - bar.width / 2 > 0, "kept the whole bar past the end of the tab strip")
-    assert(bar.width < NATIVE_PROGRESS_BAR_WIDTH, "narrowed the progress bar to clear the class dropdown")
+    assert(x > 0, "kept the whole bar past the end of the tab strip")
+    assert(bar.width < NATIVE_PROGRESS_BAR_WIDTH, "narrowed the progress bar to fit beside the tabs")
     assert(bar.border.width > bar.width, "kept the border art framing the narrowed bar")
 end
 
--- Tab switching. Everything the bar sits between has landed on screen by the
--- time a tab is clicked, so the gap can be measured from here on.
+local FULL_BAR_WIDTH = wardrobe.progressBar.width
 
+-- Tab switching. Everything the bar sits between has landed on screen by the
+-- time a tab is clicked, so the room can be measured from here on. The bar is
+-- sized against the Items tab's search box wherever it is measured from, so the
+-- wardrobe is given the right edge that puts the box where the fixture says.
 local TAB_STRIP_RIGHT = 400
+local ITEMS_SEARCH_BOX_INSET = 222
+
 extraTab.right = TAB_STRIP_RIGHT
 wardrobe.SearchBox.left = ITEMS_SEARCH_BOX_LEFT
+wardrobe.right = ITEMS_SEARCH_BOX_LEFT + ITEMS_SEARCH_BOX_INSET
+
+-- Where both bars ended up, which is one answer: the two are laid out by the
+-- same rule and a disagreement between them is a bug in it.
+local function progressBarLayout()
+    local placed
+    for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
+        local point, relativeTo, relativePoint, x = bar:GetPoint()
+        assert(point == "TOPLEFT" and relativeTo == extraTab and relativePoint == "TOPRIGHT",
+            "anchored the bar to the end of the tab strip")
+        if placed then
+            assert(placed.x == x and placed.width == bar.width,
+                "laid both bars out in the same place")
+        end
+        placed = { x = x, width = bar.width }
+    end
+    return placed
+end
 
 extraTab.scripts.OnClick()
 assert(wardrobe.selectedCollectionTab == 3 and page.shown, "selected and showed Extra Sets")
@@ -1562,14 +1588,13 @@ assert(wardrobe.ClassDropdown.shown, "kept the native class dropdown, which this
 assert(wardrobe.activeFrame == page, "became the active Appearances page")
 assert(playedSound == SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, "used the native tab sound")
 
--- Resizing the strip measured the gap again, and this time the bar could centre
--- itself in it rather than hug the end of the strip.
-for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
-    local _, _, _, x = bar:GetPoint()
-    assert(x == (SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT) / 2,
-        "centred the bar in the gap between the tab strip and the class dropdown")
-    assert(x + bar.width / 2 < SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT, "left the class dropdown clear")
-end
+-- Resizing the strip measured the room again. There is plenty of it here, so the
+-- bar sits just past the strip at its full width.
+local onExtraSets = progressBarLayout()
+assert(onExtraSets.x > 0 and onExtraSets.width == FULL_BAR_WIDTH,
+    "left the bar its full width where the strip leaves room for it")
+assert(onExtraSets.x + onExtraSets.width < SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT,
+    "left the class dropdown clear")
 
 wardrobe:SetTab(4)
 assert(not page.shown and not wardrobe.SearchBox.shown, "left unknown third-party tabs alone")
@@ -1579,15 +1604,33 @@ assert(not page.shown and wardrobe.SetsCollectionFrame.shown, "restored the nati
 assert(wardrobe.SearchBox.shown and wardrobe.FilterButton.shown and wardrobe.ClassDropdown.shown, "restored native controls")
 assert(wardrobe.SetTab ~= originalSetTab, "hooked rather than replaced SetTab")
 
--- The Items tab hands the corner to its search box and sends the class dropdown
--- to the far left, where measuring it would put the bar under the tab strip.
+-- The Items tab hands the corner to its search box, which comes nearer the tab
+-- strip than the class dropdown the set pages leave there. The bar is measured
+-- against that one wherever it is drawn, so it holds one place and one width
+-- rather than moving as the tabs change.
+local onSets = progressBarLayout()
 wardrobe:SetTab(1)
-for _, bar in ipairs({ wardrobe.progressBar, page.progressBar }) do
-    local _, _, _, x = bar:GetPoint()
-    assert(x == (ITEMS_SEARCH_BOX_LEFT - TAB_STRIP_RIGHT) / 2,
-        "centred the bar against whichever control shares its row")
-    assert(x - bar.width / 2 > 0, "kept the whole bar past the end of the tab strip")
-end
+local onItems = progressBarLayout()
+assert(onItems.x == onSets.x and onItems.width == onSets.width
+    and onItems.x == onExtraSets.x and onItems.width == onExtraSets.width,
+    "kept the bar in one place whichever tab is on screen")
+assert(onItems.x + onItems.width < ITEMS_SEARCH_BOX_LEFT - TAB_STRIP_RIGHT,
+    "left the Items tab's search box clear")
+
+-- A strip wide enough to crowd the bar takes width off it rather than pushing it
+-- under the search box, until the counts would stop fitting inside it.
+extraTab.right = ITEMS_SEARCH_BOX_LEFT - 120
+wardrobe:SetTab(1)
+local crowded = progressBarLayout()
+assert(crowded.width < onItems.width, "gave up width to a strip that crowds it")
+assert(crowded.x + crowded.width <= ITEMS_SEARCH_BOX_LEFT - extraTab.right, "still cleared the search box")
+
+extraTab.right = ITEMS_SEARCH_BOX_LEFT - 20
+wardrobe:SetTab(1)
+assert(progressBarLayout().width == 80, "stopped shrinking once the counts would not fit")
+
+extraTab.right = TAB_STRIP_RIGHT
+wardrobe:SetTab(1)
 
 ExtraSets:Attach(wardrobe)
 assert(wardrobe.numTabs == 3, "attach is idempotent")

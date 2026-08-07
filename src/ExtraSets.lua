@@ -35,13 +35,20 @@ local MAX_PIECE_ROWS = 4
 local CLASS_DROPDOWN_X = -9
 local CLASS_DROPDOWN_Y = 4
 
--- Blizzard places the collected-sets bar for a two-tab strip, so a third tab
--- runs underneath it. It moves into the gap between the end of the strip and
--- the class dropdown, and gives up some width to sit there.
+-- Blizzard places the collected-sets bar for a two-tab strip, so the tabs this
+-- addon adds run underneath it. It moves into the gap past the end of the strip,
+-- where it holds one place and one width whichever tab is on screen rather than
+-- shifting about as the room beside it changes.
 local PROGRESS_BAR_WIDTH = 150
 local PROGRESS_BAR_TAB_GAP = 10
 local PROGRESS_BAR_TAB_DROP = -11
 local PROGRESS_BAR_BORDER_MARGIN = 9
+-- Where Blizzard's own SetTab parks the Items tab's search box, as a distance in
+-- from the wardrobe's right edge: 107 for the box itself and 115 of width.
+local ITEMS_SEARCH_BOX_INSET = 222
+-- Narrower than this and the counts stop fitting inside the bar, so it stops
+-- giving up width and lets the strip come to it instead.
+local PROGRESS_BAR_MIN_WIDTH = 80
 
 -- Blizzard's localized slot-name globals, for the tooltip's slot line. A slot
 -- with no entry here is one the page could not label, so records are held to
@@ -1321,6 +1328,85 @@ end
 -- Page UI. Mirrors the native Sets layout: list on the left, dressing-room
 -- model on the right, with search and a session-only sort choice.
 
+-- Every source sharing this piece's look, so the tooltip can list where the
+-- appearance comes from the way the native Sets tab does.
+local function pieceSources(piece)
+    local sourceInfo = C_TransmogCollection.GetSourceInfo(piece.sourceID)
+    if not sourceInfo then return nil end
+
+    local sources = {}
+    for _, sourceID in ipairs(C_TransmogCollection.GetAllAppearanceSources(sourceInfo.visualID) or {}) do
+        local info = C_TransmogCollection.GetSourceInfo(sourceID)
+        if info then sources[#sources + 1] = info end
+    end
+    if #sources == 0 then sources[1] = sourceInfo end
+
+    CollectionWardrobeUtil.SortSources(sources, sourceInfo.visualID, piece.sourceID)
+    return sources
+end
+
+-- The tooltip a set's piece shows, as the native Sets tab shows its own. The
+-- tooltip offers Tab to cycle through the items sharing a look, and it is the
+-- wardrobe's own key handler that does the cycling: it moves the source index
+-- and asks whichever frame owns the tooltip to draw it again. A page that draws
+-- its tooltips behind the wardrobe's back never gets asked, which is why the
+-- offer went unanswered here.
+--
+-- Handing the tooltip back matters as much as claiming it: the index Tab walks
+-- belongs to the piece that was hovered, and the next piece starts again from
+-- its own item.
+--
+-- Both of this addon's set pages hover the same kind of piece, so both take
+-- their tooltip from here and neither can drift from the other. Answers the two
+-- scripts a piece frame hangs on, and gives the page the redraw the wardrobe
+-- calls on whichever frame owns the tooltip.
+function ExtraSets.PieceTooltips(page, wardrobe)
+    local hovered
+
+    local function draw()
+        local S = LuckysWardrobe.Strings.extraSets
+        local sources = hovered.state ~= "unavailable" and pieceSources(hovered) or nil
+        if not sources then
+            GameTooltip:SetText(S.pieceUnavailable, 1, 0.25, 0.25, 1, true)
+            GameTooltip:Show()
+            return
+        end
+
+        wardrobe.tooltipContentFrame = page
+        wardrobe.tooltipSourceIndex, wardrobe.tooltipCycle =
+            CollectionWardrobeUtil.SetAppearanceTooltip(GameTooltip, {
+                sources = sources,
+                primarySourceID = hovered.sourceID,
+                selectedIndex = wardrobe.tooltipSourceIndex,
+                showUseError = true,
+                showTrackingInfo = false,
+                slotType = _G[SLOT_TOOLTIP_GLOBALS[hovered.slot] or hovered.slot],
+            })
+        -- A piece already tracked says so, then the shift-click offers the way
+        -- back out of it rather than offering to track it again.
+        LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, hovered.sourceID)
+        LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, hovered.sourceID)
+        GameTooltip:Show()
+    end
+
+    page.RefreshAppearanceTooltip = function()
+        if hovered then draw() end
+    end
+
+    local function show(itemFrame)
+        hovered = itemFrame.piece
+        GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
+        draw()
+    end
+
+    local function hide()
+        hovered = nil
+        wardrobe:HideAppearanceTooltip()
+    end
+
+    return show, hide
+end
+
 function ExtraSets:CreatePage(wardrobe)
     local S = LuckysWardrobe.Strings.extraSets
     local page = CreateFrame("Frame", "LuckysWardrobeExtraSetsFrame", wardrobe)
@@ -1480,69 +1566,7 @@ function ExtraSets:CreatePage(wardrobe)
         end
     end
 
-    -- Every source sharing this piece's look, so the tooltip can list where the
-    -- appearance comes from the way the native Sets tab does.
-    local function pieceSources(piece)
-        local sourceInfo = C_TransmogCollection.GetSourceInfo(piece.sourceID)
-        if not sourceInfo then return nil end
-
-        local sources = {}
-        for _, sourceID in ipairs(C_TransmogCollection.GetAllAppearanceSources(sourceInfo.visualID) or {}) do
-            local info = C_TransmogCollection.GetSourceInfo(sourceID)
-            if info then sources[#sources + 1] = info end
-        end
-        if #sources == 0 then sources[1] = sourceInfo end
-
-        CollectionWardrobeUtil.SortSources(sources, sourceInfo.visualID, piece.sourceID)
-        return sources
-    end
-
-    -- The tooltip offers Tab to cycle through the items sharing a look, and it
-    -- is the wardrobe's own key handler that does the cycling: it moves the
-    -- source index and asks whichever frame owns the tooltip to draw it again.
-    -- A page that draws its tooltips behind the wardrobe's back never gets
-    -- asked, which is why the offer went unanswered here.
-    local hoveredPiece
-
-    local function drawPieceTooltip()
-        local piece = hoveredPiece
-        local sources = piece.state ~= "unavailable" and pieceSources(piece) or nil
-        if not sources then
-            GameTooltip:SetText(S.pieceUnavailable, 1, 0.25, 0.25, 1, true)
-            GameTooltip:Show()
-            return
-        end
-
-        wardrobe.tooltipContentFrame = page
-        wardrobe.tooltipSourceIndex, wardrobe.tooltipCycle =
-            CollectionWardrobeUtil.SetAppearanceTooltip(GameTooltip, {
-                sources = sources,
-                primarySourceID = piece.sourceID,
-                selectedIndex = wardrobe.tooltipSourceIndex,
-                showUseError = true,
-                showTrackingInfo = false,
-                slotType = _G[SLOT_TOOLTIP_GLOBALS[piece.slot]],
-            })
-        -- A piece already tracked says so, then the shift-click offers the way
-        -- back out of it rather than offering to track it again.
-        LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
-        LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, piece.sourceID)
-        GameTooltip:Show()
-    end
-
-    local function pieceTooltip(itemFrame)
-        hoveredPiece = itemFrame.piece
-        GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
-        drawPieceTooltip()
-    end
-
-    -- Handing the tooltip back matters as much as claiming it: the index Tab
-    -- walks belongs to the piece that was hovered, and the next piece starts
-    -- again from its own item.
-    local function hidePieceTooltip()
-        hoveredPiece = nil
-        wardrobe:HideAppearanceTooltip()
-    end
+    local pieceTooltip, hidePieceTooltip = ExtraSets.PieceTooltips(page, wardrobe)
 
     local function getItemFrame(index)
         if itemFrames[index] then return itemFrames[index] end
@@ -2019,11 +2043,6 @@ function ExtraSets:CreatePage(wardrobe)
     page.RefreshCameras = refreshCamera
     page.SelectedEntry = function() return selectedEntry end
     page.OnSearchUpdate = function() end
-    -- What the wardrobe calls on the frame that owns the tooltip once Tab has
-    -- moved the index along.
-    page.RefreshAppearanceTooltip = function()
-        if hoveredPiece then drawPieceTooltip() end
-    end
     -- Blizzard retries this every frame until it answers true, so a version of
     -- it that never does, or that makes the client change the model again,
     -- would cost a full redress on every frame. The counter says which.
@@ -2264,39 +2283,44 @@ local function layOutClassDropdown(dropdown)
     dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
 end
 
--- Which control the bar shares its row with changes with the tab: the set pages
--- give the top right corner to the class dropdown and drop their search box to
--- the row below, while the Items tab keeps its search box up there and parks
--- the class dropdown beside the slot column on the far left.
-local function cornerControl()
-    if attachedWardrobe.selectedCollectionTab == NATIVE_ITEMS_TAB_ID then
-        return attachedWardrobe.SearchBox
-    end
-
-    return attachedWardrobe.ClassDropdown
+-- The bar sits past the end of the tab strip, so it hangs off whichever tab is
+-- last rather than this page's own. Anything that adds a tab of its own, this
+-- addon's Custom Sets page or another addon's, would otherwise end up
+-- underneath the bar.
+local function lastTab()
+    local wardrobe = attachedWardrobe
+    return wardrobe.Tabs and wardrobe.Tabs[wardrobe.numTabs]
+        or _G[wardrobe:GetName() .. "Tab" .. wardrobe.numTabs]
+        or extraTab
 end
 
--- Centring the bar in the gap means measuring both of its edges, which no
--- single anchor can do, so the centre is worked out from where the two frames
--- landed. Neither has a position until the wardrobe has been shown; until then
--- the bar sits just past the last tab, and every tab change measures again.
-local function progressBarCentreOffset()
-    local stripEdge = extraTab:GetRight()
-    local cornerEdge = cornerControl():GetLeft()
-    if not (stripEdge and cornerEdge) then
-        return PROGRESS_BAR_TAB_GAP + PROGRESS_BAR_WIDTH / 2
-    end
+-- How much room the strip leaves the bar, measured against the nearest anything
+-- comes to it on any tab. That is the Items tab's search box: the set pages give
+-- the top right corner to the class dropdown, which sits further out, and drop
+-- their own search box to the row below. Measuring the tightest tab rather than
+-- the one on screen is what keeps the bar in one place as the tabs change, and
+-- keeps the Items tab from drawing its search box over it.
+--
+-- The wardrobe has no position until it has been shown, so until then the bar
+-- takes its full width and every tab change measures again.
+local function progressBarWidth(tab)
+    local stripEdge = tab:GetRight()
+    local wardrobeEdge = attachedWardrobe:GetRight()
+    if not (stripEdge and wardrobeEdge) then return PROGRESS_BAR_WIDTH end
 
-    return (cornerEdge - stripEdge) / 2
+    local room = wardrobeEdge - ITEMS_SEARCH_BOX_INSET - stripEdge - PROGRESS_BAR_TAB_GAP * 2
+    return math.max(PROGRESS_BAR_MIN_WIDTH, math.min(PROGRESS_BAR_WIDTH, room))
 end
 
 -- The border art is a fixed texture, so it has to be narrowed alongside the bar
 -- it frames.
 local function layOutProgressBar(progressBar)
+    local tab = lastTab()
+    local width = progressBarWidth(tab)
     progressBar:ClearAllPoints()
-    progressBar:SetPoint("TOP", extraTab, "TOPRIGHT", progressBarCentreOffset(), PROGRESS_BAR_TAB_DROP)
-    progressBar:SetWidth(PROGRESS_BAR_WIDTH)
-    progressBar.border:SetWidth(PROGRESS_BAR_WIDTH + PROGRESS_BAR_BORDER_MARGIN)
+    progressBar:SetPoint("TOPLEFT", tab, "TOPRIGHT", PROGRESS_BAR_TAB_GAP, PROGRESS_BAR_TAB_DROP)
+    progressBar:SetWidth(width)
+    progressBar.border:SetWidth(width + PROGRESS_BAR_BORDER_MARGIN)
 end
 
 local function layOutProgressBars()
