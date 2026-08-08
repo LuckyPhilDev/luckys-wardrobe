@@ -35,6 +35,7 @@ ExtraSetsCatalog.lua
 ExtraSets.lua
 CustomSets.lua
 TransmogSets.lua
+TransmogItems.lua
 TransmogSetNames.lua
 TransmogExtraSets.lua
 RecolorGroups.lua

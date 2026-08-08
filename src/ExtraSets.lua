@@ -105,9 +105,11 @@ function ExtraSets.AnyExpansionHidden(expansions)
     return Utils.AnyExpansionHidden(expansions)
 end
 
---- The Expansion submenu both Extra Sets lists carry, built once so the two
---- cannot drift apart. onChange redraws whichever page asked for it.
-function ExtraSets.AddExpansionFilter(rootDescription, expansions, onChange)
+--- The Expansion submenu the Extra Sets lists and the Items tab carry, built
+--- once so they cannot drift apart. onChange redraws whichever page asked.
+--- belowDivider, when given, replaces the Unknown box with the caller's own
+--- { key = , label = } list, for a list that cannot place a thing the same way.
+function ExtraSets.AddExpansionFilter(rootDescription, expansions, onChange, belowDivider)
     local S = LuckysWardrobe.Strings.filterMenu
     local menu = rootDescription:CreateButton(S.expansion)
     menu:CreateButton(CHECK_ALL, function()
@@ -130,10 +132,14 @@ function ExtraSets.AddExpansionFilter(rootDescription, expansions, onChange)
     end
 
     for index, name in ipairs(Utils.EXPANSION_NAMES) do addBox(index - 1, name) end
-    -- Behind a divider, because it holds whatever the other boxes could not
-    -- place rather than an expansion of its own.
+    -- Behind a divider, because these hold whatever the other boxes could not
+    -- place rather than an expansion of their own.
+    belowDivider = belowDivider
+        or { { key = ExtraSets.UNKNOWN_EXPANSION, label = S.unknownExpansion } }
+    if #belowDivider == 0 then return end
+
     menu:CreateDivider()
-    addBox(ExtraSets.UNKNOWN_EXPANSION, S.unknownExpansion)
+    for _, box in ipairs(belowDivider) do addBox(box.key, box.label) end
 end
 
 -- Session-only view state behind the filter button, matching the Sets tab menu.

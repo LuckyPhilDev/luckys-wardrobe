@@ -18,6 +18,7 @@ local function initialize()
     LuckysWardrobe.ExtraSets:Init()
     LuckysWardrobe.CustomSets:Init()
     LuckysWardrobe.TransmogSets:Init(LuckysWardrobeDB)
+    LuckysWardrobe.TransmogItems:Init()
     LuckysWardrobe.TransmogSetNames:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogExtraSets:Init()
     LuckysWardrobe.SetTracking:Init(LuckysWardrobeDB)
@@ -80,6 +81,8 @@ local function initialize()
             end
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()
+        elseif command == "items" then
+            LuckysWardrobe.TransmogItems:PrintDates(argument)
         elseif command == "replay" then
             LuckysWardrobe.SetCompletion:ReplayEntry()
         elseif command == "extrasets" then
