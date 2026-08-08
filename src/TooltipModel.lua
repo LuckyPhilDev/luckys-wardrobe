@@ -579,8 +579,24 @@ local function forget(tooltip)
     if shownFor == tooltip then hide() end
 end
 
+-- Whether the piece is one you already have on you. A tooltip is filled through
+-- a call named after where its item was read from, which is the only thing that
+-- tells a chestpiece sat in your bags from the same chestpiece dropping off a
+-- boss. Bank tabs are read as bags, being containers like any other.
+local function alreadyOwned(tooltip)
+    local info = tooltip:GetProcessingTooltipInfo()
+    local getter = info and info.getterName
+    if getter == "GetBagItem" then return true end
+    -- Inspecting somebody reads their gear through the same call the character
+    -- sheet does, and theirs is exactly what a preview is for.
+    return getter == "GetInventoryItem" and info.getterArgs and info.getterArgs[1] == "player"
+end
+
 local function onItemTooltip(tooltip, data)
     if not previewedOn[tooltip] then return end
+    -- What you are wearing and what you are carrying is a look you can already
+    -- see, so it is passed over until it is asked for.
+    if not db.tooltipModelWornAndBags and alreadyOwned(tooltip) then return forget(tooltip) end
 
     -- The link carries the bonus IDs that say which version of a piece this is,
     -- so a raid item is previewed in its own difficulty's appearance.

@@ -289,6 +289,9 @@ local function Tooltip(left, right)
     function tooltip:GetLeft() return left end
     function tooltip:GetRight() return right end
     function tooltip:IsShown() return self.shown end
+    -- What the game says a tooltip was filled through, which is where its item
+    -- was read from. Nothing sets it unless a test is about that.
+    function tooltip:GetProcessingTooltipInfo() return self.info end
     function tooltip:HookScript(script, handler) self.scripts[script] = handler end
     function tooltip:Clear() self.scripts.OnTooltipCleared(self) end
     function tooltip:Hide() self.scripts.OnHide(self) end
@@ -314,7 +317,7 @@ LuckysWardrobe.Utils = { Say = function(line) said[#said + 1] = line end }
 dofile("src/TooltipModel.lua")
 
 local TooltipModel = LuckysWardrobe.TooltipModel
-local settings = { tooltipModel = true }
+local settings = { tooltipModel = true, tooltipModelWornAndBags = false }
 TooltipModel:Init(settings)
 
 assert(#postCalls == 1 and postCalls[1].dataType == Enum.TooltipDataType.Item,
@@ -655,6 +658,35 @@ settings.tooltipModel = false
 TooltipModel:Refresh()
 assert(not panel.shown, "turning it off left the preview on screen")
 settings.tooltipModel = true
+
+-- A preview answers what a piece you have not got looks like. What is already on
+-- you answers nothing, so a tooltip read out of the bags or off the character
+-- sheet is passed over, and one already up is taken away.
+displayedLink = "|Hitem:100|h[Breastplate]|h"
+onItemTooltip(GameTooltip)
+assert(panel.shown, "a drop went unpreviewed")
+
+GameTooltip.info = { getterName = "GetBagItem", getterArgs = { 0, 1 } }
+onItemTooltip(GameTooltip)
+assert(not panel.shown, "a piece sat in the bags was previewed")
+
+GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "player", 5 } }
+onItemTooltip(GameTooltip)
+assert(not panel.shown, "a piece already worn was previewed")
+
+-- Somebody else's gear is read off the same call the character sheet uses, and
+-- theirs is exactly what a preview is for.
+GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "target", 5 } }
+onItemTooltip(GameTooltip)
+assert(panel.shown, "another player's gear went unpreviewed")
+
+-- Asked for, the bags are previewed like anything else.
+settings.tooltipModelWornAndBags = true
+GameTooltip.info = { getterName = "GetBagItem", getterArgs = { 0, 1 } }
+onItemTooltip(GameTooltip)
+assert(panel.shown, "the bags stayed unpreviewed with the setting on")
+settings.tooltipModelWornAndBags = false
+GameTooltip.info = nil
 
 -- A shapeshift or a barber visit leaves a figure wearing nothing this addon put
 -- on it, so it is set up again and the piece goes back on.

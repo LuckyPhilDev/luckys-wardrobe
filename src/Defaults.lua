@@ -12,6 +12,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     wowheadLinkOnAltClick = true,
     tooltipSetProgress = true,
     tooltipModel = true,
+    tooltipModelWornAndBags = false,
     situationPresets = {},
     showSituationValues = true,
     showSituationTooltips = true,

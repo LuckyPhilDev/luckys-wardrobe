@@ -91,6 +91,15 @@ function LuckysWardrobe.Settings:Init(db)
             LuckysWardrobe.TooltipModel:Refresh()
         end,
     })
+    tooltips:Toggle({
+        label = S.settings.tooltipModelWornAndBags.label,
+        desc = S.settings.tooltipModelWornAndBags.desc,
+        parent = S.settings.tooltipModel.label,
+        checked = db.tooltipModelWornAndBags,
+        onToggle = function(checked)
+            db.tooltipModelWornAndBags = checked
+        end,
+    })
 
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({
