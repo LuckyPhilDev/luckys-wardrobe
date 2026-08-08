@@ -12,15 +12,20 @@ local userTab
 local function installHooks()
     if hooked then return end
     local wardrobe = TransmogFrame and TransmogFrame.WardrobeCollection
-    if not wardrobe or not wardrobe.TabHeaders or type(wardrobe.SetTab) ~= "function" then return end
+    if not wardrobe or type(wardrobe.SetTab) ~= "function" then return end
     if type(TransmogFrame.SelectSlot) ~= "function" then return end
 
     local tabHeaders = wardrobe.TabHeaders
-    -- The tab system says whether a tab change came from the player, and only
-    -- those are worth remembering: selecting a slot switches to Items on its
-    -- way through, so recording every change would record the very thing this
-    -- is here to undo.
-    hooksecurefunc(wardrobe, "SetTab", function(_, tabID, isUserAction)
+    if not tabHeaders or type(tabHeaders.SetTab) ~= "function" then return end
+
+    -- The strip is what hears a tab click, and it has to be asked rather than
+    -- the wardrobe: the wardrobe hands the strip its own SetTab as a closure
+    -- when the frame loads, so a hook put on the wardrobe afterwards never sees
+    -- a click come through. Everything else reaches the wardrobe directly,
+    -- which is the distinction this needs anyway: selecting a slot switches to
+    -- Items on its way through, so recording every change would record the very
+    -- thing this is here to undo.
+    hooksecurefunc(tabHeaders, "SetTab", function(_, tabID, isUserAction)
         if isUserAction then userTab = tabID end
     end)
 

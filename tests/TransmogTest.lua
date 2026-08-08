@@ -38,11 +38,18 @@ local wardrobeCollection = {
     SetTab = function(_, tabID) tabHeaders.selectedTabID = tabID end,
 }
 
--- The tab system hands the owner's SetTab a flag saying whether the player did
--- it, which is how the client tells a click apart from a tab change made on the
--- player's behalf.
+-- A click lands on the strip, which passes it to the wardrobe through a closure
+-- made when the frame loaded, exactly as the client does. Anything hooked onto
+-- the wardrobe's own SetTab later is therefore deaf to clicks.
+local selectTab = wardrobeCollection.SetTab
+tabHeaders.SetTab = function(_, tabID, isUserAction)
+    selectTab(wardrobeCollection, tabID, isUserAction)
+end
+
+-- The tab system says whether the player did it, which is how the client tells
+-- a click apart from a tab change made on the player's behalf.
 local function clickTab(tabID)
-    wardrobeCollection:SetTab(tabID, true)
+    tabHeaders:SetTab(tabID, true)
 end
 
 function hooksecurefunc(target, method, callback)
