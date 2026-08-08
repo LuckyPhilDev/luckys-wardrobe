@@ -111,7 +111,7 @@ LuckysWardrobe.Strings = {
         },
         trackSets = {
             label = "Track on Shift-Click",
-            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one and shift-click it again to stop. Works in Blizzard's Sets tab, in the Extra Sets tab, and on the Extra Sets cards at the transmogrifier.",
+            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one and shift-click it again to stop. Works in Blizzard's Sets tab, in the Extra Sets tab, and in the Custom tab.",
         },
         markTracked = {
             label = "Mark Tracked Pieces",
@@ -134,8 +134,8 @@ LuckysWardrobe.Strings = {
             desc = "Previews gear you already have as well, hovered on your character or in your bags and bank. Left off, the preview is kept for pieces you have yet to get: a drop, a quest reward, a vendor's stock, an auction, a link in chat.",
         },
         keepTransmogTab = {
-            label = "Keep Active Transmog Tab",
-            desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
+            label = "Keep Your Tab Between Outfits",
+            desc = "Switching outfits at the transmog NPC keeps you on whichever tab you are on, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
         hideUnwearableSets = {
             label = "Hide Sets You Cannot Wear",
