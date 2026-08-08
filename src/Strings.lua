@@ -53,13 +53,13 @@ LuckysWardrobe.Strings = {
             setTracker = "Set Tracker",
         },
         sections = {
-            whatToTrack = "What to Track",
-            inInstances = "In Dungeons and Raids",
+            whatToTrack = "What Counts as Close",
+            inInstances = "The List in Dungeons and Raids",
             whenYouLoot = "When You Loot",
         },
         catalystMissing = "The catalyst options below are turned off because Transmog Upgrade Master is not installed. It is the only way to know what the catalyst would turn an item into.",
         maxMissing = {
-            label = "Pieces Missing At Most",
+            label = "A Set Counts as Close When Missing",
             desc = "How incomplete a set can be and still count as one you are close to finishing. At 3, a set you are missing four or more pieces of is left out of the instance list and never alerts.",
         },
         includeCurrentTier = {
@@ -83,7 +83,7 @@ LuckysWardrobe.Strings = {
             desc = "Opens a list when you enter a dungeon or raid of the sets you are close to completing whose missing pieces drop there. Type /wardrobe sets or use a keybinding to open it any time, whether this is on or off.",
         },
         dwellSeconds = {
-            label = "Move Aside After",
+            label = "Shrink Into the Corner After",
             desc = "How long the list holds the middle of the screen before it shrinks into the corner. At 0 it opens in the corner and never takes the middle.",
         },
         resetPosition = {
@@ -98,11 +98,13 @@ LuckysWardrobe.Strings = {
             label = "Alert on Catalyst Upgrades",
             desc = "Speaks up, more quietly, when you loot something the catalyst could turn into an appearance you are missing.",
         },
-        alertWith = {
-            label = "Alert With",
-            desc = "How an alert reaches you. A long clear puts a lot of lines in chat, and the sound alone carries just as well.",
-            sound = "Sound",
-            chat = "Chat message",
+        alertSound = {
+            label = "Alert With a Sound",
+            desc = "Alerts play a sound, which carries even when chat is scrolling past.",
+        },
+        alertChat = {
+            label = "Alert in Chat",
+            desc = "Alerts print a chat line naming the piece. A long clear puts a lot of lines in chat, and the sound alone carries just as well.",
         },
         devMode = {
             label = "Dev Mode",

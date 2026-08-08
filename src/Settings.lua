@@ -175,6 +175,7 @@ function LuckysWardrobe.Settings:Init(db)
         -- are counted, so nine is what it takes to reach a set you own none of. A
         -- ceiling of eight put that set out of reach at every setting.
         max = 9,
+        suffix = " pieces",
         value = db.instanceSetsMaxMissing,
         onChanged = function(value)
             db.instanceSetsMaxMissing = value
@@ -214,18 +215,6 @@ function LuckysWardrobe.Settings:Init(db)
             LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
-    setTracker:Toggle({
-        label = S.settings.markCatalysable.label,
-        desc = S.settings.markCatalysable.desc,
-        requires = { addon = "TransmogUpgradeMaster" },
-        disabled = not catalystAvailable,
-        checked = db.markCatalysablePieces,
-        onToggle = function(checked)
-            db.markCatalysablePieces = checked
-            LuckysWardrobe.SetCompletion:Refresh()
-        end,
-    })
-
     setTracker:Section(S.settings.sections.inInstances)
     setTracker:Toggle({
         label = S.settings.showInstanceSets.label,
@@ -245,6 +234,17 @@ function LuckysWardrobe.Settings:Init(db)
         value = db.instanceSetsDwellSeconds,
         onChanged = function(value)
             db.instanceSetsDwellSeconds = value
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.markCatalysable.label,
+        desc = S.settings.markCatalysable.desc,
+        requires = { addon = "TransmogUpgradeMaster" },
+        disabled = not catalystAvailable,
+        checked = db.markCatalysablePieces,
+        onToggle = function(checked)
+            db.markCatalysablePieces = checked
+            LuckysWardrobe.SetCompletion:Refresh()
         end,
     })
     setTracker:Button({
@@ -274,15 +274,21 @@ function LuckysWardrobe.Settings:Init(db)
             db.alertCatalystLoot = checked
         end,
     })
-    setTracker:MultiSelect({
-        label = S.settings.alertWith.label,
-        desc = S.settings.alertWith.desc,
-        options = {
-            { key = "alertWithSound", label = S.settings.alertWith.sound },
-            { key = "alertWithChat", label = S.settings.alertWith.chat },
-        },
-        isChecked = function(key) return db[key] and true or false end,
-        onToggle = function(key, checked) db[key] = checked end,
+    setTracker:Toggle({
+        label = S.settings.alertSound.label,
+        desc = S.settings.alertSound.desc,
+        checked = db.alertWithSound,
+        onToggle = function(checked)
+            db.alertWithSound = checked
+        end,
+    })
+    setTracker:Toggle({
+        label = S.settings.alertChat.label,
+        desc = S.settings.alertChat.desc,
+        checked = db.alertWithChat,
+        onToggle = function(checked)
+            db.alertWithChat = checked
+        end,
     })
 
     panel:Finalize()
