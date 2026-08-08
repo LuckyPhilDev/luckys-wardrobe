@@ -178,9 +178,14 @@ LuckysWardrobe.Strings = {
     tooltipModel = {
         nothingHovered = "Nothing has been hovered yet, so there is nothing to say about a piece.",
         lastPiece = "Last piece hovered: item %d, slot %s, appearance %s, source %s, camera %s.",
+        cameraSources = {
+            carried = "  Framed by the game's own camera for this kind of weapon.",
+            form = "  Framed by the camera for the shape your character is in.",
+            slot = "  Framed by the camera the game frames every piece in this slot with.",
+        },
+        cameraUnframed = "  Nothing frames this slot, so the piece is shown from wherever the model opens.",
         cameraReads = "  The client describes that camera, so the piece is framed from where the camera puts it.",
-        cameraSilent = "  The client will not describe that camera, so it frames nothing and the piece is framed from where the model opens.",
-        cameraMissing = "  The client gave no camera for that piece, so it is framed from where the model opens.",
+        cameraMissing = "  The client gave no camera it will describe, so the piece is framed from where the model opens.",
         aloneModel = "  Shown as a model of its own, and the client loaded file %s for it.",
         framingHeader = "How the tooltip preview frames each slot:",
         framingLine = "  %s: facing %.2f, zoom %.2f, height %.2f, side %.2f",

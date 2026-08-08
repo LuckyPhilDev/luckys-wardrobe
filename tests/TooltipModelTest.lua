@@ -1,24 +1,55 @@
--- luacheck: globals C_Item C_Timer C_TransmogCollection CreateFrame Enum GameTooltip GetScreenWidth IsUnitModelReadyForUI ItemRefTooltip LuckysWardrobe Model_ApplyUICamera TooltipDataProcessor TooltipUtil UIParent
+-- luacheck: globals C_Item C_PlayerInfo C_Timer C_TransmogCollection CreateFrame Enum GameTooltip GetScreenWidth IsUnitModelReadyForUI ItemRefTooltip LuckysWardrobe Model_ApplyUICamera TooltipDataProcessor TooltipUtil UIParent UnitRace UnitSex
 
 -- Covers the preview shown beside an item's tooltip: what goes in the frame for
 -- a piece the game holds a model of, what goes in it for the armour it only has
--- as a skin on a character, which tooltips get a preview at all, which side of
--- the tooltip it opens on, and everything that takes it away again.
+-- as a skin on a character, what each of those is framed by, which tooltips get
+-- a preview at all, which side of the tooltip it opens on, and everything that
+-- takes it away again.
 
 LuckysWardrobe = {}
 
-_G.Enum = { TooltipDataType = { Item = 10 } }
+_G.Enum = {
+    TooltipDataType = { Item = 10 },
+    ItemClass = { Weapon = 2, Armor = 4 },
+    ItemWeaponSubclass = {
+        Axe1H = 0, Axe2H = 1, Bows = 2, Guns = 3, Mace1H = 4, Mace2H = 5,
+        Polearm = 6, Sword1H = 7, Sword2H = 8, Warglaive = 9, Staff = 10,
+        Bearclaw = 11, Catclaw = 12, Unarmed = 13, Generic = 14, Dagger = 15,
+        Thrown = 16, Crossbow = 18, Wand = 19, Fishingpole = 20,
+    },
+    ItemArmorSubclass = { Generic = 0, Shield = 6, Plate = 4 },
+    TransmogCollectionType = {
+        Head = 0, Shoulder = 1, Back = 2, Chest = 3, Shirt = 4, Tabard = 5,
+        Wrist = 6, Hands = 7, Waist = 8, Legs = 9, Feet = 10,
+    },
+}
 _G.UIParent = "UIParent"
 
--- A sword, which is a model in its own right; a helm, a chest piece and a pair of
--- boots, which the game only has as a character wearing them; and a potion nobody
--- can dress in, which is most of what passes through a bag.
+-- A sword and a shield, which are models in their own right; a helm, a chest
+-- piece and a pair of boots, which the game only has as a character wearing
+-- them; and a potion nobody can dress in, which is most of what passes through
+-- a bag.
 local ITEMS = {
     ["|Hitem:100|h[Breastplate]|h"] = {
         id = 100, equipSlot = "INVTYPE_CHEST", dressable = true, appearanceID = 501, sourceID = 1,
     },
     ["|Hitem:200|h[Sword]|h"] = {
         id = 200, equipSlot = "INVTYPE_WEAPON", dressable = true, appearanceID = 502, sourceID = 2,
+        classID = 2, subclassID = 7,
+    },
+    ["|Hitem:250|h[Shield]|h"] = {
+        id = 250, equipSlot = "INVTYPE_SHIELD", dressable = true, appearanceID = 504, sourceID = 4,
+        classID = 4, subclassID = 6,
+    },
+    -- A fist weapon, which the game files under Unarmed, and a thrown weapon,
+    -- which is a kind the game keeps no transmog camera for at all.
+    ["|Hitem:260|h[Knuckles]|h"] = {
+        id = 260, equipSlot = "INVTYPE_WEAPON", dressable = true, appearanceID = 511, sourceID = 11,
+        classID = 2, subclassID = 13,
+    },
+    ["|Hitem:270|h[Javelin]|h"] = {
+        id = 270, equipSlot = "INVTYPE_WEAPON", dressable = true, appearanceID = 512, sourceID = 12,
+        classID = 2, subclassID = 16,
     },
     ["|Hitem:300|h[Helm]|h"] = {
         id = 300, equipSlot = "INVTYPE_HEAD", dressable = true, appearanceID = 503, sourceID = 3,
@@ -30,9 +61,47 @@ local ITEMS = {
     ["|Hitem:700|h[Cape]|h"] = {
         id = 700, equipSlot = "INVTYPE_CLOAK", dressable = true, appearanceID = 507, sourceID = 7,
     },
+    -- A robe, which is a chest piece as far as a camera is concerned, and a
+    -- girdle in a slot whose reference piece the client answers nothing for.
+    ["|Hitem:750|h[Robe]|h"] = {
+        id = 750, equipSlot = "INVTYPE_ROBE", dressable = true, appearanceID = 505, sourceID = 5,
+    },
+    ["|Hitem:850|h[Girdle]|h"] = {
+        id = 850, equipSlot = "INVTYPE_WAIST", dressable = true, appearanceID = 509, sourceID = 9,
+    },
+    ["|Hitem:860|h[Trousers]|h"] = {
+        id = 860, equipSlot = "INVTYPE_LEGS", dressable = true, appearanceID = 513, sourceID = 13,
+    },
+    ["|Hitem:875|h[Bracers]|h"] = {
+        id = 875, equipSlot = "INVTYPE_WRIST", dressable = true, appearanceID = 510, sourceID = 10,
+    },
     ["|Hitem:900|h[Potion]|h"] = { id = 900, equipSlot = "", dressable = false },
     [900] = { id = 900, equipSlot = "", dressable = false },
 }
+
+-- The appearances the client lists in each slot's own category, in the order it
+-- lists them, each carrying a camera numbered after itself so a preview can be
+-- traced back to the slot it was framed as.
+--
+-- Three of them are awkward on purpose. The head's category opens with the entry
+-- standing for wearing nothing, which is not a piece and not what a helm should
+-- be framed by. The wrist's first appearance carries a camera the client will
+-- not describe, so the slot has to keep looking. The waist is listed as nothing
+-- at all, which is a slot that cannot be framed.
+local CATEGORY_APPEARANCES = {
+    [0] = { 1600, 1601 },   -- head
+    [1] = { 1603 },         -- shoulder
+    [2] = { 1615 },         -- back
+    [3] = { 1605 },         -- chest
+    [4] = { 1604 },         -- shirt
+    [5] = { 1619 },         -- tabard
+    [6] = { 1609, 1709 },   -- wrist
+    [7] = { 1610 },         -- hands
+    [8] = {},               -- waist
+    [9] = { 1607 },         -- legs
+    [10] = { 1608 },        -- feet
+}
+local HIDE_VISUALS = { [1600] = true }
 
 -- What the client actually holds a model file for, keyed by what it was asked
 -- to show. The crown is missing from it on purpose.
@@ -42,7 +111,8 @@ _G.C_Item = {
     GetItemInfoInstant = function(itemInfo)
         local entry = ITEMS[itemInfo]
         if not entry then return nil end
-        return entry.id, "Armor", "Plate", entry.equipSlot
+        return entry.id, "Armor", "Plate", entry.equipSlot, "icon",
+            entry.classID or 4, entry.subclassID or 4
     end,
     IsDressableItemByID = function(itemID)
         for _, entry in pairs(ITEMS) do
@@ -52,31 +122,74 @@ _G.C_Item = {
     end,
 }
 
--- The camera the wardrobe frames this appearance with, which is what turns a
--- whole character into a shot of one slot.
-local CAMERAS = { [1] = 71, [2] = 72, [3] = 73, [4] = 74, [6] = 76, [7] = 77 }
+-- The camera the wardrobe frames an appearance with. Only what a slot's category
+-- lists is asked about now, but the client still answers for anything with an
+-- appearance, and a test that leans on the hovered piece's own should fail.
+local APPEARANCE_CAMERAS = {
+    [501] = 71, [502] = 72, [503] = 73, [504] = 74, [505] = 75, [506] = 76,
+    [507] = 77, [509] = 79,
+}
+for _, listed in pairs(CATEGORY_APPEARANCES) do
+    for _, visualID in ipairs(listed) do APPEARANCE_CAMERAS[visualID] = visualID end
+end
 
 _G.C_TransmogCollection = {
     GetItemInfo = function(itemInfo)
         local entry = ITEMS[itemInfo] or {}
         return entry.appearanceID, entry.sourceID
     end,
-    GetAppearanceCameraIDBySource = function(sourceID) return CAMERAS[sourceID] end,
+    GetAppearanceCameraID = function(appearanceID) return APPEARANCE_CAMERAS[appearanceID] end,
+    GetCategoryAppearances = function(category)
+        local listed = CATEGORY_APPEARANCES[category]
+        if not listed then return nil end
+        local appearances = {}
+        for i, visualID in ipairs(listed) do
+            appearances[i] = { visualID = visualID, isHideVisual = HIDE_VISUALS[visualID] or false }
+        end
+        return appearances
+    end,
 }
+
+-- Who the character is and which of the two shapes she is in. A human woman in
+-- her only shape unless a test says otherwise.
+local inOtherForm, race, sex = false, "Human", 3
+_G.C_PlayerInfo = {
+    GetAlternateFormInfo = function() return true, inOtherForm end,
+}
+_G.UnitRace = function() return race, race end
+_G.UnitSex = function() return sex end
+
+-- A piece goes on the model a frame after the camera is placed, so the tests
+-- have to be able to run out that frame.
+local pending = {}
+_G.C_Timer = {
+    After = function(_, callback) pending[#pending + 1] = callback end,
+}
+
+local function nextFrame()
+    local due = pending
+    pending = {}
+    for _, callback in ipairs(due) do callback() end
+end
 
 -- The real one puts the model where the camera says, which is what any framing
 -- on top of it is measured from.
 local appliedCameras = {}
 _G.Model_ApplyUICamera = function(model, cameraID)
     appliedCameras[#appliedCameras + 1] = { model = model, cameraID = cameraID }
+    model.customCamera = true
     model:SetFacing(0)
+    model:SetPitch(0.4)
     model:SetPosition(0, 0, 0)
 end
 
 -- The client does not describe every camera it hands out, and one it will not
--- describe frames nothing.
-local uiCameras = { [71] = true, [72] = true, [73] = true, [76] = true, [77] = true }
-_G.GetUICameraInfo = function(cameraID) return uiCameras[cameraID] and 0 or nil end
+-- describe frames nothing. The wrist's is one of those.
+local silentCameras = { [1609] = true }
+_G.GetUICameraInfo = function(cameraID)
+    if not cameraID or silentCameras[cameraID] then return nil end
+    return 0
+end
 
 local screenWidth = 1000
 _G.GetScreenWidth = function() return screenWidth end
@@ -96,6 +209,7 @@ local function Frame()
         shown = false,
         loads = 0,
         undresses = 0,
+        refreshes = 0,
     }
     function frame:SetSize() end
     function frame:CreateTexture()
@@ -106,7 +220,7 @@ local function Frame()
     function frame:SetClampedToScreen() end
     function frame:SetKeepModelOnHide() end
     function frame:SetUseTransmogSkin(use) self.transmogSkin = use end
-    function frame:RefreshCamera() end
+    function frame:RefreshCamera() self.refreshes = self.refreshes + 1 end
     function frame:Show() self.shown = true end
     function frame:Hide() self.shown = false end
     function frame:SetShown(shown) self.shown = shown end
@@ -118,7 +232,10 @@ local function Frame()
     function frame:SetScript(script, handler) self.scripts[script] = handler end
     function frame:RegisterEvent(event) self.events[event] = true end
     function frame:RegisterUnitEvent(event, unit) self.events[event] = unit end
-    function frame:SetUnit(unit) self.unit = unit end
+    function frame:SetUnit(unit, _, nativeForm)
+        self.unit = unit
+        self.nativeForm = nativeForm
+    end
     function frame:Undress() self.undresses = self.undresses + 1 end
     function frame:TryOn(item)
         self.loads = self.loads + 1
@@ -137,6 +254,12 @@ local function Frame()
     function frame:GetModelFileID() return self.modelFile end
     function frame:SetFacing(facing) self.facing = facing end
     function frame:GetFacing() return self.facing or 0 end
+    function frame:SetPitch(pitch) self.pitch = pitch end
+    function frame:SetRoll(roll) self.roll = roll end
+    -- A camera stays on a model until something puts it back, which is the whole
+    -- of why a piece with none of its own has to be given the model's own again.
+    function frame:HasCustomCamera() return self.customCamera == true end
+    function frame:SetCamera(index) self.customCamera, self.camera = false, index end
     function frame:SetCamDistanceScale(zoom) self.zoom = zoom end
     function frame:GetPosition() return 0, self.side or 0, self.height or 0 end
     function frame:SetPosition(_, y, z)
@@ -206,11 +329,28 @@ assert(eventFrame.events.PLAYER_ENTERING_WORLD, "logging in was never watched")
 assert(TooltipModel:Preview(nil) == nil, "a tooltip with no item at all was answered")
 assert(TooltipModel:Preview("|Hitem:900|h[Potion]|h") == nil, "a potion was previewed")
 
--- What is carried is a model in its own right, and comes with the camera the
--- wardrobe frames it with.
+-- What is carried is a model in its own right, and is framed by what kind of
+-- thing it is rather than by any slot: a one-handed sword, and a shield, which
+-- the game files as armour but which nobody wears.
 local sword = TooltipModel:Preview("|Hitem:200|h[Sword]|h")
 assert(sword.alone, "a sword was hung on a character")
-assert(sword.appearanceID == 502 and sword.cameraID == 72, "the sword's appearance was not read")
+assert(sword.appearanceID == 502, "the sword's appearance was not read")
+assert(sword.cameraID == 238 and sword.cameraFrom == "carried",
+    "a sword was not framed as a one-handed sword")
+assert(TooltipModel:Preview("|Hitem:250|h[Shield]|h").cameraID == 249,
+    "a shield was not framed as a shield")
+
+-- A fist weapon is filed under Unarmed, which is a kind apart from the crossbow
+-- it sits next to in the list. The table this was checked against had the two
+-- confused, and every fist weapon was shot through a crossbow's framing.
+assert(TooltipModel:Preview("|Hitem:260|h[Knuckles]|h").cameraID == 248,
+    "a fist weapon was not framed as one")
+
+-- A kind the game keeps no camera for is shown on the model's own rather than
+-- through whichever camera happens to be nearest.
+local javelin = TooltipModel:Preview("|Hitem:270|h[Javelin]|h")
+assert(javelin.cameraID == nil and javelin.cameraFrom == nil,
+    "a weapon the game frames nothing for was given someone else's camera")
 
 -- Armour is not, whatever slot it is in. Asking the client for a helm on its own
 -- draws nothing at all, so a helm goes on the figure with the rest of a suit.
@@ -218,16 +358,43 @@ assert(TooltipModel:Preview("|Hitem:300|h[Helm]|h").alone == false,
     "the client was asked for a helm on its own")
 
 -- The game has no chestpiece to show, only somebody wearing one, so that is what
--- it takes to show one.
+-- it takes to show one. It is framed by the camera the game frames this slot's
+-- reference piece with, not by anything the chestpiece itself carries: the piece
+-- has an appearance camera of its own here, and taking it would be the bug.
 local breastplate = TooltipModel:Preview("|Hitem:100|h[Breastplate]|h")
 assert(breastplate.item == "|Hitem:100|h[Breastplate]|h", "the link is what gets tried on")
 assert(breastplate.alone == false, "the game was asked for a chestpiece it does not have")
-assert(breastplate.cameraID == 71, "the appearance's own camera was not read")
+assert(breastplate.cameraID == 1605 and breastplate.cameraFrom == "slot",
+    "a chestpiece was framed by its own camera rather than the chest slot's")
 
--- An item the client knows no appearance for can still be worn, and is shown
--- from wherever the model opens.
-assert(TooltipModel:Preview("|Hitem:500|h[Shirt]|h").cameraID == nil,
-    "a camera was invented for an item with no appearance")
+-- Which makes every piece in a slot come out the same way, whatever the client
+-- happens to hold for the piece itself. A robe is a chest piece for this.
+assert(TooltipModel:Preview("|Hitem:750|h[Robe]|h").cameraID == 1605,
+    "a robe was framed as something other than a chest piece")
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 1608,
+    "a boot was not framed by the feet slot's camera")
+assert(TooltipModel:Preview("|Hitem:700|h[Cape]|h").cameraID == 1615,
+    "a cloak was not framed by the back slot's camera")
+
+-- An item the client knows no appearance for can still be worn, and is still
+-- framed: the framing belongs to the slot, not to the piece.
+assert(TooltipModel:Preview("|Hitem:500|h[Shirt]|h").cameraID == 1604,
+    "a piece with no appearance of its own went unframed")
+
+-- The entry standing for wearing nothing in a slot is not a piece, so a helm is
+-- framed by the appearance after it rather than by that.
+assert(TooltipModel:Preview("|Hitem:300|h[Helm]|h").cameraID == 1601,
+    "a helm was framed by the entry for wearing no helm at all")
+
+-- A camera the client will not describe frames nothing, so the slot keeps
+-- looking down its own category rather than settling for it.
+assert(TooltipModel:Preview("|Hitem:875|h[Bracers]|h").cameraID == 1709,
+    "a camera the client will not describe passed for one that works")
+
+-- A slot the client lists nothing for leaves the piece shown from wherever the
+-- model opens rather than framed from nowhere.
+assert(TooltipModel:Preview("|Hitem:850|h[Girdle]|h").cameraID == nil,
+    "a camera was invented for a slot the client listed nothing for")
 
 -- Turning it off leaves the tooltip as the game drew it.
 settings.tooltipModel = false
@@ -244,7 +411,7 @@ assert(panel.name == "LuckysWardrobeTooltipModel", "the preview frame was never 
 assert(panel.shown, "the preview stayed hidden on an item that has a look")
 assert(alone.showing == 502, "the sword was never shown")
 assert(alone.shown and not figure.shown, "a character was left standing behind the sword")
-assert(appliedCameras[#appliedCameras].cameraID == 72, "the sword was never framed")
+assert(appliedCameras[#appliedCameras].cameraID == 238, "the sword was never framed")
 assert(figure.unit == nil, "a weapon waited on a character it does not need")
 
 -- The preview opens on whichever side of the tooltip has the room. The tooltip
@@ -269,30 +436,129 @@ onItemTooltip(GameTooltip)
 assert(figure.unit == "player" and figure.transmogSkin,
     "armour should hang on the transmogrifier's own bare figure")
 assert(figure.undresses == 1, "the figure kept its gear on over the piece")
-assert(figure.showing == displayedLink, "the piece was never tried on")
 assert(figure.shown and not alone.shown, "the wrong model was left in the frame")
-assert(appliedCameras[#appliedCameras].cameraID == 71, "the slot was never framed")
+assert(appliedCameras[#appliedCameras].cameraID == 1605, "the slot was never framed")
 
--- A camera frames a slot for the wardrobe's own grid where the client answers
--- for one at all, and neither is the shot a piece is best judged by. A boot sits
--- at the bottom of a figure, so it is lifted into frame and the camera brought
--- in, which is a zoom below 1: the number is how far the camera sits back.
+-- And the camera goes on before the piece does. A camera is placed against the
+-- model as it stands, so the shot has to be taken on the bare figure, which is
+-- the same shape every time, rather than through whichever piece last finished
+-- loading. Nothing is on the figure yet at this point.
+assert(figure.showing ~= displayedLink, "the piece went on before the camera was placed")
+nextFrame()
+assert(figure.showing == displayedLink, "the piece never went on after the camera")
+
+-- Nothing is framed by hand for now, so a piece is left exactly where its slot's
+-- camera puts it. A boot is the slot that most obviously needs one, sitting at
+-- the bottom of a figure the whole of which will not do.
 displayedLink = "|Hitem:600|h[Boots]|h"
 onItemTooltip(GameTooltip)
-assert(figure.zoom < 1, "the camera was pushed away from a boot rather than brought in")
-assert(figure.height > 0, "a boot was left at the bottom of the frame")
-assert(figure.facing == 0, "a boot was turned away from the camera")
+nextFrame()
+assert(appliedCameras[#appliedCameras].cameraID == 1608, "a boot was not framed by the feet camera")
+assert(figure.facing == 0 and figure.zoom == 1 and figure.height == 0 and figure.side == 0,
+    "a boot was moved off where the game framed it")
 
--- A cloak hangs down the back of a figure the camera is looking at the front of.
+-- A cloak the same, rather than the figure being turned around by hand: the
+-- camera the game hands out for a cloak is already looking at the back of one.
 displayedLink = "|Hitem:700|h[Cape]|h"
 onItemTooltip(GameTooltip)
-assert(math.abs(figure.facing - math.pi) < 0.01, "a cloak was shown from the front")
+nextFrame()
+assert(appliedCameras[#appliedCameras].cameraID == 1615, "a cloak was not framed by the back camera")
+assert(figure.facing == 0, "a cloak was turned off where the game framed it")
+
+-- A camera stays on a model until something puts it back, and it turns and tilts
+-- the model as well as moving the camera. A piece in a slot the client describes
+-- no camera for is given the model's own again, or it comes out at the angle of
+-- whatever was hovered before it.
+displayedLink = "|Hitem:600|h[Boots]|h"
+onItemTooltip(GameTooltip)
+nextFrame()
+assert(figure.customCamera and figure.pitch == 0.4, "a boot was never framed by a camera at all")
+
+displayedLink = "|Hitem:850|h[Girdle]|h"
+onItemTooltip(GameTooltip)
+nextFrame()
+assert(not figure.customCamera, "a piece with no camera was left on the last piece's")
+assert(figure.pitch == 0 and figure.roll == 0, "a piece with no camera kept the last piece's tilt")
+
+-- A worgen is not the shape a slot camera was built for, so she is framed by the
+-- camera the game keeps for a worgen instead.
+race, inOtherForm = "Worgen", false
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraFrom == "form",
+    "a worgen was framed as though she were a human")
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 330,
+    "a worgen was not framed by the worgen feet camera")
+
+-- And out of that shape she is a human, framed as one. Which of the two she is
+-- in is the whole of what the game cannot work out on its own.
+inOtherForm = true
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 284,
+    "a worgen walking around as a human was still framed as a worgen")
+
+-- A dracthyr is one drake whichever gender it was made as, and an elf in the
+-- visage.
+race, sex, inOtherForm = "Dracthyr", 2, false
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 1705,
+    "a drake was not framed as a drake")
+sex = 3
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 1705,
+    "the game keeps one drake, so both genders take the same camera")
+-- A female visage is the human female model outright, so she is framed exactly
+-- as a human woman is, every slot of her.
+inOtherForm = true
+for item, human in pairs({
+    ["|Hitem:300|h[Helm]|h"] = 274,
+    ["|Hitem:850|h[Girdle]|h"] = 282,
+    ["|Hitem:860|h[Trousers]|h"] = 283,
+    ["|Hitem:600|h[Boots]|h"] = 284,
+}) do
+    assert(TooltipModel:Preview(item).cameraID == human,
+        "a female visage was framed as something other than the human she is drawn as")
+end
+
+-- The male visage is a blood elf male instead, bar the head, back and tabard,
+-- which the game keeps a camera of its own for.
+sex = 2
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraID == 464,
+    "a male visage was not framed as the blood elf he is drawn as")
+assert(TooltipModel:Preview("|Hitem:300|h[Helm]|h").cameraID == 1713,
+    "a male visage's head was not framed on the camera kept for it")
+sex = 3
+
+-- Chest and shirt are separate cameras. They were the same number in the table
+-- this was checked against, which put a chestpiece in a shirt's framing.
+race, sex, inOtherForm = "Worgen", 3, false
+assert(TooltipModel:Preview("|Hitem:100|h[Breastplate]|h").cameraID == 323
+    and TooltipModel:Preview("|Hitem:500|h[Shirt]|h").cameraID == 324,
+    "a chestpiece and a shirt were framed by the same camera")
+
+-- The figure is drawn as whichever shape the camera was chosen for, or the two
+-- disagree and the shot lands nowhere near the piece.
+inOtherForm = true
+eventFrame.scripts.OnEvent()
+displayedLink = "|Hitem:600|h[Boots]|h"
+onItemTooltip(GameTooltip)
+assert(figure.nativeForm == false, "a character in her other shape was drawn in her own")
+
+race, sex, inOtherForm = "Human", 3, false
+eventFrame.scripts.OnEvent()
+displayedLink = "|Hitem:600|h[Boots]|h"
+onItemTooltip(GameTooltip)
+nextFrame()
+assert(figure.nativeForm == true, "a character in her own shape was drawn as something else")
+assert(TooltipModel:Preview("|Hitem:600|h[Boots]|h").cameraFrom == "slot",
+    "a race with only one shape was given a form camera anyway")
+
+-- And that figure lands, as it would in game, so what follows is a figure that
+-- is there rather than one still on its way.
+figure.scripts.OnModelLoaded(figure)
+nextFrame()
 
 -- The framing can be arrived at in game rather than guessed, sideways as well,
 -- and the numbers read back out to be kept.
 LuckysWardrobe.TooltipModel:SetFraming("feet", 0.25, 2, 1, -0.3)
 displayedLink = "|Hitem:600|h[Boots]|h"
 onItemTooltip(GameTooltip)
+nextFrame()
 assert(figure.zoom == 2 and figure.height == 1 and figure.side == -0.3,
     "framing a slot by hand changed nothing")
 
@@ -302,27 +568,42 @@ local report = table.concat(said, "\n")
 assert(report:find("feet: facing 0.25, zoom 2.00, height 1.00, side %-0.30"),
     "the framing was never read back out: " .. report)
 
--- The report says what the client answered for the last piece hovered, since a
--- preview that looks wrong is one of those answers being missing.
-assert(report:find("item 600", 1, true) and report:find("camera 76", 1, true),
+-- The report says what the last piece hovered was framed by, and where that
+-- camera came from, since a preview that looks wrong was framed by the wrong one
+-- of the three or by none.
+assert(report:find("item 600", 1, true) and report:find("camera 1608", 1, true),
     "the report said nothing about the piece: " .. report)
-LuckysWardrobe.TooltipModel:SetFraming("feet", 0, 0.35, 0.8, 0)
-
--- A camera the client will not describe frames nothing, and says so, since from
--- the outside it looks exactly like no camera at all.
-said = {}
-uiCameras[76] = nil
-LuckysWardrobe.TooltipModel:PrintFraming()
-assert(table.concat(said, "\n"):find("will not describe", 1, true),
-    "a camera that frames nothing passed for one that works")
-uiCameras[76] = true
+assert(report:find("every piece in this slot", 1, true),
+    "the report never said where the camera came from: " .. report)
+LuckysWardrobe.TooltipModel:SetFraming("feet", 0, 1, 0, 0)
 
 -- Every piece is framed from where a model opens, not on top of the turn and
 -- lift the piece before it was given.
 displayedLink = "|Hitem:600|h[Boots]|h"
 onItemTooltip(GameTooltip)
-assert(figure.facing == 0 and figure.zoom == 0.35 and figure.height == 0.8 and figure.side == 0,
+nextFrame()
+assert(figure.facing == 0 and figure.zoom == 1 and figure.height == 0 and figure.side == 0,
     "framing piled up on the last piece's")
+
+-- A camera takes a model over entirely, so a piece in a slot the client hands
+-- out no camera for has to be put back to the one the model opens with rather
+-- than shot through the last piece's.
+local refreshesBefore = figure.refreshes
+displayedLink = "|Hitem:850|h[Girdle]|h"
+onItemTooltip(GameTooltip)
+nextFrame()
+assert(figure.refreshes > refreshesBefore, "a piece with no camera kept the last piece's")
+
+-- The loads that come of dressing the figure leave the camera where it is. It
+-- was placed on the bare figure on purpose, and placing it again on a figure
+-- with the piece on is the very thing that moves it.
+displayedLink = "|Hitem:600|h[Boots]|h"
+onItemTooltip(GameTooltip)
+nextFrame()
+local camerasAfterDressing = #appliedCameras
+figure.scripts.OnModelLoaded(figure)
+assert(#appliedCameras == camerasAfterDressing,
+    "the camera was placed again through the piece that had just landed")
 
 -- Comparison tooltips open beside the tooltip and would cover the preview, so it
 -- hangs off whichever of them reaches furthest the way it is opening.
@@ -378,10 +659,12 @@ settings.tooltipModel = true
 -- A shapeshift or a barber visit leaves a figure wearing nothing this addon put
 -- on it, so it is set up again and the piece goes back on.
 onItemTooltip(GameTooltip)
+nextFrame()
 local loadsBeforeChange = figure.loads
 eventFrame.scripts.OnEvent()
 assert(not panel.shown, "the preview stayed up on a figure that had changed")
 onItemTooltip(GameTooltip)
+nextFrame()
 assert(figure.loads == loadsBeforeChange + 1, "a changed figure was left bare")
 
 -- A client that cannot answer for the player's model yet is not made to guess,
@@ -403,38 +686,49 @@ assert(panel.shown, "the preview never came back once the client was ready")
 -- A model takes a moment to arrive, and a piece put on one still on its way is
 -- dropped, so it goes back on the moment the figure lands.
 local loadsBeforeArrival = figure.loads
-figure.scripts.OnModelLoaded()
+figure.scripts.OnModelLoaded(figure)
+nextFrame()
 assert(figure.loads == loadsBeforeArrival + 1, "a figure that arrived late was left bare")
 
--- Something shown on its own has only its framing to put back.
+-- The loads that come of dressing that figure are left alone entirely. Dressing
+-- it afresh there would strip it and start another load on top, and framing it
+-- again would place the camera through the piece that had just landed.
+local camerasBeforeDressing = #appliedCameras
+loadsBeforeArrival = figure.loads
+figure.scripts.OnModelLoaded(figure)
+nextFrame()
+assert(figure.loads == loadsBeforeArrival, "dressing the figure set it dressing itself again")
+assert(#appliedCameras == camerasBeforeDressing, "a figure that finished dressing was framed again")
+
+-- Something shown on its own is the model the camera is placed against, so that
+-- one is placed again once its geometry has arrived.
 local camerasBefore = #appliedCameras
 displayedLink = "|Hitem:200|h[Sword]|h"
 onItemTooltip(GameTooltip)
 alone.scripts.OnModelLoaded(alone)
 assert(#appliedCameras > camerasBefore + 1, "a model that arrived late was left unframed")
 
--- A model landing with nothing hovered has nothing to put in the frame.
+-- A figure landing with nothing hovered has nothing to put in the frame.
+eventFrame.scripts.OnEvent()
+displayedLink = "|Hitem:100|h[Breastplate]|h"
+onItemTooltip(GameTooltip)
 GameTooltip:Clear()
 loadsBeforeArrival = figure.loads
-figure.scripts.OnModelLoaded()
+figure.scripts.OnModelLoaded(figure)
+nextFrame()
 assert(figure.loads == loadsBeforeArrival, "a figure dressed itself with no tooltip to stand beside")
 
--- Where a shot lands on the figure is the height divided by the zoom, and the two
--- slots settled in game are the ends of what is known to land: the ankle at one
--- end and the upper back at the other. A slot aimed past either is aimed off the
--- figure, at ground below the feet or sky above the head, and comes out black.
+-- No slot is framed by hand for now, so every one of them is the game's own
+-- camera untouched. The command names them all so a slot can be worked through
+-- in game, and this is what it should read before anybody has.
 said = {}
 TooltipModel:PrintFraming()
-local landing = {}
+local framed = 0
 for _, line in ipairs(said) do
-    local slot, zoom, height = line:match("^%s*(%a+): facing %-?[%d.]+, zoom (%-?[%d.]+), height (%-?[%d.]+)")
-    if slot then landing[slot] = tonumber(height) / tonumber(zoom) end
+    local slot = line:match("^%s*(%a+): facing 0%.00, zoom 1%.00, height 0%.00, side 0%.00$")
+    if slot then framed = framed + 1 end
+    assert(slot or not line:find(": facing "), "a slot is framed by hand: " .. line)
 end
-
-assert(landing.feet and landing.cloak, "the two slots settled in game were never framed")
-for slot, lands in pairs(landing) do
-    assert(lands >= landing.cloak and lands <= landing.feet,
-        ("%s is framed off the end of the figure, at %.2f"):format(slot, lands))
-end
+assert(framed > 1, "the command named no slots to work through")
 
 print("Lucky's Wardrobe tooltip model test passed")
