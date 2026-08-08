@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.1
+
+### Added
+
+- A fourth tab, Custom, in Collections, Appearances, listing the outfits you have saved at the transmogrifier, with every look each one is made of underneath it and shift-click to track what it is missing.
+- The Items tab at the transmog NPC can now be narrowed to the expansions you are working through, from its Filters button, so finding a weapon to match a set is no longer a scroll through hundreds. (Thanks for the suggestion Adelie)
+
+### Improved
+
+- The tooltip preview model is now kept for gear you have yet to get, a drop, a quest reward, a vendor's stock, rather than appearing on the kit you are already wearing. Include Worn and in Bags, under Tooltips, brings it back for those.
+
+### Fixed
+
+- Cloaks, boots and a great many helms came out blank or oddly framed beside their tooltip, and are now framed properly whatever slot the piece sits in.
+- Keeping your active tab at the transmog NPC now actually holds it, instead of dropping you back on Items when you switch outfits.
+
 ## 1.6.0
 
 ### Added

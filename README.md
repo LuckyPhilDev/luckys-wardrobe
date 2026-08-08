@@ -88,6 +88,7 @@ These report what the addon can see, for working out why something looks wrong.
 |---|---|
 | `/lw replay` | Reopen the set list as if you had just walked in, for checking your settings |
 | `/lw scan` | Report what the addon can see about the instance you are in |
+| `/lw items <expansion>` | Report which appearances the open Items tab dated to an expansion, and where they come from |
 | `/lw extrasets` | Report how many extra sets this client can show, and how many were left out and why |
 | `/lw extrasets full` | List the extra sets and the ones left out, with the reason for each |
 | `/lw extrasets find <name>` | Look one set up by name: listed, left out and why, or already in the Sets tab |
@@ -110,7 +111,7 @@ Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
 - **General**: Turn on dev mode for troubleshooting, and see version info.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn alt-click Wowhead addresses on or off.
-- **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it, and whether a preview model of the piece appears beside it.
+- **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it, whether a preview model of the piece appears beside it, and whether that preview covers gear you already have as well.
 - **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, choose whether set cards carry their names, and choose how much situation detail appears on saved outfits.
 - **Set Tracker**: Choose how many pieces a set can still be missing and count as close to done, whether to include the tier you are currently raiding and other classes' sets, and whether missing pieces carry the catalyst mark. Set whether the list opens by itself in a dungeon or raid and how long it holds the middle of the screen, and whether looting a piece alerts you with a sound, a chat line, or both. A button puts the list back in the corner if you drag it somewhere you cannot reach.
 
