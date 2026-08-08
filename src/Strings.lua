@@ -239,6 +239,10 @@ LuckysWardrobe.Strings = {
         -- The box for sets the client will not date. Only the Extra Sets lists
         -- offer it: Blizzard dates every set it lists itself.
         unknownExpansion = "Unknown",
+        -- The box for pieces the client files under no expansion at all, which
+        -- it answers for by calling them Classic. Only the Items tab offers it,
+        -- and only because a piece carries an item to read a source off.
+        noExpansion = "No Expansion",
         source = "Source",
         byName = "Name",
         byCompletion = "Completion",
@@ -376,5 +380,11 @@ LuckysWardrobe.Strings = {
         memberLine = "  %s: %s (order %d)",
         rejectedHeader = "Clusters left out (%d):",
         rejectionLine = "  %s: %s",
+    },
+    transmogItems = {
+        noCategory = "Open the Items tab at a transmogrifier first.",
+        datesHeader = "%s: %d of %d appearances dated to %s.",
+        datesSource = "  %s: %d",
+        datesExample = "  %s (item %s, %s)",
     },
 }

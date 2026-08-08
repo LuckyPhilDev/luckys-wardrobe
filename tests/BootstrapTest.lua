@@ -146,6 +146,13 @@ LuckysWardrobe.TransmogSets = {
     end,
 }
 
+local transmogItemsInitialized = false
+LuckysWardrobe.TransmogItems = {
+    Init = function()
+        transmogItemsInitialized = true
+    end,
+}
+
 local setNamesDB
 LuckysWardrobe.TransmogSetNames = {
     Init = function(_, db)
@@ -244,6 +251,7 @@ assert(catalogueStarted, "set the Extra Sets catalogue building without waiting 
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(customSetsInitialized, "initialized the Custom Sets subtab")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
+assert(transmogItemsInitialized, "initialized the transmogrifier Items tab")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
 assert(setNamesDB == LuckysWardrobeDB, "initialized the set card names with saved variables")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
