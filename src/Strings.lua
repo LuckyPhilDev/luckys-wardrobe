@@ -129,6 +129,10 @@ LuckysWardrobe.Strings = {
             label = "Show a Preview Model",
             desc = "Shows the piece itself beside its tooltip, close up and with nothing else in the frame. Weapons, shields and off-hands are models in their own right and are shown on their own. Armour is not something the game has a model of, only a character wearing one, so those are shown close up on the bare figure the transmogrifier previews on, framed on the slot the piece sits in.",
         },
+        tooltipModelWornAndBags = {
+            label = "Include Worn and in Bags",
+            desc = "Previews gear you already have as well, hovered on your character or in your bags and bank. Left off, the preview is kept for pieces you have yet to get: a drop, a quest reward, a vendor's stock, an auction, a link in chat.",
+        },
         keepTransmogTab = {
             label = "Keep Active Transmog Tab",
             desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
