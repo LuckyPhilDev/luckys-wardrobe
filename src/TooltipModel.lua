@@ -594,6 +594,11 @@ end
 
 local function onItemTooltip(tooltip, data)
     if not previewedOn[tooltip] then return end
+    -- A frame can wave the preview off the tooltips it owns by carrying this
+    -- flag. The loot browser in Lucky's Loot Wishlist sets it, behind a
+    -- setting of its own, for lists a model would keep opening beside.
+    local owner = tooltip.GetOwner and tooltip:GetOwner()
+    if owner and owner.luckysWardrobeNoPreview then return forget(tooltip) end
     -- What you are wearing and what you are carrying is a look you can already
     -- see, so it is passed over until it is asked for.
     if not db.tooltipModelWornAndBags and alreadyOwned(tooltip) then return forget(tooltip) end

@@ -688,6 +688,23 @@ assert(panel.shown, "the bags stayed unpreviewed with the setting on")
 settings.tooltipModelWornAndBags = false
 GameTooltip.info = nil
 
+-- A frame can wave the preview off the tooltips it owns by carrying a flag,
+-- which is how the loot browser in Lucky's Loot Wishlist declines it behind a
+-- setting of its own. The flag lives on the tooltip's owner, so it costs
+-- nothing when no addon sets it, and a tooltip that answers nothing for its
+-- owner is previewed as before.
+displayedLink = "|Hitem:100|h[Breastplate]|h"
+onItemTooltip(GameTooltip)
+assert(panel.shown, "a drop went unpreviewed before any owner declined")
+local decliningOwner = { luckysWardrobeNoPreview = true }
+GameTooltip.GetOwner = function() return decliningOwner end
+onItemTooltip(GameTooltip)
+assert(not panel.shown, "an owner that declined the preview got one anyway")
+decliningOwner.luckysWardrobeNoPreview = nil
+onItemTooltip(GameTooltip)
+assert(panel.shown, "the preview never came back once the owner allowed it")
+GameTooltip.GetOwner = nil
+
 -- A shapeshift or a barber visit leaves a figure wearing nothing this addon put
 -- on it, so it is set up again and the piece goes back on.
 onItemTooltip(GameTooltip)
