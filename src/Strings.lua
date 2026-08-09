@@ -53,13 +53,13 @@ LuckysWardrobe.Strings = {
             setTracker = "Set Tracker",
         },
         sections = {
-            whatToTrack = "What to Track",
-            inInstances = "In Dungeons and Raids",
+            whatToTrack = "What Counts as Close",
+            inInstances = "The List in Dungeons and Raids",
             whenYouLoot = "When You Loot",
         },
         catalystMissing = "The catalyst options below are turned off because Transmog Upgrade Master is not installed. It is the only way to know what the catalyst would turn an item into.",
         maxMissing = {
-            label = "Pieces Missing At Most",
+            label = "A Set Counts as Close When Missing",
             desc = "How incomplete a set can be and still count as one you are close to finishing. At 3, a set you are missing four or more pieces of is left out of the instance list and never alerts.",
         },
         includeCurrentTier = {
@@ -83,7 +83,7 @@ LuckysWardrobe.Strings = {
             desc = "Opens a list when you enter a dungeon or raid of the sets you are close to completing whose missing pieces drop there. Type /wardrobe sets or use a keybinding to open it any time, whether this is on or off.",
         },
         dwellSeconds = {
-            label = "Move Aside After",
+            label = "Shrink Into the Corner After",
             desc = "How long the list holds the middle of the screen before it shrinks into the corner. At 0 it opens in the corner and never takes the middle.",
         },
         resetPosition = {
@@ -98,11 +98,13 @@ LuckysWardrobe.Strings = {
             label = "Alert on Catalyst Upgrades",
             desc = "Speaks up, more quietly, when you loot something the catalyst could turn into an appearance you are missing.",
         },
-        alertWith = {
-            label = "Alert With",
-            desc = "How an alert reaches you. A long clear puts a lot of lines in chat, and the sound alone carries just as well.",
-            sound = "Sound",
-            chat = "Chat message",
+        alertSound = {
+            label = "Alert With a Sound",
+            desc = "Alerts play a sound, which carries even when chat is scrolling past.",
+        },
+        alertChat = {
+            label = "Alert in Chat",
+            desc = "Alerts print a chat line naming the piece. A long clear puts a lot of lines in chat, and the sound alone carries just as well.",
         },
         devMode = {
             label = "Dev Mode",
@@ -111,7 +113,7 @@ LuckysWardrobe.Strings = {
         },
         trackSets = {
             label = "Track on Shift-Click",
-            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one and shift-click it again to stop. Works in Blizzard's Sets tab, in the Extra Sets tab, and on the Extra Sets cards at the transmogrifier.",
+            desc = "Shift-click a set to track every appearance you are still missing from it, or shift-click one of its pieces to track just that one and shift-click it again to stop. Works in Blizzard's Sets tab, in the Extra Sets tab, and in the Custom tab.",
         },
         markTracked = {
             label = "Mark Tracked Pieces",
@@ -134,8 +136,8 @@ LuckysWardrobe.Strings = {
             desc = "Previews gear you already have as well, hovered on your character or in your bags and bank. Left off, the preview is kept for pieces you have yet to get: a drop, a quest reward, a vendor's stock, an auction, a link in chat.",
         },
         keepTransmogTab = {
-            label = "Keep Active Transmog Tab",
-            desc = "Keeps whichever tab you're on when switching outfits at the transmog NPC, instead of jumping back to Items. Clicking a slot still opens Items.",
+            label = "Keep Your Tab Between Outfits",
+            desc = "Switching outfits at the transmog NPC keeps you on whichever tab you are on, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
         hideUnwearableSets = {
             label = "Hide Sets You Cannot Wear",
