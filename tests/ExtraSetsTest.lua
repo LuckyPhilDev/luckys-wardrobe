@@ -41,6 +41,13 @@ LuckysWardrobe.Perf.Clock = function()
     return clock
 end
 dofile("src/ExtraSets.lua")
+-- The preview-slots choice is real here, so hiding a slot drives the same
+-- module the page leans on. Its own Sets tab wiring waits on a collections
+-- addon this harness never announces, so that wait is swallowed; the harness
+-- below defines the EventUtil the page's attach goes through.
+EventUtil = { ContinueOnAddOnLoaded = function() end }
+dofile("src/PreviewSlots.lua")
+LuckysWardrobe.PreviewSlots:Init({ hiddenSetSlots = {} })
 
 local ExtraSets = LuckysWardrobe.ExtraSets
 local CLOTH, LEATHER = 1, 2
@@ -1085,6 +1092,7 @@ local function newTexture()
     function texture:SetShown(shown) self.shown = shown end
     function texture:Show() self.shown = true end
     function texture:Hide() self.shown = false end
+    function texture:SetVertexColor(red, green, blue) self.vertexColor = { red, green, blue } end
     return texture
 end
 
@@ -1143,6 +1151,8 @@ function CreateFrame(frameType, name, parent, template)
     elseif template == "CollectionsProgressBarTemplate" then
         frame.text = newFontString()
         frame.border = newTexture()
+    elseif template == "SquareIconButtonTemplate" then
+        frame.Icon = newTexture()
     end
 
     createdFrames[#createdFrames + 1] = frame
@@ -1778,6 +1788,33 @@ button.scripts.OnClick(button, "LeftButton")
 assert(trackedSources == nil and playedSound, "selected the set instead when tracking is turned off")
 shiftClickTracks = true
 shiftDown = false
+
+-- Preview slots. The choice is one module shared with every set pane, so
+-- hiding a slot redresses the open set without its piece on the spot, and
+-- showing it again puts the piece back, all without a rebuild.
+
+assert(findFrame(function(frame) return frame.template == "SquareIconButtonTemplate" end),
+    "the details pane carries the preview-slots button")
+
+do
+    local function wornSources()
+        local worn = {}
+        for _, sourceID in ipairs(dressUpModel.triedOn or {}) do worn[sourceID] = true end
+        return worn
+    end
+
+    local fullyWorn = wornSources()
+    assert(fullyWorn[2001] and fullyWorn[2003] and fullyWorn[2004],
+        "the model wears the whole set while every slot is ticked")
+
+    LuckysWardrobe.PreviewSlots:ToggleSlot("HEAD")
+    local helmless = wornSources()
+    assert(not helmless[2001], "hiding the head took the helm off the open set")
+    assert(helmless[2003] and helmless[2004], "and left the rest of the set dressed")
+
+    LuckysWardrobe.PreviewSlots:ToggleSlot("HEAD")
+    assert(wornSources()[2001], "showing the head dressed the helm again")
+end
 
 -- Piece tooltips. The details frame has to sit above the model or the model
 -- swallows the hover and no tooltip ever appears.

@@ -125,6 +125,13 @@ LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }
 
+local previewSlotsDB
+LuckysWardrobe.PreviewSlots = {
+    Init = function(_, db)
+        previewSlotsDB = db
+    end,
+}
+
 local extraSetsInitialized = false
 LuckysWardrobe.ExtraSets = {
     Init = function()
@@ -250,6 +257,8 @@ assert(tooltipModelDB == LuckysWardrobeDB, "initialized the tooltip preview mode
 assert(catalogueStarted, "set the Extra Sets catalogue building without waiting for Collections")
 assert(extraSetsInitialized, "initialized the Extra Sets subtab")
 assert(customSetsInitialized, "initialized the Custom Sets subtab")
+assert(previewSlotsDB == LuckysWardrobeDB, "initialized the preview slots with saved variables")
+assert(type(LuckysWardrobeDB.hiddenSetSlots) == "table", "applied the preview-slots default")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogItemsInitialized, "initialized the transmogrifier Items tab")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")

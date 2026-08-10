@@ -262,6 +262,11 @@ function CustomSets:CreatePage(wardrobe)
     modelFade:SetPoint("TOPLEFT", 2, 0)
     modelFade:SetPoint("TOPRIGHT")
 
+    -- Which slots this preview dresses, in the corner every set pane keeps the
+    -- same control in. This pane has no variant dropdown to share it with.
+    local previewSlotsButton = LuckysWardrobe.PreviewSlots:CreateButton(detailsFrame)
+    previewSlotsButton:SetPoint("TOPRIGHT", detailsFrame, "TOPRIGHT", -10, -8)
+
     local detailsText = rightInset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     detailsText:SetPoint("CENTER")
     detailsText:SetWidth(340)
@@ -364,12 +369,15 @@ function CustomSets:CreatePage(wardrobe)
         -- Dressed from what the outfit itself says rather than from the pieces
         -- below it, so the model shows the look the way the transmogrifier does:
         -- a slot deliberately left bare stays bare, and a slot wearing two looks
-        -- at once wears both.
+        -- at once wears both. Slots the previews are told not to dress stay
+        -- bare too; weapons have no checkbox and always go on.
         if redress then
             model:Undress()
             for _, slot in ipairs(SLOTS) do
                 local look = entry.looks[slot.id]
-                if look then model:SetItemTransmogInfo(look, slot.id) end
+                if look and LuckysWardrobe.PreviewSlots:IsInvSlotShown(slot.id) then
+                    model:SetItemTransmogInfo(look, slot.id)
+                end
             end
         end
 
@@ -491,6 +499,14 @@ function CustomSets:CreatePage(wardrobe)
     local queueRebuild = LuckysWardrobe.Utils.Debounced(LuckysWardrobe.Utils.REBUILD_DELAY_SECONDS, function()
         -- A page that has since closed rebuilds when it opens again.
         if page:IsShown() then rebuildNow() end
+    end)
+
+    -- A changed slot choice outdates whatever the model is wearing, wherever
+    -- it was changed from, so the memory of what it wears goes even while the
+    -- page is off screen and the outfit on screen is dressed again on the spot.
+    LuckysWardrobe.PreviewSlots:OnChanged(function()
+        dressedKey = nil
+        if page:IsShown() then displayEntry(selectedEntry) end
     end)
 
     searchBox:HookScript("OnTextChanged", refresh)

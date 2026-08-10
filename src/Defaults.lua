@@ -13,6 +13,9 @@ LuckysWardrobe.DB_DEFAULTS = {
     tooltipSetProgress = true,
     tooltipModel = true,
     tooltipModelWornAndBags = false,
+    -- Only the slots the set previews leave off are stored, so a slot never
+    -- touched is one they still dress.
+    hiddenSetSlots = {},
     situationPresets = {},
     showSituationValues = true,
     showSituationTooltips = true,

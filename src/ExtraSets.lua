@@ -187,12 +187,16 @@ local extraPage
 local extraTab
 local extraTabID
 
--- The colourway picker, sized and placed like the one the Sets tab hangs in the
--- top corner of its own details pane.
+-- The colourway picker, sized like the one the Sets tab hangs in the top
+-- corner of its own details pane.
 local VARIANT_DROPDOWN_WIDTH = 170
 local VARIANT_DROPDOWN_HEIGHT = 22
-local VARIANT_DROPDOWN_X = -10
-local VARIANT_DROPDOWN_Y = -8
+
+-- The top corner of the details pane, where the Sets tab parks its variant
+-- dropdown. Here the preview-slots button holds the corner and the dropdown
+-- hangs beside it, on this pane and the Sets tab's both.
+local DETAILS_CORNER_X = -10
+local DETAILS_CORNER_Y = -8
 
 -- Pure catalogue logic. Everything below takes plain tables plus injected
 -- resolvers so the rules stay testable outside the client.
@@ -1530,11 +1534,16 @@ function ExtraSets:CreatePage(wardrobe)
     local overflowText = detailsFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     overflowText:SetWidth(380)
 
+    -- Which slots this preview dresses, in the corner every set pane keeps the
+    -- same control in.
+    local previewSlotsButton = LuckysWardrobe.PreviewSlots:CreateButton(detailsFrame)
+    previewSlotsButton:SetPoint("TOPRIGHT", detailsFrame, "TOPRIGHT", DETAILS_CORNER_X, DETAILS_CORNER_Y)
+
     -- Where the Sets tab puts the same control: the top corner of the details
     -- pane, over the model rather than beside the list.
     local variantDropdown = CreateFrame("DropdownButton", nil, detailsFrame, "WowStyle1DropdownTemplate")
     variantDropdown:SetSize(VARIANT_DROPDOWN_WIDTH, VARIANT_DROPDOWN_HEIGHT)
-    variantDropdown:SetPoint("TOPRIGHT", detailsFrame, "TOPRIGHT", VARIANT_DROPDOWN_X, VARIANT_DROPDOWN_Y)
+    variantDropdown:SetPoint("RIGHT", previewSlotsButton, "LEFT", -4, 0)
     variantDropdown:Hide()
 
     local detailsText = rightInset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
@@ -1787,8 +1796,11 @@ function ExtraSets:CreatePage(wardrobe)
 
             -- The model wears what the icons show, so the two never describe
             -- different outfits, and a set of dozens does not cost dozens of
-            -- redresses to say the same thing.
-            if redress and piece.state ~= "unavailable" and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
+            -- redresses to say the same thing. Slots the previews are told not
+            -- to dress stay bare.
+            if redress and piece.state ~= "unavailable"
+                and LuckysWardrobe.PreviewSlots:IsSlotShown(piece.slot)
+                and C_TransmogCollection.GetSourceInfo(piece.sourceID) then
                 model:TryOn(piece.sourceID)
             end
         end
@@ -2018,6 +2030,14 @@ function ExtraSets:CreatePage(wardrobe)
     local queueRebuild = Utils.Debounced(Utils.REBUILD_DELAY_SECONDS, function()
         -- A page that has since closed rebuilds when it opens again.
         if page:IsShown() then rebuildNow() end
+    end)
+
+    -- A changed slot choice outdates whatever the model is wearing, wherever
+    -- it was changed from, so the memory of what it wears goes even while the
+    -- page is off screen and the set on screen is dressed again on the spot.
+    LuckysWardrobe.PreviewSlots:OnChanged(function()
+        dressedKey = nil
+        if page:IsShown() then displayEntry(selectedEntry) end
     end)
 
     searchBox:HookScript("OnTextChanged", refresh)
