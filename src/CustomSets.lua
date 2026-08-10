@@ -213,16 +213,24 @@ function CustomSets:CreatePage(wardrobe)
     emptyText:SetWidth(220)
     emptyText:SetText(S.empty)
 
+    -- Being shown rebuilds the player's figure from scratch, and anything put
+    -- on a figure still on its way is dropped, so a dress that lands while
+    -- this is up has to be asked for again once the figure arrives.
+    local modelLoading
+
     local model = CreateFrame("DressUpModel", nil, page)
     Mixin(model, WardrobeSetsDetailsModelMixin)
     model:SetPoint("TOPLEFT", rightInset, "TOPLEFT", 3, -3)
     model:SetPoint("BOTTOMRIGHT", rightInset, "BOTTOMRIGHT", -4, 3)
-    model:SetScript("OnShow", model.OnShow)
+    model:SetScript("OnShow", function(self)
+        modelLoading = true
+        self.OnShow(self)
+    end)
     model:SetScript("OnUpdate", model.OnUpdate)
     model:SetScript("OnMouseDown", model.OnMouseDown)
     model:SetScript("OnMouseUp", model.OnMouseUp)
     model:SetScript("OnMouseWheel", model.OnMouseWheel)
-    model:SetScript("OnModelLoaded", model.OnModelLoaded)
+    -- OnModelLoaded is attached below displayEntry, which it needs in reach.
     model:OnLoad()
     model:Hide()
 
@@ -401,6 +409,18 @@ function CustomSets:CreatePage(wardrobe)
 
         if redress then refreshCamera() end
     end
+
+    -- The first dress after a show goes onto a figure that is still loading,
+    -- and is dropped with it, so the outfit on screen is dressed again once
+    -- the figure lands. The loads that come of dressing it are left alone, or
+    -- every piece going on would strip and redress the model in a loop.
+    model:SetScript("OnModelLoaded", function(self)
+        self.OnModelLoaded(self)
+        if not modelLoading then return end
+        modelLoading = false
+        dressedKey = nil
+        displayEntry(selectedEntry)
+    end)
 
     local function refreshVisibleSelection()
         scrollBox:ForEachFrame(function(button)
