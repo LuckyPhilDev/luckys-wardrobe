@@ -302,6 +302,8 @@ function CustomSets:CreatePage(wardrobe)
     end
 
     local pieceTooltip, hidePieceTooltip = LuckysWardrobe.ExtraSets.PieceTooltips(page, wardrobe)
+    local pieceClick =
+        LuckysWardrobe.ExtraSets.PieceClicks(function() return selectedEntry and selectedEntry.name end)
 
     local function getItemFrame(index)
         if itemFrames[index] then return itemFrames[index] end
@@ -318,15 +320,7 @@ function CustomSets:CreatePage(wardrobe)
         itemFrame.border:SetPoint("RIGHT", itemFrame.icon, "CENTER", 20, 1)
         itemFrame:SetScript("OnEnter", pieceTooltip)
         itemFrame:SetScript("OnLeave", hidePieceTooltip)
-        itemFrame:SetScript("OnClick", function(self, buttonName)
-            if LuckysWardrobe.WowheadLink:HandlesClick(buttonName)
-                and LuckysWardrobe.WowheadLink:ShowForSource(self.piece.sourceID) then
-                return
-            end
-            if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) and self.piece.state == "missing" then
-                LuckysWardrobe.SetTracking:TogglePiece(self.piece.sourceID, selectedEntry and selectedEntry.name)
-            end
-        end)
+        itemFrame:SetScript("OnClick", pieceClick)
         itemFrames[index] = itemFrame
         return itemFrame
     end

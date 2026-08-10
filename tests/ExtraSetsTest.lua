@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GameTooltip GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual dressUp EventUtil GameTooltip GetUICameraInfo IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe ResetCursor ShowInspectCursor MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
 -- luacheck: ignore 121
 
 LuckysWardrobe = {}
@@ -1217,6 +1217,15 @@ local playedSound
 function PlaySound(soundID) playedSound = soundID end
 local shiftDown = false
 function IsShiftKeyDown() return shiftDown end
+-- The dressing-room modifier is the player's to rebind, so the page asks the
+-- client which click it is rather than reading the ctrl key itself. Held in a
+-- global table rather than in locals because this file has spent every one of
+-- Lua's 200 of them.
+dressUp = { held = false }
+function IsModifiedClick(action) return action == "DRESSUP" and dressUp.held end
+function DressUpVisual(sourceID) dressUp.source = sourceID end
+function ShowInspectCursor() dressUp.cursor = "inspect" end
+function ResetCursor() dressUp.cursor = nil end
 function IsUnitModelReadyForUI() return true end
 function UnitClass() return "Class 5", "CLASS5", CLOTH_CLASS end
 function Model_ApplyUICamera() end
@@ -1910,7 +1919,39 @@ assert(toggledPiece == missingPiece.piece.sourceID and toggledName == "Live Name
     "shift-click hands a missing piece over to be tracked or untracked, named by its set")
 shiftDown = false
 
+-- Ctrl-click opens the dressing room wearing the piece, as the Sets tab does,
+-- whether or not the appearance has been collected.
+dressUp.held = true
+collectedPiece.scripts.OnClick(collectedPiece, "LeftButton")
+assert(dressUp.source == collectedPiece.piece.sourceID, "ctrl-click tried the piece on")
+dressUp.source = nil
+missingPiece.scripts.OnClick(missingPiece, "LeftButton")
+assert(dressUp.source == missingPiece.piece.sourceID, "a piece not yet collected can still be tried on")
+
+-- The claimed clicks come first and are not also a dressing-room click, so a
+-- player who rebound the modifier onto one of them gets the one they set.
+dressUp.source, toggledPiece = nil, nil
+shiftDown = true
+missingPiece.scripts.OnClick(missingPiece, "LeftButton")
+assert(toggledPiece == missingPiece.piece.sourceID and dressUp.source == nil,
+    "a shift-click that tracks does not also open the dressing room")
+shiftDown = false
+altDown = true
+missingPiece.scripts.OnClick(missingPiece, "LeftButton")
+assert(dressUp.source == nil, "an alt-click that hands back an address does not open it either")
+altDown = false
+
+-- The inspect cursor is the only sign the click is there, and it follows the
+-- key rather than the hover: the modifier can go down over a still piece.
+collectedPiece.scripts.OnEnter(collectedPiece)
+collectedPiece.scripts.OnUpdate(collectedPiece)
+assert(dressUp.cursor == "inspect", "held the inspect cursor over a hovered piece")
+dressUp.held = false
+collectedPiece.scripts.OnUpdate(collectedPiece)
+assert(dressUp.cursor == nil, "and put it away when the key came up")
+
 collectedPiece.scripts.OnLeave(collectedPiece)
+assert(collectedPiece.scripts.OnUpdate == nil, "stopped watching the cursor once the piece was left")
 assert(not tooltip.shown, "leaving a piece hides the tooltip")
 assert(wardrobe.tooltipContentFrame == nil and wardrobe.tooltipSourceIndex == nil,
     "handed the tooltip back, so the next piece starts at its own item")
@@ -1927,6 +1968,14 @@ assert(tooltip.appearanceData == nil, "unavailable pieces skip the appearance to
 assert(tooltip.lines[1] == LuckysWardrobe.Strings.extraSets.pieceUnavailable,
     "unavailable pieces say so honestly")
 assert(tooltip.shown, "unavailable pieces still show a tooltip")
+
+-- There is no look left behind an unavailable piece, so the ctrl-click has
+-- nothing to try on and opens no empty dressing room.
+dressUp.held = true
+dressUp.source = nil
+unavailablePiece.scripts.OnClick(unavailablePiece, "LeftButton")
+assert(dressUp.source == nil, "left the dressing room shut for a piece the client no longer knows")
+dressUp.held = false
 
 -- Sets this character cannot wear. The client works that out from the items
 -- behind the pieces, which it loads only once asked, and a piece it has not

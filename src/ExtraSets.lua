@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT EventUtil GetUICameraInfo IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual EventUtil GetUICameraInfo IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ResetCursor ScrollBoxConstants ScrollUtil ShowInspectCursor UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -1355,6 +1355,17 @@ local function pieceSources(piece)
     return sources
 end
 
+-- The cursor the Sets tab puts up while the dressing-room modifier is held, and
+-- the only sign the ctrl-click is there to be made. Watched rather than read
+-- once, since the key can go down over a piece already hovered.
+local function updateCursor()
+    if IsModifiedClick("DRESSUP") then
+        ShowInspectCursor()
+    else
+        ResetCursor()
+    end
+end
+
 -- The tooltip a set's piece shows, as the native Sets tab shows its own. The
 -- tooltip offers Tab to cycle through the items sharing a look, and it is the
 -- wardrobe's own key handler that does the cycling: it moves the source index
@@ -1372,6 +1383,7 @@ end
 -- calls on whichever frame owns the tooltip.
 function ExtraSets.PieceTooltips(page, wardrobe)
     local hovered
+    local hoveredFrame
 
     local function draw()
         local S = LuckysWardrobe.Strings.extraSets
@@ -1405,16 +1417,50 @@ function ExtraSets.PieceTooltips(page, wardrobe)
 
     local function show(itemFrame)
         hovered = itemFrame.piece
+        hoveredFrame = itemFrame
+        itemFrame:SetScript("OnUpdate", updateCursor)
         GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
         draw()
     end
 
+    -- Also called bare when the page puts itself away under the mouse, so the
+    -- frame it stops watching is the one it remembers rather than one passed in.
     local function hide()
         hovered = nil
+        if hoveredFrame then
+            hoveredFrame:SetScript("OnUpdate", nil)
+            hoveredFrame = nil
+        end
+        ResetCursor()
         wardrobe:HideAppearanceTooltip()
     end
 
     return show, hide
+end
+
+-- The clicks a set's piece answers, which are the same on both of this addon's
+-- set pages. Ctrl-click previews the piece in the dressing room as the Sets tab
+-- does; the other two are this addon's own and hand the click back when their
+-- setting is off. Takes the name of the set on show, for the tracking report.
+function ExtraSets.PieceClicks(setName)
+    return function(itemFrame, buttonName)
+        local piece = itemFrame.piece
+        if not piece then return end
+
+        if LuckysWardrobe.WowheadLink:HandlesClick(buttonName)
+            and LuckysWardrobe.WowheadLink:ShowForSource(piece.sourceID) then
+            return
+        end
+        if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) and piece.state == "missing" then
+            LuckysWardrobe.SetTracking:TogglePiece(piece.sourceID, setName())
+            return
+        end
+        -- Only for the pieces the client still knows: an unavailable one has no
+        -- look left to put on, and asking would open an empty dressing room.
+        if IsModifiedClick("DRESSUP") and piece.state ~= "unavailable" then
+            DressUpVisual(piece.sourceID)
+        end
+    end
 end
 
 function ExtraSets:CreatePage(wardrobe)
@@ -1582,6 +1628,7 @@ function ExtraSets:CreatePage(wardrobe)
     end
 
     local pieceTooltip, hidePieceTooltip = ExtraSets.PieceTooltips(page, wardrobe)
+    local pieceClick = ExtraSets.PieceClicks(function() return selectedEntry and selectedEntry.name end)
 
     local function getItemFrame(index)
         if itemFrames[index] then return itemFrames[index] end
@@ -1599,15 +1646,7 @@ function ExtraSets:CreatePage(wardrobe)
         itemFrame.border:SetPoint("RIGHT", itemFrame.icon, "CENTER", 20, 1)
         itemFrame:SetScript("OnEnter", pieceTooltip)
         itemFrame:SetScript("OnLeave", hidePieceTooltip)
-        itemFrame:SetScript("OnClick", function(self, buttonName)
-            if LuckysWardrobe.WowheadLink:HandlesClick(buttonName)
-                and LuckysWardrobe.WowheadLink:ShowForSource(self.piece.sourceID) then
-                return
-            end
-            if LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) and self.piece.state == "missing" then
-                LuckysWardrobe.SetTracking:TogglePiece(self.piece.sourceID, selectedEntry and selectedEntry.name)
-            end
-        end)
+        itemFrame:SetScript("OnClick", pieceClick)
         itemFrames[index] = itemFrame
         return itemFrame
     end
