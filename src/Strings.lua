@@ -362,6 +362,13 @@ LuckysWardrobe.Strings = {
             andMore = "  ...and %d more",
         },
     },
+    previewSlots = {
+        menuTitle = "Slots on the Preview",
+        -- The slot names themselves come from the game, so only the sentence
+        -- around them is ours to say.
+        buttonTooltip = "Choose which slots the set previews dress. A slot you untick stays off every preview, the way a helm you never show would, on the Sets, Extra Sets and Custom tabs alike. The sets themselves are untouched.",
+        showAll = "Show Every Slot",
+    },
     customSets = {
         -- Short, because the tab strip has four names to fit and Blizzard's own
         -- "Custom Sets" is one word too many for the room left.

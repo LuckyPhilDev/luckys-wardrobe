@@ -21,6 +21,7 @@ Data\PlateSets.lua
 Data\EnsembleSets.lua
 Classes.lua
 SetSources.lua
+PreviewSlots.lua
 SetsBrowser.lua
 SetTracking.lua
 TrackedAppearances.lua
