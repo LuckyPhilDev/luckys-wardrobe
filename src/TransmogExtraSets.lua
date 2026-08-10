@@ -635,16 +635,19 @@ local function updateCard(card)
 end
 
 -- The native card tooltip, told from the entry: name coloured by the pieces'
--- average quality, the label with how much is collected, then every piece in
--- its collected or missing colour. A piece the client has not named yet marks
--- the tooltip to redraw when the item data lands, as the native cards do.
+-- average quality, the label with how much is collected, then every look in
+-- its collected or missing colour, one line per appearance rather than per
+-- item so the list reads like the counts. A piece the client has not named
+-- yet marks the tooltip to redraw when the item data lands, as the native
+-- cards do.
 local function cardTooltip(card)
     if not card.elementData then return end
     local S = LuckysWardrobe.Strings.extraSets
     local entry = card.elementData.entry
+    local pieces = LuckysWardrobe.ExtraSets.DistinctLookPieces(entry.pieces)
 
     local totalQuality, qualityCount, waitingOnQuality = 0, 0, false
-    for _, piece in ipairs(entry.pieces) do
+    for _, piece in ipairs(pieces) do
         if piece.state ~= "unavailable" then
             local sourceInfo = C_TransmogCollection.GetSourceInfo(piece.sourceID)
             if sourceInfo and sourceInfo.quality then
@@ -680,7 +683,7 @@ local function cardTooltip(card)
 
     local wrap = false
     local leftOffset = 8
-    for _, piece in ipairs(entry.pieces) do
+    for _, piece in ipairs(pieces) do
         if piece.state ~= "unavailable" then
             local sourceInfo = C_TransmogCollection.GetSourceInfo(piece.sourceID)
             local name = sourceInfo and sourceInfo.name
