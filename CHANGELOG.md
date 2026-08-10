@@ -4,8 +4,8 @@
 
 ### Added
 
-- **Hide slots from set previews.** Added a button in the corner of each set pane on the Sets, Extra Sets and Custom tabs, allowing you to pick which slots are shown on the model.
-- **Preview a single set piece.** Ctrl-click a piece on the Extra Sets or Custom tabs to open it in the dressing room.
+- **Hide slots from set previews.** Added a button in the corner of each set pane in Appearances, on the Sets, Extra Sets and Custom tabs, allowing you to pick which slots are shown on the model.
+- **Preview a single set piece.** Ctrl-click a piece on the Extra Sets or Custom tabs in Appearances to open it in the dressing room.
 
 ### Improved
 

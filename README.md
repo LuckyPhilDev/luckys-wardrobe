@@ -21,6 +21,8 @@ It adds to the collection journal instead of replacing it, so it stays light and
 - **Sort by completion**: Order the Sets list by how close each one is, ascending to work on the nearest first or descending to see what you have most of. Favourites stay at the top.
 - **Filter by expansion and source**: Narrow the list to the expansions you are working through, or to where the sets come from, covering Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post, and Miscellaneous. The count reflects what the filters actually left on screen.
 - **Track a whole set, or one piece of it**: Shift-click a set to start tracking every appearance you are still missing from it, or open the set and shift-click one of its pieces to track just that one. Shift-click a piece you are already tracking to call it off.
+- **Choose which slots the previews dress**: A button in the corner of every set pane, on the Sets, Extra Sets and Custom tabs alike, offers the armour slots as checkboxes, so a set can be looked at without the helm your character never shows. Only the preview changes: pieces, counts and tracking carry on as they were.
+- **Preview one piece on its own**: Ctrl-click a piece in the Extra Sets or Custom tab to open just that piece in the dressing room.
 - **See what you are hunting**: Open a set and the pieces you are tracking carry a crosshair in the corner, in the Sets tab and the Extra Sets tab alike, so a set says what you are still out after. Hover one and its tooltip says so too. A set you are hunting every missing piece of carries the mark on its own row, so the list says which sets you are after without opening each one.
 
 ### Set Tracker

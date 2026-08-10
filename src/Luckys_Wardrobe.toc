@@ -1,7 +1,7 @@
 ## Interface: 120007
 ## Title: Lucky's Wardrobe
 ## Notes: Plan, track, and browse transmog collections.
-## Version: 1.6.1
+## Version: 1.7.0
 ## Author: Lucky Phil
 ## SavedVariables: LuckysWardrobeDB
 ## Dependencies: Luckys_Utils
