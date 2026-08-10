@@ -974,6 +974,25 @@ function ExtraSets.EnsembleNames(entry, itemName)
     return names
 end
 
+-- One piece per look in its slot, which is how the Sets tab draws its own
+-- strip. An ensemble often teaches several items carrying one appearance, and
+-- an icon per item says 78 pieces where the counts say 22 looks: the first
+-- source of a look stands for it, and the piece tooltip already names every
+-- item that shares it. The fold stays inside a slot so the preview-slot
+-- toggles keep a piece for every slot they govern, and a piece the client has
+-- not resolved yet has no look to fold on, so it stands alone.
+function ExtraSets.DistinctLookPieces(pieces)
+    local distinct, seen = {}, {}
+    for _, piece in ipairs(pieces) do
+        local key = piece.appearanceID and (piece.slot .. "|" .. piece.appearanceID)
+        if not key or not seen[key] then
+            if key then seen[key] = true end
+            distinct[#distinct + 1] = piece
+        end
+    end
+    return distinct
+end
+
 -- Where each piece icon sits in the block under the set's counts: filled left
 -- to right, each strip centred on the pane, and no more strips than the pane
 -- has room for. Answers the places and how many pieces were left off the end.
@@ -1809,10 +1828,11 @@ function ExtraSets:CreatePage(wardrobe)
 
         for _, itemFrame in ipairs(itemFrames) do itemFrame:Hide() end
         for _, background in ipairs(rowBackgrounds) do background:Hide() end
-        local places, leftOff = ExtraSets.PieceLayout(#entry.pieces)
+        local shownPieces = ExtraSets.DistinctLookPieces(entry.pieces)
+        local places, leftOff = ExtraSets.PieceLayout(#shownPieces)
         for strip = 1, places[#places].row do getRowBackground(strip):Show() end
         for index, place in ipairs(places) do
-            local piece = entry.pieces[index]
+            local piece = shownPieces[index]
             local itemFrame = getItemFrame(index)
             local collected = piece.state == "collected"
             itemFrame.piece = piece

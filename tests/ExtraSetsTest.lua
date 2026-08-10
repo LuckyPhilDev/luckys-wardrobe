@@ -668,6 +668,36 @@ local boughtGroup = ExtraSets.BuildGroup(boughtVariants)
 assert(#boughtGroup.ensembles == 2 and boughtGroup.ensembles[1] == 70001 and boughtGroup.ensembles[2] == 70002,
     "gathered the ensembles across the colourways, each named once")
 
+-- The strip shows one piece per look in a slot: an ensemble teaching several
+-- items that carry one appearance folds them behind the first, whose tooltip
+-- names the rest. The fold never crosses slots, so the preview-slot toggles
+-- keep a piece for every slot they govern, and a piece with no look yet
+-- stands alone rather than folding wrongly.
+
+do
+    local sharedLook = ExtraSets.BuildEntries({ validRecord({
+        pieces = pieces({ "HEAD", 2001 }, { "CHEST", 2003 }, { "CHEST", 2004 }),
+    }) }, stubResolver(1))[1]
+    local distinctPieces = ExtraSets.DistinctLookPieces(sharedLook.pieces)
+    assert(#sharedLook.pieces == 3 and #distinctPieces == 2, "sources sharing a slot's look are one icon")
+    assert(distinctPieces[1].sourceID == 2001 and distinctPieces[2].sourceID == 2003,
+        "the first source of a look stands for it")
+
+    local crossSlot = ExtraSets.BuildEntries({ validRecord() }, stubResolver(1))[1]
+    assert(#ExtraSets.DistinctLookPieces(crossSlot.pieces) == 3,
+        "a look shared across slots keeps a piece in each slot")
+
+    local unresolvedPieces = ExtraSets.BuildEntries({ {
+        setID = 501,
+        name = "Cold Set",
+        armorType = CLOTH,
+        classMask = 0,
+        pieces = pieces({ "HEAD", 3001 }, { "CHEST", 3002 }, { "LEGS", 3999 }),
+    } }, stubResolver(1))[1]
+    assert(#ExtraSets.DistinctLookPieces(unresolvedPieces.pieces) == 3,
+        "loading and unavailable pieces have no look to fold on and stand alone")
+end
+
 -- Where the piece icons go. A tier's nine pieces are one strip; the dozens an
 -- ensemble can teach wrap, and the ones past what the pane holds are counted.
 
