@@ -412,14 +412,19 @@ function CustomSets:CreatePage(wardrobe)
 
     -- The first dress after a show goes onto a figure that is still loading,
     -- and is dropped with it, so the outfit on screen is dressed again once
-    -- the figure lands. The loads that come of dressing it are left alone, or
-    -- every piece going on would strip and redress the model in a loop.
+    -- the figure lands. A frame later rather than here: pieces put on while
+    -- the load is still settling are wiped with it, the same reason the
+    -- tooltip preview waits a frame before dressing. The loads that come of
+    -- dressing are left alone, or every piece going on would strip and
+    -- redress in a loop.
     model:SetScript("OnModelLoaded", function(self)
         self.OnModelLoaded(self)
         if not modelLoading then return end
         modelLoading = false
-        dressedKey = nil
-        displayEntry(selectedEntry)
+        C_Timer.After(0, function()
+            dressedKey = nil
+            displayEntry(selectedEntry)
+        end)
     end)
 
     local function refreshVisibleSelection()
