@@ -1073,15 +1073,18 @@ function ExtraSets.FilterEntries(entries, query)
     if normalized == "" then return entries end
 
     local filtered = {}
-    -- An expansion or a side typed into the box narrows to it, the way it does
-    -- in the search box on either Sets tab. Which side a set is comes off the
-    -- snapshot's own source bits, the client having no answer for these sets.
+    -- An expansion or a kind of set typed into the box narrows to it, the way it
+    -- does in the search box on either Sets tab. The client answers for none of
+    -- these sets, so both come out of the snapshot: whether a set is PvP off its
+    -- own source bits, and whether it is tier off the difficulty it is named by,
+    -- which is the same test the Sources filter puts Blizzard's sets through.
     -- A set the snapshot could not date is not the expansion asked for.
     local narrowedTo = LuckysWardrobe.SetSearch.Parse(normalized)
     if narrowedTo then
         for _, entry in ipairs(entries) do
             if LuckysWardrobe.SetSearch.Matches(narrowedTo, entry.expansionID,
-                ExtraSets.MaskHas(entry.sourceMask, PVP_SOURCE_BIT)) then
+                ExtraSets.MaskHas(entry.sourceMask, PVP_SOURCE_BIT),
+                LuckysWardrobe.SetSources:IsRaidDifficulty(entry.label)) then
                 filtered[#filtered + 1] = entry
             end
         end

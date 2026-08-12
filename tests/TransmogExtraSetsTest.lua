@@ -32,6 +32,7 @@ C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
+dofile("src/SetSources.lua")
 dofile("src/SetSearch.lua")
 dofile("src/Classes.lua")
 dofile("src/Perf.lua")

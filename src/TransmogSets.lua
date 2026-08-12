@@ -89,13 +89,15 @@ function TransmogSets.SetsFromExpansions(sets, shownExpansions, matchesSearch)
     return kept
 end
 
--- What the search box means by "pvp" here: the same category the Sets tab's own
--- Sources filter puts a set under, so typing it and ticking it agree.
+-- What the search box means by "pvp" and "raid" here: the same categories the
+-- Sets tab's own Sources filter puts a set under, so typing one and ticking it
+-- agree.
 function TransmogSets.MatchesSearch(set)
     local SetSources = LuckysWardrobe.SetSources
     local SetSearch = LuckysWardrobe.SetSearch
+    local source = SetSources:Classify(set)
     return SetSearch.Matches(SetSearch.Narrowing(), set.expansionID,
-        SetSources:Classify(set) == SetSources.PVP)
+        source == SetSources.PVP, source == SetSources.RAID)
 end
 
 -- Live glue from here down.

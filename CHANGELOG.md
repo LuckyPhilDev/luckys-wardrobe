@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.3] - 2026-08-12
+
+### Added
+
+- **Search a set list by expansion.** Type an expansion into the search box on the Sets, Extra Sets or Custom tabs, as its full name or a short form like tww, mn, df or bfa, and only that expansion's sets are listed.
+- **Narrow a set list to raid, PvP or PvE.** Type raid, pvp or pve into the same box, on its own or beside an expansion as in "tww pvp" or "mn raid", to cut a list down to where its sets came from. (Thanks for the suggestion Rubyurek)
+
+### Improved
+
+- **Filter the whole Extra Sets tab by expansion.** Every set on the tab is now dated to the expansion it was added in, where before nearly all of them sat behind the Unknown box.
+
 ## [1.7.2] - 2026-08-12
 
 ### Added

@@ -30,6 +30,7 @@ C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
+dofile("src/SetSources.lua")
 dofile("src/SetSearch.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/Classes.lua")
@@ -878,12 +879,14 @@ assert(#ExtraSets.FilterEntries(entries, "  live  ") == 1, "matched trimmed case
 assert(#ExtraSets.FilterEntries(entries, "FIXTURE") == 1, "matched labels")
 assert(#ExtraSets.FilterEntries(entries, "nothing") == 0, "unmatched query empties the list")
 
--- An expansion or a side typed into the box narrows to it, as either does on
--- both Sets tabs. 4 is the snapshot's own PvP source bit.
+-- An expansion or a kind of set typed into the box narrows to it, as either does
+-- on both Sets tabs. 4 is the snapshot's own PvP source bit, and a set is tier
+-- when the snapshot names it by a raid difficulty.
 do
     local dated = {
-        { name = "Fixture Nerubian Weave", expansionID = 10, sourceMask = 2 },
-        { name = "Fixture Gladiator's Weave", expansionID = 10, sourceMask = 4 },
+        { name = "Fixture Nerubian Weave", expansionID = 10, sourceMask = 2, label = "Mythic" },
+        { name = "Fixture Delving Weave", expansionID = 10, sourceMask = 2 },
+        { name = "Fixture Gladiator's Weave", expansionID = 10, sourceMask = 4, label = "Elite" },
         { name = "Fixture Draconic Weave", expansionID = 9, sourceMask = 4 },
         { name = "Fixture Undated Weave" },
     }
@@ -893,13 +896,18 @@ do
         return table.concat(matched, ", ")
     end
 
-    assert(#ExtraSets.FilterEntries(dated, "weave") == 4, "a word out of the names is still a name search")
-    assert(named("TWW") == "Fixture Nerubian Weave, Fixture Gladiator's Weave",
+    assert(#ExtraSets.FilterEntries(dated, "weave") == 5, "a word out of the names is still a name search")
+    assert(named("TWW") == "Fixture Nerubian Weave, Fixture Delving Weave, Fixture Gladiator's Weave",
         "an expansion narrows to the sets from it, leaving out the ones nothing dated")
     assert(named("pvp") == "Fixture Gladiator's Weave, Fixture Draconic Weave",
-        "a side narrows to the sets that carry it, whatever expansion they came from")
+        "a kind narrows to the sets that carry it, whatever expansion they came from")
     assert(named("tww pvp") == "Fixture Gladiator's Weave", "and the two together take both")
-    assert(named("tww pve") == "Fixture Nerubian Weave", "the other side of the same expansion")
+    assert(named("tww pve") == "Fixture Nerubian Weave, Fixture Delving Weave",
+        "the other side of the same expansion, raid tier among it")
+    assert(named("tww raid") == "Fixture Nerubian Weave",
+        "raid takes the set the snapshot names by a raid difficulty")
+    assert(named("raid") == "Fixture Nerubian Weave",
+        "and Elite is a PvP rank rather than a difficulty, so it is not tier")
 end
 
 -- Sorting.

@@ -98,7 +98,8 @@ function SetsBrowser:FilterAndSort(sets)
     for _, set in ipairs(sets) do
         local source = SetSources:Classify(set)
         if state.expansions[set.expansionID] and state.sources[source]
-            and SetSearch.Matches(narrowedTo, set.expansionID, source == SetSources.PVP) then
+            and SetSearch.Matches(narrowedTo, set.expansionID,
+                source == SetSources.PVP, source == SetSources.RAID) then
             result[#result + 1] = set
         end
     end

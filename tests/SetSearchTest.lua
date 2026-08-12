@@ -46,21 +46,23 @@ end
 local function describe(text)
     local parsed = parse(text)
     if not parsed then return "none" end
-    return tostring(parsed.expansionID) .. "/" .. tostring(parsed.pvp)
+    return tostring(parsed.expansionID) .. "/" .. tostring(parsed.kind)
 end
 
-assert(describe("tww") == "10/nil", "an expansion alone leaves the side open")
-assert(describe("pvp") == "nil/true", "a side alone leaves the expansion open")
-assert(describe("pve") == "nil/false", "and the other side is everything that is not PvP")
-assert(describe("tww pvp") == "10/true", "an expansion and a side together")
-assert(describe("pvp tww") == "10/true", "typed in either order")
-assert(describe("the war within pvp") == "10/true", "an expansion of several words keeps them")
-assert(describe("PvE  TWW") == "10/false", "in any case, however it was spaced")
-assert(describe("classic pvp") == "0/true", "the first expansion is 0, not nothing")
+assert(describe("tww") == "10/nil", "an expansion alone leaves the kind open")
+assert(describe("pvp") == "nil/pvp", "a kind alone leaves the expansion open")
+assert(describe("pve") == "nil/pve", "and its opposite is a kind of its own")
+assert(describe("raid") == "nil/raid", "so is raid tier")
+assert(describe("tww pvp") == "10/pvp", "an expansion and a kind together")
+assert(describe("pvp tww") == "10/pvp", "typed in either order")
+assert(describe("mn raid") == "11/raid", "the pair Rubyurek asked for")
+assert(describe("the war within raid") == "10/raid", "an expansion of several words keeps them")
+assert(describe("PvE  TWW") == "10/pve", "in any case, however it was spaced")
+assert(describe("classic pvp") == "0/pvp", "the first expansion is 0, not nothing")
 
 assert(parse("tww tabard") == nil, "a word naming neither is the name search it always was")
 assert(parse("gladiator") == nil, "and so is a set name that merely sounds like one")
-assert(parse("pvp pve") == nil, "two sides name no set list worth showing")
+assert(parse("pvp raid") == nil, "two kinds name no set list worth showing")
 
 -- The game's own search, and the two lists that redraw once it has been answered.
 local searched, cleared, redrawn = {}, {}, 0
@@ -88,16 +90,26 @@ assert(redrawn == 1, "the list redraws for a search the game saw nothing change 
 
 -- Both halves have to hold, which is the whole point of typing them together.
 local narrowedTo = SetSearch.Narrowing()
-assert(SetSearch.Matches(narrowedTo, 10, true), "a PvP set from that expansion belongs in the list")
-assert(not SetSearch.Matches(narrowedTo, 10, false), "one from the expansion that is not PvP does not")
-assert(not SetSearch.Matches(narrowedTo, 9, true), "nor a PvP set from another expansion")
-assert(not SetSearch.Matches(narrowedTo, nil, true), "and neither does one nothing could date")
-assert(SetSearch.Matches(nil, nil, false), "with nothing typed, every set belongs")
+assert(SetSearch.Matches(narrowedTo, 10, true, false), "a PvP set from that expansion belongs in the list")
+assert(not SetSearch.Matches(narrowedTo, 10, false, true), "a raid set from the same expansion does not")
+assert(not SetSearch.Matches(narrowedTo, 9, true, false), "nor a PvP set from another expansion")
+assert(not SetSearch.Matches(narrowedTo, nil, true, false), "and neither does one nothing could date")
+assert(SetSearch.Matches(nil, nil, false, false), "with nothing typed, every set belongs")
 
--- An expansion on its own says nothing about the side, and vice versa.
-assert(SetSearch.Matches(parse("tww"), 10, false), "an expansion alone keeps both sides")
-assert(SetSearch.Matches(parse("pvp"), 3, true), "a side alone keeps every expansion")
-assert(not SetSearch.Matches(parse("pve"), 3, true), "the other side still leaves PvP out")
+-- An expansion on its own says nothing about the kind, and vice versa.
+assert(SetSearch.Matches(parse("tww"), 10, false, false), "an expansion alone keeps every kind")
+assert(SetSearch.Matches(parse("pvp"), 3, true, false), "a kind alone keeps every expansion")
+assert(SetSearch.Matches(parse("raid"), 3, false, true), "raid tier answers to raid")
+assert(not SetSearch.Matches(parse("raid"), 3, true, false), "and a PvP set does not")
+
+-- PvE is everything that is not PvP, which is where raid tier sits.
+assert(SetSearch.Matches(parse("pve"), 3, false, true), "a raid set is PvE")
+assert(SetSearch.Matches(parse("pve"), 3, false, false), "and so is everything else that is not PvP")
+assert(not SetSearch.Matches(parse("pve"), 3, true, false), "PvP is the one thing it leaves out")
+
+-- The pair from the request: one expansion, one kind, both have to hold.
+assert(SetSearch.Matches(parse("mn raid"), 11, false, true), "a Midnight raid set")
+assert(not SetSearch.Matches(parse("mn raid"), 10, false, true), "not a raid set from before it")
 
 C_TransmogCollection.SetSearch(BASE_SETS, "tabard")
 assert(SetSearch.Narrowing() == nil and searched[1] == BASE_SETS .. ":tabard",
