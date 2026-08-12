@@ -236,7 +236,10 @@ local function buildRecord(setID, set, armorType)
         name = (info and info.name ~= "" and info.name) or set.name,
         armorType = armorType or pieceArmour,
         classMask = info and info.classMask or set.classMask,
-        expansionID = info and info.expansionID,
+        -- The client dates only the sets it lists, and it lists none of these
+        -- under the numbering the armour lists carry, so the snapshot dates the
+        -- rest from the expansion partition Wowhead filed each one under.
+        expansionID = (info and info.expansionID) or set.expansionID,
         label = info and info.label,
         pieces = pieces,
         unresolvedPieces = unresolved,

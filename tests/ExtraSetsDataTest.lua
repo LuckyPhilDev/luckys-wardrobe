@@ -22,7 +22,7 @@ for _, armour in ipairs(Data.armorTypes) do
     dofile("src/Data/" .. armour.key:sub(1, 1):upper() .. armour.key:sub(2) .. "Sets.lua")
 end
 
-local totalSets, totalPieces, labelled = 0, 0, 0
+local totalSets, totalPieces, labelled, dated = 0, 0, 0, 0
 local owningArmorType = {}
 for _, armour in ipairs(Data.armorTypes) do
     local sets = Data.sets[armour.key]
@@ -42,6 +42,12 @@ for _, armour in ipairs(Data.armorTypes) do
             where .. " has an item quality")
         assert(type(set.minLevel) == "number" and set.minLevel >= 0, where .. " has a minimum level")
         assert(type(set.sourceMask) == "number" and set.sourceMask >= 0, where .. " has a source mask")
+        -- Dated from the expansion partition Wowhead filed the set under, in the
+        -- client's own numbering. A set it filed under none carries nothing.
+        assert(set.expansionID == nil or (type(set.expansionID) == "number"
+            and set.expansionID >= 0 and set.expansionID % 1 == 0),
+            where .. " has an expansion or none at all")
+        if set.expansionID then dated = dated + 1 end
         -- Only the difficulty variants carry a label, so nil is an ordinary set.
         assert(set.label == nil or (type(set.label) == "string" and set.label ~= ""),
             where .. " has a difficulty label or none at all")
@@ -63,6 +69,10 @@ assert(totalPieces > 20000, "sets carry their pieces, got " .. totalPieces)
 -- A floor too. Difficulty is read off flags the snapshot sets on a small
 -- minority of sets, so a decode that quietly stopped working reads as zero.
 assert(labelled > 100, "the difficulty variants keep their label, got " .. labelled)
+-- The expansion filter is the whole point of dating these, and a collection that
+-- lost the partition would leave every set in the Unknown box instead.
+assert(dated > totalSets * 0.9,
+    "the snapshot dates the sets it collected, got " .. dated .. " of " .. totalSets)
 
 -- The ensembles are the one listing keyed by the client's own set numbering, so
 -- the armour lists' set IDs say nothing about which of these are the same set.

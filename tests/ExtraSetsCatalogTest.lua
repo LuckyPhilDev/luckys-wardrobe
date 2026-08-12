@@ -107,7 +107,7 @@ LuckysWardrobe.ExtraSetsData = {
             [20] = { name = "Fixture Hidden Garb (snapshot)", classMask = 0, pieces = { 62004, 62003, 62001, 62002 } },
             [21] = { name = "Fixture Chest And Robe", classMask = 0, pieces = { 62102, 62103, 62101 } },
             [22] = { name = "Fixture Ghost Set", classMask = 0, pieces = { 69001, 69002 } },
-            [23] = { name = "Fixture Partly Missing", classMask = 128, pieces = { 62301, 62302, 69003, 62303 } },
+            [23] = { name = "Fixture Partly Missing", classMask = 128, expansionID = 2, pieces = { 62301, 62302, 69003, 62303 } },
             [10] = { name = "Fixture Official Regalia", classMask = 0, pieces = { 61001, 61002 } },
         },
         plate = {
@@ -310,8 +310,10 @@ assert(garb.classMask == 8 and garb.expansionID == 5 and garb.label == "Fixture 
 -- another class, and date it to another expansion.
 local partly = recordFor(23)
 assert(partly.name == "Fixture Partly Missing", "kept the bundled name where the client means another set")
-assert(partly.classMask == 128 and partly.expansionID == nil and partly.label == nil,
+assert(partly.classMask == 128 and partly.label == nil,
     "took nothing from a client set that is not this set")
+-- The client dated its own set 23 to expansion 9, and that set is not this one.
+assert(partly.expansionID == 2, "dated the set from the snapshot, not from the client's other set")
 assert(Catalog:GetReport().identityMismatches == 2,
     "counted the sets the snapshot and this client number differently, in either listing")
 
