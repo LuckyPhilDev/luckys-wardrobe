@@ -31,6 +31,7 @@ assert(expansionFor("The War Within") == 10, "the client's own name for it")
 assert(expansionFor("classic") == 0, "the first expansion is 0, not nothing")
 assert(expansionFor("vanilla") == 0, "and answers to what players call it")
 assert(expansionFor("legion") == 6, "a name needing no short form of its own")
+assert(expansionFor("mn") == 11 and expansionFor("midnight") == 11, "the newest expansion, either way")
 
 assert(expansionFor("tw") == nil, "part of a short name is not the short name")
 assert(expansionFor("twwx") == nil, "nor is more than one")

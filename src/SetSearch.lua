@@ -36,6 +36,7 @@ local ALIASES = {
     sl = 8,
     df = 9,
     tww = 10,
+    mn = 11,
 }
 
 -- Which side of the game a set came from, as Blizzard's own two boxes split it:
