@@ -10,6 +10,7 @@ local db
 
 local OPTION_FIELDS = { "situationID", "specID", "loadoutID", "equipmentSetID" }
 local ICONS_PATH = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\"
+local ICON_GOLD = { 0.910, 0.690, 0.251 }
 
 local function optionKey(option)
     local values = {}
@@ -178,7 +179,8 @@ local function createIconButton(parent, icon, tooltipText)
     button:SetNormalTexture(texture)
     button:SetHighlightTexture(texture, "ADD")
     button:SetDisabledTexture(texture)
-    button:GetNormalTexture():SetVertexColor(0.85, 0.85, 0.85)
+    button:GetNormalTexture():SetVertexColor(unpack(ICON_GOLD))
+    button:GetHighlightTexture():SetVertexColor(unpack(ICON_GOLD))
     button:GetHighlightTexture():SetAlpha(0.35)
     button:GetDisabledTexture():SetVertexColor(0.35, 0.35, 0.35)
     button:SetScript("OnEnter", function(self)
