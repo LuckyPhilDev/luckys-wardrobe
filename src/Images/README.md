@@ -11,6 +11,8 @@ One folder per settings group, named after the group in `Settings.lua`, and
 ```
 Images/
 ├── icons/
+│   ├── load-situation.tga
+│   ├── save-situation.tga
 │   └── tracked-appearance.tga
 ├── tooltips/
 │   ├── show-a-preview-model.tga
@@ -43,9 +45,10 @@ The panel resolves it against `addonFolder` and `imagesRoot`, both set in `Setti
 
 ## Icons
 
-Icons are drawn white with a dark outline baked in, so `SetVertexColor` can tint
-them without losing the outline that keeps them readable over item art.
-Reference one by its full path:
+Icons are drawn white so `SetVertexColor` can tint them. The crosshair stamped
+on item art also carries a dark outline, baked in so tinting cannot lose the
+edge that keeps it readable against a bright model. Reference one by its full
+path:
 
 ```lua
 local CROSSHAIR = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\tracked-appearance"
@@ -53,8 +56,9 @@ local CROSSHAIR = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\tracked-ap
 
 ## Sources
 
-PNG originals live in `images/` at the repo root. They are excluded from release packages and exist so a TGA can be re-exported if the UI changes. `images/make_tracked_icon.py` redraws the tracked-appearance crosshair and writes both files:
+PNG originals live in `images/` at the repo root. They are excluded from release packages and exist so a TGA can be re-exported if the UI changes. Each script writes both files:
 
 ```
-python images/make_tracked_icon.py
+python images/make_tracked_icon.py       # tracked-appearance
+python images/make_situation_icons.py    # save-situation, load-situation
 ```
