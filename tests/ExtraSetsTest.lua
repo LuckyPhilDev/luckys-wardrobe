@@ -1219,7 +1219,7 @@ local createdFontStrings = {}
 
 local function newFontString()
     local fontString = recordAnchors({ shown = true, truncated = false })
-    function fontString:SetWidth() end
+    function fontString:SetWidth(width) self.width = width end
     function fontString:SetTextColor() end
     function fontString:SetText(text) self.text = text end
     function fontString:SetFormattedText(format, ...) self.text = format:format(...) end
@@ -1915,6 +1915,7 @@ local function newRowButton()
             self.scripts = self.scripts or {}
             self.scripts[script] = handler
         end,
+        CreateFontString = function() return newFontString() end,
     }
     rowButton.IconFrame.SetScript = rowButton.SetScript
     return rowButton
@@ -1949,6 +1950,38 @@ button.scripts.OnClick(button, "LeftButton")
 assert(trackedSources == nil and playedSound, "selected the set instead when tracking is turned off")
 shiftClickTracks = true
 shiftDown = false
+
+-- A row standing for several colourways. What the player wants off it is how
+-- much of the whole family is left, so the line under the name counts all of
+-- them and the corner says how many sets are folded behind it.
+
+do
+for id = 7200, 7208 do sourceStates[id] = { appearanceID = 8200 + id, collected = id % 3 == 0 } end
+
+local familyRows = ExtraSets.BuildRows(ExtraSets.BuildEntries({
+    validRecord({ setID = 901, name = "Nitroclad Kit", model = 42,
+        pieces = pieces({ "HEAD", 7200 }, { "CHEST", 7201 }, { "LEGS", 7202 }) }),
+    validRecord({ setID = 902, name = "Smoketrail Racer Suit", model = 42,
+        pieces = pieces({ "HEAD", 7203 }, { "CHEST", 7204 }, { "LEGS", 7205 }) }),
+    validRecord({ setID = 903, name = "Upcycled Outfit", model = 42,
+        pieces = pieces({ "HEAD", 7206 }, { "CHEST", 7207 }, { "LEGS", 7208 }) }),
+}, stubResolver(CLOTH_CLASS)))
+assert(#familyRows == 1 and #familyRows[1].variants == 3, "the three colourways are one row")
+
+local familyButton = newRowButton()
+capturedView.initializer(familyButton, familyRows[1])
+assert(familyButton.Label.text == "3/9 collected",
+    "the line under the name counts every look across the colourways, not the first set's three")
+assert(familyButton.luckysVariantCount.text == "x3", "and the corner says how many sets stand behind it")
+assert(familyButton.Name.width == 168, "the name gives up the width the badge needs")
+
+-- The same row template is reused as the list scrolls, so a plain set drawn
+-- into a button that just held a family must not keep its badge.
+capturedView.initializer(familyButton, entry)
+assert(familyButton.luckysVariantCount.text == "", "a set with one colourway shows no badge")
+assert(familyButton.Name.width == 190, "and takes the full width of the row back")
+assert(familyButton.Label.text:find("collected"), "and counts itself the way it always did")
+end
 
 -- Preview slots. The choice is one module shared with every set pane, so
 -- hiding a slot redresses the open set without its piece on the spot, and
@@ -2398,7 +2431,10 @@ assert(#scrollBox.dataProvider == 2, "the page lists one row per set, not one pe
 local groupButton = newRowButton()
 capturedView.initializer(groupButton, scrollBox.dataProvider[1])
 assert(groupButton.Name.text == "Charm Vestments", "the row is named for the set, not a colourway")
-assert(groupButton.Label.text == "2 colours", "and says how many colourways it holds without being opened")
+assert(groupButton.Label.text == "4/6 collected",
+    "and counts every look across its colourways rather than the first one's")
+assert(groupButton.luckysVariantCount.text == "x2",
+    "with how many colourways it holds in the corner, where it costs the counts no room")
 
 local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
 assert(variantDropdown, "built a colourway picker for the details pane")

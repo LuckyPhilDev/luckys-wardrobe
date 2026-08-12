@@ -75,6 +75,30 @@ ExtraSets.SOURCES = {
 -- one of these the game itself sorts sets by.
 local PVP_SOURCE_BIT = 4
 
+-- The count of colourways behind a row, in the corner of its cell. Blizzard's
+-- row template gives the name the full 190 of its width and lets it wrap onto a
+-- second line, so a row carrying the badge gives that width back rather than
+-- letting a long name run under it.
+local ROW_NAME_WIDTH = 190
+local ROW_NAME_WIDTH_WITH_BADGE = 168
+local VARIANT_BADGE_INSET = 6
+-- Bright yellow rather than the addon's own gold, which the row already spends
+-- on a completed set's name: the badge counts colourways and says nothing about
+-- collecting them, so it must not read as another completion state.
+local VARIANT_BADGE_COLOUR = { r = 1, g = 0.95, b = 0.2 }
+
+-- Made once per row and kept on it, because the list pools its rows and redraws
+-- them on every scroll.
+local function variantBadge(button)
+    if not button.luckysVariantCount then
+        local badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        badge:SetPoint("TOPRIGHT", -VARIANT_BADGE_INSET, -VARIANT_BADGE_INSET)
+        badge:SetTextColor(VARIANT_BADGE_COLOUR.r, VARIANT_BADGE_COLOUR.g, VARIANT_BADGE_COLOUR.b)
+        button.luckysVariantCount = badge
+    end
+    return button.luckysVariantCount
+end
+
 --- Whether a mask carries a bit, the way Classes:MaskHas reads a class out of
 --- one. Arithmetic rather than the bit library, so the rules stay testable
 --- outside the client.
@@ -2012,10 +2036,21 @@ function ExtraSets:CreatePage(wardrobe)
     view:SetElementInitializer("WardrobeSetsScrollFrameButtonTemplate", function(button, entry)
         local complete = ExtraSets.IsComplete(entry)
         button.Name:SetText(entry.name)
+
+        -- A row standing for several colourways counts them in the corner, which
+        -- leaves the line under the name free to say how much of the whole
+        -- family is collected. That count is the useful one: it is what the row
+        -- is offering to finish, where one colourway's own progress says nothing
+        -- about the rest of what is folded behind it.
+        local colourways = entry.variants and #entry.variants
+        button.Name:SetWidth(colourways and ROW_NAME_WIDTH_WITH_BADGE or ROW_NAME_WIDTH)
+        variantBadge(button):SetText(colourways and S.variantCount:format(colourways) or "")
+
         -- Counts beat a loading notice as soon as anything resolves, so a set
         -- with one slow piece still says something useful.
         if entry.total > 0 then
-            button.Label:SetText(entry.label ~= "" and entry.label or S.counts:format(entry.collected, entry.total))
+            local label = not colourways and entry.label ~= "" and entry.label
+            button.Label:SetText(label or S.counts:format(entry.collected, entry.total))
         elseif entry.loading then
             button.Label:SetText(S.loading)
         else

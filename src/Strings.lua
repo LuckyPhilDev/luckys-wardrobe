@@ -341,6 +341,9 @@ LuckysWardrobe.Strings = {
         loading = "Loading appearance data...",
         counts = "%d/%d collected",
         colours = "%d colours",
+        -- The badge in the corner of a list row, counting the colourways folded
+        -- behind it. Short because it shares the row with the set's name.
+        variantCount = "x%d",
         variantOption = "%s (%d/%d)",
         alsoListed = "Also listed as %s",
         -- The client names the ensemble item itself, and every one of them is
