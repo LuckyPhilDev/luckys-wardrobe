@@ -1,4 +1,4 @@
--- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame MenuTemplates MenuUtil MenuVariants NO SAVE StaticPopupDialogs StaticPopup_OnClick StaticPopup_Show TransmogFrame UnitClass YES strtrim
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame GameTooltip GameTooltip_Hide MenuTemplates MenuUtil MenuVariants NO SAVE StaticPopupDialogs StaticPopup_OnClick StaticPopup_Show TransmogFrame UnitClass YES strtrim
 
 -- Lucky's Wardrobe: Save and load Situation selections at the transmog window.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -9,6 +9,7 @@ local strings = LuckysWardrobe.Strings.situationPresets
 local db
 
 local OPTION_FIELDS = { "situationID", "specID", "loadoutID", "equipmentSetID" }
+local ICONS_PATH = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\"
 
 local function optionKey(option)
     local values = {}
@@ -170,17 +171,32 @@ StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"] = {
     end,
 }
 
+local function createIconButton(parent, icon, tooltipText)
+    local texture = ICONS_PATH .. icon
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(20, 20)
+    button:SetNormalTexture(texture)
+    button:SetHighlightTexture(texture, "ADD")
+    button:SetDisabledTexture(texture)
+    button:GetNormalTexture():SetVertexColor(0.85, 0.85, 0.85)
+    button:GetHighlightTexture():SetAlpha(0.35)
+    button:GetDisabledTexture():SetVertexColor(0.35, 0.35, 0.35)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(tooltipText)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    return button
+end
+
 local function installButtons()
     if SituationPresets.loadButton then return end
     local wardrobe = TransmogFrame and TransmogFrame.WardrobeCollection
     local situationsFrame = wardrobe and wardrobe.TabContent and wardrobe.TabContent.SituationsFrame
     if not situationsFrame or not situationsFrame.Situations then return end
 
-    local loadButton = CreateFrame("Button", nil, situationsFrame, "SquareIconButtonTemplate")
-    loadButton:SetSize(30, 30)
-    loadButton.Icon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
-    loadButton.Icon:SetSize(18, 18)
-    loadButton.tooltipText = strings.load
+    local loadButton = createIconButton(situationsFrame, "load-situation", strings.load)
     loadButton:SetPoint("BOTTOMRIGHT", situationsFrame.Situations, "TOPRIGHT", 0, 10)
     loadButton:SetScript("OnClick", function()
         MenuUtil.CreateContextMenu(loadButton, function(_owner, rootDescription)
@@ -206,12 +222,8 @@ local function installButtons()
         end)
     end)
 
-    local saveButton = CreateFrame("Button", nil, situationsFrame, "SquareIconButtonTemplate")
-    saveButton:SetSize(30, 30)
-    saveButton.Icon:SetTexture("Interface\\Icons\\INV_Scroll_03")
-    saveButton.Icon:SetSize(18, 18)
-    saveButton.tooltipText = strings.save
-    saveButton:SetPoint("RIGHT", loadButton, "LEFT", -4, 0)
+    local saveButton = createIconButton(situationsFrame, "save-situation", strings.save)
+    saveButton:SetPoint("RIGHT", loadButton, "LEFT", -6, 0)
     saveButton:SetScript("OnClick", function()
         StaticPopup_Show("LUCKYS_WARDROBE_SAVE_SITUATION")
     end)
