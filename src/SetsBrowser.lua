@@ -1,4 +1,4 @@
--- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil GRAY_FONT_COLOR IN_PROGRESS_FONT_COLOR LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NORMAL_FONT_COLOR NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 122
 
 -- Lucky's Wardrobe: Sorting and filtering for Blizzard's official Sets tab.
@@ -128,10 +128,22 @@ function SetsBrowser:VariantCounts(baseSetID)
     return { colourways = #variants, collected = collected, total = total }
 end
 
+-- Blizzard's own width for a full progress bar on one of these rows.
+local PROGRESS_BAR_WIDTH = 204
+
 -- What the tab draws itself, plus what it leaves out: a row standing for
 -- several colourways says how many in the corner, and spends the line under the
 -- name on how much of all of them is collected rather than on the difficulty of
 -- whichever one Blizzard picked to show.
+--
+-- Everything else the row says about progress is redrawn from the same numbers,
+-- because a row makes one statement and its parts cannot disagree. Blizzard
+-- reads all of them off the best single difficulty, so a tier finished on
+-- Normal and untouched on Heroic comes out gold, uncovered and barless while
+-- the line underneath reads a third collected.
+--
+-- Desaturation is left alone: the best difficulty has nothing collected exactly
+-- when none of them do, so Blizzard's answer is already this one.
 function SetsBrowser:MarkVariants(scrollBox)
     scrollBox:ForEachFrame(function(button)
         if not button.setID then return end
@@ -139,6 +151,20 @@ function SetsBrowser:MarkVariants(scrollBox)
         local counts = SetsBrowser:VariantCounts(button.setID)
         if not LuckysWardrobe.Utils.MarkVariantCount(button, counts and counts.colourways) then return end
         button.Label:SetText(LuckysWardrobe.Strings.setRow.counts:format(counts.collected, counts.total))
+
+        local complete = counts.collected == counts.total
+        local colour = NORMAL_FONT_COLOR
+        if not complete then
+            colour = counts.collected == 0 and GRAY_FONT_COLOR or IN_PROGRESS_FONT_COLOR
+        end
+        button.Name:SetTextColor(colour.r, colour.g, colour.b)
+        button.IconFrame:SetIconCoverShown(not complete)
+
+        local started = counts.collected > 0 and not complete
+        button.ProgressBar:SetShown(started)
+        if started then
+            button.ProgressBar:SetWidth(PROGRESS_BAR_WIDTH * counts.collected / counts.total)
+        end
     end)
 end
 
