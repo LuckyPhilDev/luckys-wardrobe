@@ -10,7 +10,7 @@ local db
 
 local OPTION_FIELDS = { "situationID", "specID", "loadoutID", "equipmentSetID" }
 local ICONS_PATH = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\"
-local ICON_GOLD = { 0.910, 0.690, 0.251 }
+local ICON_GOLD = { 1.0, 0.824, 0.392 }
 
 local function optionKey(option)
     local values = {}
