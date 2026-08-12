@@ -51,6 +51,7 @@ EventUtil = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
+dofile("src/SetSearch.lua")
 dofile("src/TransmogSets.lua")
 
 local TransmogSets = LuckysWardrobe.TransmogSets
@@ -316,6 +317,15 @@ assert(filterButton.isDefault() and #C_TransmogSets.GetAvailableSets() == 2,
     "the reset put the expansions back alongside everything else")
 
 setsFrame.shown = false
+
+-- An expansion typed into the search box narrows the list once more, leaving
+-- the tab's own boxes where they were: searching is not unticking.
+local dated = { { setID = 1, expansionID = 0 }, { setID = 2, expansionID = 1 } }
+local ticked = { [0] = true, [1] = true }
+assert(#TransmogSets.SetsFromExpansions(dated, ticked) == 2,
+    "with nothing searched for, the ticked boxes decide alone")
+local searched = TransmogSets.SetsFromExpansions(dated, ticked, 1)
+assert(#searched == 1 and searched[1].setID == 2, "an expansion searched for narrows the list again")
 
 -- The transmogrifier has never been opened, so its frames do not exist yet.
 TransmogFrame = nil

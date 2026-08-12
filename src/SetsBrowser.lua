@@ -94,7 +94,8 @@ end
 function SetsBrowser:FilterAndSort(sets)
     local result, counts, favorites = {}, {}, {}
     for _, set in ipairs(sets) do
-        if state.expansions[set.expansionID] and state.sources[SetSources:Classify(set)] then
+        if state.expansions[set.expansionID] and state.sources[SetSources:Classify(set)]
+            and LuckysWardrobe.SetSearch.Matches(set.expansionID) then
             result[#result + 1] = set
         end
     end
@@ -198,6 +199,13 @@ local function refresh(setsFrame)
     if setsFrame.OnSearchUpdate then
         setsFrame:OnSearchUpdate()
     end
+end
+
+-- Redraws the tab for something changed outside its own filter menu, an
+-- expansion typed into the search box among them.
+function SetsBrowser:Refresh()
+    local setsFrame = WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame
+    if setsFrame and setsFrame:IsShown() then refresh(setsFrame) end
 end
 
 local function setBaseFilter(filter)

@@ -1069,6 +1069,17 @@ function ExtraSets.FilterEntries(entries, query)
     if normalized == "" then return entries end
 
     local filtered = {}
+    -- An expansion named in full or by its short name narrows to that
+    -- expansion, the way it does in the search box on either Sets tab. A set
+    -- the snapshot could not date is not the expansion asked for.
+    local searchedExpansion = LuckysWardrobe.SetSearch.ExpansionFor(normalized)
+    if searchedExpansion then
+        for _, entry in ipairs(entries) do
+            if entry.expansionID == searchedExpansion then filtered[#filtered + 1] = entry end
+        end
+        return filtered
+    end
+
     for _, entry in ipairs(entries) do
         -- A collapsed row answers for the names it absorbed as well as its own,
         -- or folding "(Heroic Lookalike)" away would make it unsearchable.

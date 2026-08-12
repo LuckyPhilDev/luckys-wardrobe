@@ -121,6 +121,10 @@ LuckysWardrobe.TooltipModel = {
     end,
 }
 
+LuckysWardrobe.SetSearch = {
+    Init = function() end,
+}
+
 LuckysWardrobe.SetsBrowser = {
     Init = function() end,
 }

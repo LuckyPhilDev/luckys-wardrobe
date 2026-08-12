@@ -73,12 +73,16 @@ function TransmogSets.WearableSets(sets, canWearSet)
     return wearable
 end
 
--- The sets from the expansions still ticked. shownExpansions is keyed by
--- Blizzard's expansionID, which the client hands out with every set.
-function TransmogSets.SetsFromExpansions(sets, shownExpansions)
+-- The sets from the expansions still ticked, narrowed again to the one the
+-- search box names where it names one. shownExpansions is keyed by Blizzard's
+-- expansionID, which the client hands out with every set.
+function TransmogSets.SetsFromExpansions(sets, shownExpansions, searchedExpansion)
     local kept = {}
     for _, set in ipairs(sets) do
-        if shownExpansions[set.expansionID] then kept[#kept + 1] = set end
+        if shownExpansions[set.expansionID]
+            and (searchedExpansion == nil or set.expansionID == searchedExpansion) then
+            kept[#kept + 1] = set
+        end
     end
     return kept
 end
@@ -225,7 +229,8 @@ function TransmogSets:Init(database)
     if TransmogSets.getAvailableSets or type(C_TransmogSets.GetAvailableSets) ~= "function" then return end
     TransmogSets.getAvailableSets = C_TransmogSets.GetAvailableSets
     C_TransmogSets.GetAvailableSets = function(...)
-        local sets = TransmogSets.SetsFromExpansions(TransmogSets.getAvailableSets(...), expansions)
+        local sets = TransmogSets.SetsFromExpansions(TransmogSets.getAvailableSets(...), expansions,
+            LuckysWardrobe.SetSearch.Typed())
         if not db.hideUnwearableSets then return sets end
 
         local wornArmour = wornArmourType()

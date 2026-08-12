@@ -30,6 +30,7 @@ C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
+dofile("src/SetSearch.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/Classes.lua")
 -- The page measures its own work, so the real stopwatch runs here too, wound
@@ -876,6 +877,19 @@ assert(#ExtraSets.FilterEntries(entries, "") == 3, "blank query keeps everything
 assert(#ExtraSets.FilterEntries(entries, "  live  ") == 1, "matched trimmed case-insensitive names")
 assert(#ExtraSets.FilterEntries(entries, "FIXTURE") == 1, "matched labels")
 assert(#ExtraSets.FilterEntries(entries, "nothing") == 0, "unmatched query empties the list")
+
+-- An expansion typed into the box narrows to it, as it does on either Sets tab.
+do
+    local dated = {
+        { name = "Fixture Nerubian Weave", expansionID = 10 },
+        { name = "Fixture Draconic Weave", expansionID = 9 },
+        { name = "Fixture Undated Weave" },
+    }
+    assert(#ExtraSets.FilterEntries(dated, "weave") == 3, "a word out of the names is still a name search")
+    local searchedExpansion = ExtraSets.FilterEntries(dated, "TWW")
+    assert(#searchedExpansion == 1 and searchedExpansion[1].name == "Fixture Nerubian Weave",
+        "an expansion's short name narrows to the sets from it, leaving out the ones nothing dated")
+end
 
 -- Sorting.
 
