@@ -1,4 +1,4 @@
--- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil GRAY_FONT_COLOR IN_PROGRESS_FONT_COLOR LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NORMAL_FONT_COLOR NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals BetterWardrobeCollectionFrame CHECK_ALL COLLECTED CreateDataProvider DEFAULT EventUtil LE_TRANSMOG_SET_FILTER_COLLECTED LE_TRANSMOG_SET_FILTER_PVE LE_TRANSMOG_SET_FILTER_PVP LE_TRANSMOG_SET_FILTER_UNCOLLECTED MenuResponse NOT_COLLECTED SOURCES ScrollBoxConstants TRANSMOG_SET_PVE TRANSMOG_SET_PVP UNCHECK_ALL WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 122
 
 -- Lucky's Wardrobe: Sorting and filtering for Blizzard's official Sets tab.
@@ -152,19 +152,16 @@ function SetsBrowser:MarkVariants(scrollBox)
         if not LuckysWardrobe.Utils.MarkVariantCount(button, counts and counts.colourways) then return end
         button.Label:SetText(LuckysWardrobe.Strings.setRow.counts:format(counts.collected, counts.total))
 
+        -- The bar first, being the thing the row is worst at saying on its own.
         local complete = counts.collected == counts.total
-        local colour = NORMAL_FONT_COLOR
-        if not complete then
-            colour = counts.collected == 0 and GRAY_FONT_COLOR or IN_PROGRESS_FONT_COLOR
-        end
-        button.Name:SetTextColor(colour.r, colour.g, colour.b)
-        button.IconFrame:SetIconCoverShown(not complete)
-
         local started = counts.collected > 0 and not complete
         button.ProgressBar:SetShown(started)
         if started then
             button.ProgressBar:SetWidth(PROGRESS_BAR_WIDTH * counts.collected / counts.total)
         end
+
+        LuckysWardrobe.Utils.ColourSetName(button, complete, counts.collected)
+        button.IconFrame:SetIconCoverShown(not complete)
     end)
 end
 

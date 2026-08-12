@@ -7,7 +7,8 @@ LuckysWardrobe = {
 }
 DEFAULT = "Default"
 SOURCES = "Sources"
--- Blizzard's own row colours, which the tab paints a set's progress in.
+-- The three colours a row paints a set's progress in, named here the way
+-- Blizzard names them so the assertions below read as what they check.
 NORMAL_FONT_COLOR = { r = 1, g = 0.82, b = 0 }
 IN_PROGRESS_FONT_COLOR = { r = 0.251, g = 0.753, b = 0.251 }
 GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }

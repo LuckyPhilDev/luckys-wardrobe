@@ -2032,13 +2032,7 @@ function ExtraSets:CreatePage(wardrobe)
         else
             button.Label:SetText(S.pieceUnavailableShort)
         end
-        if complete then
-            button.Name:SetTextColor(1, 0.82, 0)
-        elseif entry.collected == 0 then
-            button.Name:SetTextColor(0.5, 0.5, 0.5)
-        else
-            button.Name:SetTextColor(0.251, 0.753, 0.251)
-        end
+        Utils.ColourSetName(button, complete, entry.collected)
 
         local firstPiece = entry.pieces[1]
         button.IconFrame.Icon:SetTexture(

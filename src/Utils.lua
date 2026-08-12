@@ -152,6 +152,29 @@ local function badgeFor(button)
     return button.luckysVariantCount
 end
 
+-- How far through a set its name reads: gold for finished, grey for untouched,
+-- green for started. Written out rather than taken from Blizzard's own
+-- NORMAL_FONT_COLOR and friends, because IN_PROGRESS_FONT_COLOR is a global
+-- only the Sets tab's own file ever names, and a row must not go unpainted on a
+-- build that stops defining it.
+local NAME_COLOURS = {
+    complete = { 1, 0.82, 0 },
+    none = { 0.5, 0.5, 0.5 },
+    started = { 0.251, 0.753, 0.251 },
+}
+
+--- Paints a set row's name for how much of it is collected. Both set lists call
+--- this, so a row means the same thing on either.
+function Utils.ColourSetName(button, complete, collected)
+    local colour = NAME_COLOURS.started
+    if complete then
+        colour = NAME_COLOURS.complete
+    elseif collected == 0 then
+        colour = NAME_COLOURS.none
+    end
+    button.Name:SetTextColor(colour[1], colour[2], colour[3])
+end
+
 --- Marks a set row with how many colourways stand behind it. Pass nothing, or
 --- one, for a set that is only itself: the badge goes quiet and the name takes
 --- the row's full width back.
