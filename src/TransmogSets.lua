@@ -73,18 +73,29 @@ function TransmogSets.WearableSets(sets, canWearSet)
     return wearable
 end
 
--- The sets from the expansions still ticked, narrowed again to the one the
--- search box names where it names one. shownExpansions is keyed by Blizzard's
--- expansionID, which the client hands out with every set.
-function TransmogSets.SetsFromExpansions(sets, shownExpansions, searchedExpansion)
+-- The sets from the expansions still ticked. shownExpansions is keyed by
+-- Blizzard's expansionID, which the client hands out with every set.
+--
+-- matchesSearch, where given, narrows the list a second time to whatever the
+-- search box was told. It is injected rather than read here so the rules stay
+-- testable outside the client.
+function TransmogSets.SetsFromExpansions(sets, shownExpansions, matchesSearch)
     local kept = {}
     for _, set in ipairs(sets) do
-        if shownExpansions[set.expansionID]
-            and (searchedExpansion == nil or set.expansionID == searchedExpansion) then
+        if shownExpansions[set.expansionID] and (not matchesSearch or matchesSearch(set)) then
             kept[#kept + 1] = set
         end
     end
     return kept
+end
+
+-- What the search box means by "pvp" here: the same category the Sets tab's own
+-- Sources filter puts a set under, so typing it and ticking it agree.
+function TransmogSets.MatchesSearch(set)
+    local SetSources = LuckysWardrobe.SetSources
+    local SetSearch = LuckysWardrobe.SetSearch
+    return SetSearch.Matches(SetSearch.Narrowing(), set.expansionID,
+        SetSources:Classify(set) == SetSources.PVP)
 end
 
 -- Live glue from here down.
@@ -230,7 +241,7 @@ function TransmogSets:Init(database)
     TransmogSets.getAvailableSets = C_TransmogSets.GetAvailableSets
     C_TransmogSets.GetAvailableSets = function(...)
         local sets = TransmogSets.SetsFromExpansions(TransmogSets.getAvailableSets(...), expansions,
-            LuckysWardrobe.SetSearch.Typed())
+            TransmogSets.MatchesSearch)
         if not db.hideUnwearableSets then return sets end
 
         local wornArmour = wornArmourType()

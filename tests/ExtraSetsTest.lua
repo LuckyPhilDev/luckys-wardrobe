@@ -878,17 +878,28 @@ assert(#ExtraSets.FilterEntries(entries, "  live  ") == 1, "matched trimmed case
 assert(#ExtraSets.FilterEntries(entries, "FIXTURE") == 1, "matched labels")
 assert(#ExtraSets.FilterEntries(entries, "nothing") == 0, "unmatched query empties the list")
 
--- An expansion typed into the box narrows to it, as it does on either Sets tab.
+-- An expansion or a side typed into the box narrows to it, as either does on
+-- both Sets tabs. 4 is the snapshot's own PvP source bit.
 do
     local dated = {
-        { name = "Fixture Nerubian Weave", expansionID = 10 },
-        { name = "Fixture Draconic Weave", expansionID = 9 },
+        { name = "Fixture Nerubian Weave", expansionID = 10, sourceMask = 2 },
+        { name = "Fixture Gladiator's Weave", expansionID = 10, sourceMask = 4 },
+        { name = "Fixture Draconic Weave", expansionID = 9, sourceMask = 4 },
         { name = "Fixture Undated Weave" },
     }
-    assert(#ExtraSets.FilterEntries(dated, "weave") == 3, "a word out of the names is still a name search")
-    local searchedExpansion = ExtraSets.FilterEntries(dated, "TWW")
-    assert(#searchedExpansion == 1 and searchedExpansion[1].name == "Fixture Nerubian Weave",
-        "an expansion's short name narrows to the sets from it, leaving out the ones nothing dated")
+    local function named(query)
+        local matched = {}
+        for index, entry in ipairs(ExtraSets.FilterEntries(dated, query)) do matched[index] = entry.name end
+        return table.concat(matched, ", ")
+    end
+
+    assert(#ExtraSets.FilterEntries(dated, "weave") == 4, "a word out of the names is still a name search")
+    assert(named("TWW") == "Fixture Nerubian Weave, Fixture Gladiator's Weave",
+        "an expansion narrows to the sets from it, leaving out the ones nothing dated")
+    assert(named("pvp") == "Fixture Gladiator's Weave, Fixture Draconic Weave",
+        "a side narrows to the sets that carry it, whatever expansion they came from")
+    assert(named("tww pvp") == "Fixture Gladiator's Weave", "and the two together take both")
+    assert(named("tww pve") == "Fixture Nerubian Weave", "the other side of the same expansion")
 end
 
 -- Sorting.

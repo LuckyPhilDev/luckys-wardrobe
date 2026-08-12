@@ -71,6 +71,10 @@ ExtraSets.SOURCES = {
     { bit = 16, label = "vendor" },
 }
 
+-- The one source bit the search box asks about by name, since PvP is the only
+-- one of these the game itself sorts sets by.
+local PVP_SOURCE_BIT = 4
+
 --- Whether a mask carries a bit, the way Classes:MaskHas reads a class out of
 --- one. Arithmetic rather than the bit library, so the rules stay testable
 --- outside the client.
@@ -1069,13 +1073,17 @@ function ExtraSets.FilterEntries(entries, query)
     if normalized == "" then return entries end
 
     local filtered = {}
-    -- An expansion named in full or by its short name narrows to that
-    -- expansion, the way it does in the search box on either Sets tab. A set
-    -- the snapshot could not date is not the expansion asked for.
-    local searchedExpansion = LuckysWardrobe.SetSearch.ExpansionFor(normalized)
-    if searchedExpansion then
+    -- An expansion or a side typed into the box narrows to it, the way it does
+    -- in the search box on either Sets tab. Which side a set is comes off the
+    -- snapshot's own source bits, the client having no answer for these sets.
+    -- A set the snapshot could not date is not the expansion asked for.
+    local narrowedTo = LuckysWardrobe.SetSearch.Parse(normalized)
+    if narrowedTo then
         for _, entry in ipairs(entries) do
-            if entry.expansionID == searchedExpansion then filtered[#filtered + 1] = entry end
+            if LuckysWardrobe.SetSearch.Matches(narrowedTo, entry.expansionID,
+                ExtraSets.MaskHas(entry.sourceMask, PVP_SOURCE_BIT)) then
+                filtered[#filtered + 1] = entry
+            end
         end
         return filtered
     end

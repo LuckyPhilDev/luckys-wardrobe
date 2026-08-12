@@ -1,7 +1,8 @@
 -- luacheck: globals C_TransmogCollection Enum LuckysWardrobe
 
--- Covers what a search box's text names: which words are read as an expansion,
--- and what the game's own set search is told once one has been.
+-- Covers what a search box's text names: which words are read as an expansion
+-- or a side, which sets the pair of them keeps, and what the game's own set
+-- search is told once the text has been claimed.
 
 LuckysWardrobe = {}
 LuckysWardrobe.DevLog = function() end
@@ -37,6 +38,29 @@ assert(expansionFor("war") == nil, "a word out of an expansion's name is a name 
 assert(expansionFor("") == nil, "an empty box narrows nothing")
 assert(expansionFor(nil) == nil, "and neither does no box at all")
 
+local function parse(text)
+    return SetSearch.Parse(text, EXPANSION_NAMES)
+end
+
+local function describe(text)
+    local parsed = parse(text)
+    if not parsed then return "none" end
+    return tostring(parsed.expansionID) .. "/" .. tostring(parsed.pvp)
+end
+
+assert(describe("tww") == "10/nil", "an expansion alone leaves the side open")
+assert(describe("pvp") == "nil/true", "a side alone leaves the expansion open")
+assert(describe("pve") == "nil/false", "and the other side is everything that is not PvP")
+assert(describe("tww pvp") == "10/true", "an expansion and a side together")
+assert(describe("pvp tww") == "10/true", "typed in either order")
+assert(describe("the war within pvp") == "10/true", "an expansion of several words keeps them")
+assert(describe("PvE  TWW") == "10/false", "in any case, however it was spaced")
+assert(describe("classic pvp") == "0/true", "the first expansion is 0, not nothing")
+
+assert(parse("tww tabard") == nil, "a word naming neither is the name search it always was")
+assert(parse("gladiator") == nil, "and so is a set name that merely sounds like one")
+assert(parse("pvp pve") == nil, "two sides name no set list worth showing")
+
 -- The game's own search, and the two lists that redraw once it has been answered.
 local searched, cleared, redrawn = {}, {}, 0
 _G.Enum = { TransmogSearchType = { Items = 1, BaseSets = 2, UsableSets = 3 } }
@@ -55,29 +79,37 @@ LuckysWardrobe.TransmogSets = { Refresh = function() end }
 SetSearch:Init()
 local BASE_SETS, ITEMS = Enum.TransmogSearchType.BaseSets, Enum.TransmogSearchType.Items
 
-assert(C_TransmogCollection.SetSearch(BASE_SETS, "tww") == true,
-    "an expansion answers the search itself rather than starting one")
-assert(SetSearch.Typed() == 10, "and narrows both set lists to it")
+assert(C_TransmogCollection.SetSearch(BASE_SETS, "tww pvp") == true,
+    "a search this understands is answered here rather than started in the game")
 assert(#cleared == 1 and cleared[1] == BASE_SETS, "clearing whatever the game was searching for before")
 assert(#searched == 0, "the text never reaches the game's own search")
 assert(redrawn == 1, "the list redraws for a search the game saw nothing change in")
 
-assert(SetSearch.Matches(10), "a set from that expansion belongs in the list")
-assert(not SetSearch.Matches(9), "one from another does not")
-assert(not SetSearch.Matches(nil), "and neither does one nothing could date")
+-- Both halves have to hold, which is the whole point of typing them together.
+local narrowedTo = SetSearch.Narrowing()
+assert(SetSearch.Matches(narrowedTo, 10, true), "a PvP set from that expansion belongs in the list")
+assert(not SetSearch.Matches(narrowedTo, 10, false), "one from the expansion that is not PvP does not")
+assert(not SetSearch.Matches(narrowedTo, 9, true), "nor a PvP set from another expansion")
+assert(not SetSearch.Matches(narrowedTo, nil, true), "and neither does one nothing could date")
+assert(SetSearch.Matches(nil, nil, false), "with nothing typed, every set belongs")
+
+-- An expansion on its own says nothing about the side, and vice versa.
+assert(SetSearch.Matches(parse("tww"), 10, false), "an expansion alone keeps both sides")
+assert(SetSearch.Matches(parse("pvp"), 3, true), "a side alone keeps every expansion")
+assert(not SetSearch.Matches(parse("pve"), 3, true), "the other side still leaves PvP out")
 
 C_TransmogCollection.SetSearch(BASE_SETS, "tabard")
-assert(SetSearch.Typed() == nil and searched[1] == BASE_SETS .. ":tabard",
+assert(SetSearch.Narrowing() == nil and searched[1] == BASE_SETS .. ":tabard",
     "anything else is the set name search it always was")
 
 -- The Items tab shares the API, and there "tww" is three letters of an item name.
 C_TransmogCollection.SetSearch(ITEMS, "tww")
-assert(SetSearch.Typed() == nil and searched[2] == ITEMS .. ":tww",
+assert(SetSearch.Narrowing() == nil and searched[2] == ITEMS .. ":tww",
     "the items search is left alone")
 
 C_TransmogCollection.SetSearch(BASE_SETS, "df")
-assert(SetSearch.Typed() == 9, "narrowed again")
+assert(SetSearch.Narrowing().expansionID == 9, "narrowed again")
 C_TransmogCollection.ClearSearch(BASE_SETS)
-assert(SetSearch.Typed() == nil, "an emptied box puts the whole list back")
+assert(SetSearch.Narrowing() == nil, "an emptied box puts the whole list back")
 
 print("SetSearchTest passed")

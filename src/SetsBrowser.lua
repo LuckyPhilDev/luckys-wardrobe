@@ -93,9 +93,12 @@ end
 
 function SetsBrowser:FilterAndSort(sets)
     local result, counts, favorites = {}, {}, {}
+    local SetSearch = LuckysWardrobe.SetSearch
+    local narrowedTo = SetSearch.Narrowing()
     for _, set in ipairs(sets) do
-        if state.expansions[set.expansionID] and state.sources[SetSources:Classify(set)]
-            and LuckysWardrobe.SetSearch.Matches(set.expansionID) then
+        local source = SetSources:Classify(set)
+        if state.expansions[set.expansionID] and state.sources[source]
+            and SetSearch.Matches(narrowedTo, set.expansionID, source == SetSources.PVP) then
             result[#result + 1] = set
         end
     end
