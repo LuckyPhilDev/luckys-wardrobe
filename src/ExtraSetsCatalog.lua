@@ -191,9 +191,27 @@ function Catalog.SameSet(pieces, clientSourceIDs)
     return matched * 2 >= #clientSourceIDs
 end
 
+-- Which sets are the same armour in another colour, from the bundled index. The
+-- client holds this in its display records and exposes none of it, so it is
+-- shipped rather than derived; Data/SetModels.lua explains what it is read from.
+--
+-- The armour lists number their sets the way Wowhead does, so an index built
+-- against one snapshot describes nothing in another: a refresh that renumbered
+-- a set would leave these pointing at the wrong armour, and folding the wrong
+-- sets together is worse than folding none. A date that does not match is
+-- therefore no index at all rather than a best effort.
+local function modelIndex()
+    local models = LuckysWardrobe.ExtraSetsData.models
+    if not models or models.snapshot ~= LuckysWardrobe.ExtraSetsData.snapshot then
+        LuckysWardrobe.DevLog("Extra Sets: the bundled model index is for another snapshot; ignoring it.")
+        return {}
+    end
+    return models
+end
+
 -- armorType is what the listing says the set is, and nil for the one that does
 -- not say: an ensemble record takes the armour its own pieces are.
-local function buildRecord(setID, set, armorType)
+local function buildRecord(setID, set, armorType, model)
     local pieces, unresolved, pieceArmour = buildPieces(set.pieces)
     if #pieces == 0 then
         return reject(setID, set.name, REJECT.unresolvable)
@@ -243,6 +261,9 @@ local function buildRecord(setID, set, armorType)
         label = info and info.label,
         pieces = pieces,
         unresolvedPieces = unresolved,
+        -- Which armour this set is, where another set is the same armour in a
+        -- different colour. Nil for a set nothing shares a model with.
+        model = model,
         -- Where the snapshot says the set comes from, as Wowhead's own bits. The
         -- client has no source field on a set to prefer over it, and the
         -- ensembles carry none, which is nil rather than a set from nowhere.
@@ -315,22 +336,24 @@ end
 
 -- Set IDs are the keys of a hash table, so a group fixes an order once and the
 -- stepper walks it across frames from there.
-local function workGroup(sets, armorType)
+local function workGroup(sets, armorType, models)
     local setIDs = {}
     for setID in pairs(sets or {}) do setIDs[#setIDs + 1] = setID end
     table.sort(setIDs)
-    return { sets = sets or {}, armorType = armorType, setIDs = setIDs }
+    return { sets = sets or {}, armorType = armorType, models = models or {}, setIDs = setIDs }
 end
 
 -- The ensembles are walked last, so where an ensemble teaches a look one of the
 -- armour lists already carries, the armour list keeps the row and the ensemble
 -- joins it as another name for the same set rather than displacing it.
 local function workList()
+    local models = modelIndex()
     local work = {}
     for _, armour in ipairs(LuckysWardrobe.ExtraSetsData.armorTypes) do
-        work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.sets[armour.key], armour.armorType)
+        work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.sets[armour.key],
+            armour.armorType, models[armour.key])
     end
-    work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.ensembles)
+    work[#work + 1] = workGroup(LuckysWardrobe.ExtraSetsData.ensembles, nil, models.ensembles)
     return work
 end
 
@@ -358,7 +381,7 @@ local function stepWork()
         else
             local set = group.sets[setID]
             budget = budget - #set.pieces
-            buildRecord(setID, set, group.armorType)
+            buildRecord(setID, set, group.armorType, group.models[setID])
         end
     end
 end

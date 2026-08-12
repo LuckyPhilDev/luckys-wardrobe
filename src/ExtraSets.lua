@@ -530,6 +530,72 @@ local function colourFamilies(rows)
     return grouped
 end
 
+-- The armour a row is built on, for the rows that are one garment throughout. A
+-- row already standing for several sets answers only when every one of them is
+-- the same armour: a shared name gathers two models together now and again, and
+-- a row that answered on its first member would take the odd one with it into a
+-- family it does not belong to.
+local function modelOf(row)
+    if not row.variants then return row.model end
+
+    local model = row.variants[1].model
+    for _, variant in ipairs(row.variants) do
+        if variant.model ~= model then return nil end
+    end
+    return model
+end
+
+-- Rows gathered by the armour they are built on, from the bundled model index:
+-- sets wearing one model in different textures are one garment in several
+-- colours, whatever each is called. "Nitroclad Kit" and "Smoketrail Racer Suit"
+-- share nothing but the armour underneath them, and the client says so in the
+-- display records the index is read from.
+--
+-- This is the one grouping on this page that reads a Blizzard relationship
+-- rather than a name, so none of the caution the name rules need applies: it
+-- takes sets of any size, from either listing, whose names have nothing in
+-- common. It runs last, so a family the names already gathered arrives as the
+-- single row it became rather than as its members.
+local function modelFamilies(rows)
+    local members = {}
+    for _, row in ipairs(rows) do
+        local model = modelOf(row)
+        if model then
+            members[model] = members[model] or {}
+            table.insert(members[model], row)
+        end
+    end
+
+    local grouped, built = {}, {}
+    for _, row in ipairs(rows) do
+        local model = modelOf(row)
+        if not model or #members[model] == 1 then
+            grouped[#grouped + 1] = row
+        elseif not built[model] then
+            built[model] = true
+            local variants = {}
+            for _, member in ipairs(members[model]) do
+                for _, variant in ipairs(member.variants or { member }) do
+                    variants[#variants + 1] = variant
+                end
+            end
+            -- Named for the first row rather than the first set, because a row
+            -- that already stood for several sets has a name covering all of
+            -- them, and reaching past it to a single colourway inside would
+            -- throw that away for the narrower name.
+            local group = ExtraSets.BuildGroup(variants, ExtraSets.BaseName(members[model][1].name))
+            -- Named for its first member, which two families of one armour type
+            -- can share: these are gathered without reading names at all, so
+            -- nothing else keeps their keys apart, and a repeated key would have
+            -- the two rows showing each other's colourway.
+            group.key = group.key .. "#" .. model
+            group.isColourFamily = true
+            grouped[#grouped + 1] = group
+        end
+    end
+    return grouped
+end
+
 -- Sets gathered by the name they share, in the order they first appear, so
 -- whatever sort produced the list still decides where each set lands.
 local function families(entries)
@@ -752,12 +818,15 @@ end
 -- Sets that share a name gather first, since that qualifier is one the listing
 -- itself supplies. Whatever is left over is offered to the colourway rule,
 -- which reads the same relationship off names that differ by a single word.
+-- The model index goes last and needs no name at all, so it gathers what the
+-- names could not: two sets built on one model that were never called anything
+-- alike.
 function ExtraSets.BuildRows(entries)
     local rows = {}
     for _, family in ipairs(families(entries)) do
         rows[#rows + 1] = #family == 1 and family[1] or ExtraSets.BuildGroup(family)
     end
-    return colourFamilies(rows)
+    return modelFamilies(colourFamilies(rows))
 end
 
 -- Which colourway of a set is on show. Defaults to the first, and falls back to
@@ -854,6 +923,9 @@ function ExtraSets.BuildEntry(record, resolver)
         -- changing where the row itself came from.
         fromEnsemble = record.ensembles ~= nil,
         sourceMask = record.sourceMask,
+        -- Which armour the set is built on, where the bundled index says another
+        -- set is built on the same one. Nil for a set that stands alone.
+        model = record.model,
         pieces = pieces,
         -- Which looks this set is made of, and whether each is collected. What
         -- makes two sets the same set, and what lets one row speak for several.

@@ -872,6 +872,95 @@ assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Snowy",
     "with no way to ask the client at all, the shared word is still what there is")
 end
 
+-- Model families, from the bundled index. A season ships one set of armour under
+-- half a dozen unrelated names, and no name rule can see that; the client's own
+-- display records can, and the index carries what they say.
+
+do
+for id = 7100, 7160 do sourceStates[id] = { appearanceID = 8100 + id, collected = false } end
+
+local function modelled(setID, name, model, sourceIDs, overrides)
+    local record = validRecord({ setID = setID, name = name, model = model,
+        pieces = pieces({ "HEAD", sourceIDs[1] }, { "CHEST", sourceIDs[2] }, { "LEGS", sourceIDs[3] }) })
+    for key, value in pairs(overrides or {}) do record[key] = value end
+    return record
+end
+
+local function rowsOf(family)
+    return ExtraSets.BuildRows(ExtraSets.BuildEntries(family, stubResolver(CLOTH_CLASS)))
+end
+
+local modelRows = rowsOf({
+    modelled(801, "Nitroclad Kit", 176, { 7100, 7101, 7102 }),
+    modelled(802, "Smoketrail Racer Suit", 176, { 7103, 7104, 7105 }),
+    modelled(803, "Upcycled Outfit", 176, { 7106, 7107, 7108 }),
+})
+assert(#modelRows == 1 and modelRows[1].isGroup, "three sets built on one model became one row")
+assert(modelRows[1].name == "Nitroclad Kit", "named for the first of them, having no name in common")
+assert(modelRows[1].label == "3 colours", "and counted as the colours of one garment")
+assert(modelRows[1].total == 9, "the row counts every look across them")
+assert(ExtraSets.VariantLabelFor(modelRows[1].variants[2]) == "Smoketrail Racer Suit",
+    "the picker names each in full, there being no qualifier to tell them apart by")
+
+-- The rule is a fact about the armour rather than a reading of the names, so
+-- nothing the name rules refuse applies: these are far past the piece ceiling
+-- the colourway rule holds itself to, and come from the armour lists.
+local bigRows = rowsOf({
+    modelled(811, "Gladiator's Leather Armor", 200, { 7109, 7110, 7111 }),
+    modelled(812, "Prized Aspirant's Leather Armor", 200, { 7112, 7113, 7114 }),
+})
+assert(#bigRows == 1, "a set from the armour lists groups on its model as readily as an ensemble does")
+
+-- Nothing shares a model with these, so the index says nothing about them.
+local aloneRows = rowsOf({
+    modelled(821, "Lone Garb", 301, { 7115, 7116, 7117 }),
+    modelled(822, "Other Garb", 302, { 7118, 7119, 7120 }),
+    modelled(823, "Unindexed Garb", nil, { 7121, 7122, 7123 }),
+})
+assert(#aloneRows == 3, "a model no other set is built on leaves the row standing alone")
+
+-- The names gather first, and hand the model rule a row rather than its members.
+local nestedRows = rowsOf({
+    modelled(831, "Charm Vestments (Heroic Recolor)", 400, { 7124, 7125, 7126 }),
+    modelled(832, "Charm Vestments (Normal Recolor)", 400, { 7127, 7128, 7129 }),
+    modelled(833, "Wholly Other Name", 400, { 7130, 7131, 7132 }),
+})
+assert(#nestedRows == 1 and #nestedRows[1].variants == 3,
+    "the pair that shared a name came in as colourways beside the set that did not")
+
+-- A shared name can gather two models together. The row that makes answers for
+-- no model at all, or it would drag the odd set into a family it is not part of.
+local mixedRows = rowsOf({
+    modelled(841, "Twinned Regalia", 500, { 7133, 7134, 7135 }),
+    modelled(842, "Twinned Regalia", 501, { 7136, 7137, 7138 }),
+    modelled(843, "Elsewhere Robes", 500, { 7139, 7140, 7141 }),
+})
+assert(#mixedRows == 2, "the row holding two models stayed out of both their families")
+assert(mixedRows[1].name == "Twinned Regalia" and #mixedRows[1].variants == 2,
+    "keeping the colourways its name gathered")
+assert(mixedRows[2].name == "Elsewhere Robes" and not mixedRows[2].isGroup,
+    "and the set whose model it shares is a plain row rather than folded into it")
+
+-- Two families can end up named alike: a colourway family is named for the words
+-- its members share, and another set can simply be called that. Nothing here
+-- reads names, so nothing else keeps the two rows apart, and a repeated key
+-- would have each showing the other's colourway.
+local twinRows = rowsOf({
+    validRecord({ setID = 851, name = "Red Silk Robe", model = 600, ensembles = { 79101 },
+        pieces = pieces({ "HEAD", 7142 }, { "CHEST", 7143 }) }),
+    validRecord({ setID = 852, name = "Blue Silk Robe", model = 600, ensembles = { 79102 },
+        pieces = pieces({ "HEAD", 7144 }, { "CHEST", 7145 }) }),
+    modelled(853, "Distinct Name", 600, { 7146, 7147, 7148 }),
+    modelled(854, "Silk Robe", 601, { 7149, 7150, 7151 }),
+    modelled(855, "Other Thing", 601, { 7152, 7153, 7154 }),
+})
+assert(#twinRows == 2, "the two colourways and the set beside them formed one family, the other pair another")
+assert(twinRows[1].name == "Silk Robe" and twinRows[2].name == "Silk Robe",
+    "and both are named Silk Robe, one for the words its colourways share and one for its first set")
+assert(twinRows[1].key ~= twinRows[2].key,
+    "so the rows are told apart by model rather than by the name they landed on")
+end
+
 -- Search.
 
 assert(#ExtraSets.FilterEntries(entries, "") == 3, "blank query keeps everything")
