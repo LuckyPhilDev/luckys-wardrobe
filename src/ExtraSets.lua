@@ -10,6 +10,8 @@ LuckysWardrobe.ExtraSets = {}
 
 local ExtraSets = LuckysWardrobe.ExtraSets
 local Utils = LuckysWardrobe.Utils
+-- What a row says about itself, worded once for both set lists.
+local SetRow = LuckysWardrobe.Strings.setRow
 
 local TAB_FIT_WIDTH = 275
 local NATIVE_ITEMS_TAB_ID = 1
@@ -74,30 +76,6 @@ ExtraSets.SOURCES = {
 -- The one source bit the search box asks about by name, since PvP is the only
 -- one of these the game itself sorts sets by.
 local PVP_SOURCE_BIT = 4
-
--- The count of colourways behind a row, in the corner of its cell. Blizzard's
--- row template gives the name the full 190 of its width and lets it wrap onto a
--- second line, so a row carrying the badge gives that width back rather than
--- letting a long name run under it.
-local ROW_NAME_WIDTH = 190
-local ROW_NAME_WIDTH_WITH_BADGE = 168
-local VARIANT_BADGE_INSET = 6
--- Bright yellow rather than the addon's own gold, which the row already spends
--- on a completed set's name: the badge counts colourways and says nothing about
--- collecting them, so it must not read as another completion state.
-local VARIANT_BADGE_COLOUR = { r = 1, g = 0.95, b = 0.2 }
-
--- Made once per row and kept on it, because the list pools its rows and redraws
--- them on every scroll.
-local function variantBadge(button)
-    if not button.luckysVariantCount then
-        local badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        badge:SetPoint("TOPRIGHT", -VARIANT_BADGE_INSET, -VARIANT_BADGE_INSET)
-        badge:SetTextColor(VARIANT_BADGE_COLOUR.r, VARIANT_BADGE_COLOUR.g, VARIANT_BADGE_COLOUR.b)
-        button.luckysVariantCount = badge
-    end
-    return button.luckysVariantCount
-end
 
 --- Whether a mask carries a bit, the way Classes:MaskHas reads a class out of
 --- one. Arithmetic rather than the bit library, so the rules stay testable
@@ -1946,7 +1924,7 @@ function ExtraSets:CreatePage(wardrobe)
         labelText:ClearAllPoints()
         labelText:SetPoint("TOP", showSetName(entry.name), "BOTTOM", 0, -2)
         labelText:SetText(entry.label)
-        countsText:SetFormattedText(S.counts, entry.collected, entry.total)
+        countsText:SetFormattedText(SetRow.counts, entry.collected, entry.total)
         showNotice(entry)
         showSource(entry)
         loadSetItems(row, 1)
@@ -2042,15 +2020,13 @@ function ExtraSets:CreatePage(wardrobe)
         -- family is collected. That count is the useful one: it is what the row
         -- is offering to finish, where one colourway's own progress says nothing
         -- about the rest of what is folded behind it.
-        local colourways = entry.variants and #entry.variants
-        button.Name:SetWidth(colourways and ROW_NAME_WIDTH_WITH_BADGE or ROW_NAME_WIDTH)
-        variantBadge(button):SetText(colourways and S.variantCount:format(colourways) or "")
+        local several = Utils.MarkVariantCount(button, entry.variants and #entry.variants)
 
         -- Counts beat a loading notice as soon as anything resolves, so a set
         -- with one slow piece still says something useful.
         if entry.total > 0 then
-            local label = not colourways and entry.label ~= "" and entry.label
-            button.Label:SetText(label or S.counts:format(entry.collected, entry.total))
+            local label = not several and entry.label ~= "" and entry.label
+            button.Label:SetText(label or SetRow.counts:format(entry.collected, entry.total))
         elseif entry.loading then
             button.Label:SetText(S.loading)
         else
@@ -2094,7 +2070,7 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
-            GameTooltip:AddLine(S.counts:format(entry.collected, entry.total), 1, 1, 1)
+            GameTooltip:AddLine(SetRow.counts:format(entry.collected, entry.total), 1, 1, 1)
             for _, name in ipairs(ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)) do
                 GameTooltip:AddLine(S.ensembleSource:format(name), 0.6, 0.8, 1)
             end

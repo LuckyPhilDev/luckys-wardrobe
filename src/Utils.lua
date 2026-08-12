@@ -123,3 +123,42 @@ function Utils.AnyExpansionHidden(expansions)
     end
     return false
 end
+
+-- The badge counting the colourways behind a set row. Both set lists draw their
+-- rows from Blizzard's own template, so both mark them the same way from here.
+--
+-- The template gives the name the full 190 of its width and lets it wrap onto a
+-- second line, so a row carrying the badge hands that width back rather than
+-- letting a long name run under it. Both widths are set every time, because the
+-- lists pool their rows: a plain set drawn into a row that just held a family
+-- would otherwise keep the narrow name.
+local ROW_NAME_WIDTH = 190
+local ROW_NAME_WIDTH_WITH_BADGE = 168
+local VARIANT_BADGE_INSET = 6
+-- Bright yellow rather than the addon's own gold, which a row already spends on
+-- a completed set's name: the badge counts colourways and says nothing about
+-- collecting them, so it must not read as another completion state.
+local VARIANT_BADGE_COLOUR = { r = 1, g = 0.95, b = 0.2 }
+
+-- Made once per row and kept on it, because the lists redraw their rows on
+-- every scroll.
+local function badgeFor(button)
+    if not button.luckysVariantCount then
+        local badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        badge:SetPoint("TOPRIGHT", -VARIANT_BADGE_INSET, -VARIANT_BADGE_INSET)
+        badge:SetTextColor(VARIANT_BADGE_COLOUR.r, VARIANT_BADGE_COLOUR.g, VARIANT_BADGE_COLOUR.b)
+        button.luckysVariantCount = badge
+    end
+    return button.luckysVariantCount
+end
+
+--- Marks a set row with how many colourways stand behind it. Pass nothing, or
+--- one, for a set that is only itself: the badge goes quiet and the name takes
+--- the row's full width back.
+function Utils.MarkVariantCount(button, colourways)
+    local several = colourways and colourways > 1
+    button.Name:SetWidth(several and ROW_NAME_WIDTH_WITH_BADGE or ROW_NAME_WIDTH)
+    badgeFor(button):SetText(several
+        and LuckysWardrobe.Strings.setRow.variantCount:format(colourways) or "")
+    return several
+end

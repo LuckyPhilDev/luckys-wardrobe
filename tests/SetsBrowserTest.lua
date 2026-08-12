@@ -36,11 +36,27 @@ C_TransmogSets = {
             [1] = { { collected = true }, { collected = true }, { collected = false } },
             [2] = { { collected = true }, { collected = false } },
             [3] = { { collected = false } },
+            -- A tier and its difficulty recolours. The two colourways are
+            -- different looks but for the one piece that was never retinted,
+            -- which both of them grant.
+            [70] = {
+                { appearanceID = 901, collected = true },
+                { appearanceID = 902, collected = true },
+                { appearanceID = 909, collected = false },
+            },
+            [71] = {
+                { appearanceID = 911, collected = false },
+                { appearanceID = 912, collected = false },
+                { appearanceID = 909, collected = false },
+            },
         })[setID] or {}
     end,
     GetVariantSets = function(setID)
         return ({
             [4] = { { setID = 41, favorite = true } },
+            -- The client lists a set among its own variants, which is why the
+            -- base is counted alongside them rather than instead of them.
+            [70] = { { setID = 70 }, { setID = 71 } },
         })[setID] or {}
     end,
 }
@@ -250,5 +266,41 @@ assert(setsFrame.selectedSetID == 9 and setsFrame.displayedSetID == 9,
 setsFrame.selectedSetID = 4
 setsFrame:OnSearchUpdate()
 assert(setsFrame.selectedSetID == 5, "the selection stayed on a set the filters had hidden")
+
+-- Colourways on the Sets tab. Blizzard's row counts the best single difficulty,
+-- which says nothing about how much of the set is left to collect.
+
+local counts = browser:VariantCounts(70)
+assert(counts.colourways == 2, "counted the colourways the client lists")
+assert(counts.total == 5, "counted five distinct looks, not the six the two colourways list between them")
+assert(counts.collected == 2, "and counted what is collected across all of them")
+assert(browser:VariantCounts(1) == nil, "a set with no colourways has nothing to count")
+assert(browser:VariantCounts(4) == nil, "nor has one the client lists a single variant for")
+
+local function newRowButton(setID)
+    return {
+        setID = setID,
+        Name = { SetWidth = function(self, width) self.width = width end },
+        Label = { SetText = function(self, text) self.text = text end },
+        CreateFontString = function()
+            return {
+                SetPoint = function() end,
+                SetTextColor = function() end,
+                SetText = function(self, text) self.text = text end,
+            }
+        end,
+    }
+end
+
+local rows = { newRowButton(70), newRowButton(1) }
+browser:MarkVariants({ ForEachFrame = function(_, action)
+    for _, row in ipairs(rows) do action(row) end
+end })
+assert(rows[1].luckysVariantCount.text == "x2", "the row says how many colourways stand behind it")
+assert(rows[1].Label.text == "2/5 collected", "and counts every look across them under the name")
+assert(rows[1].Name.width == 168, "the name gives up the width the badge needs")
+assert(rows[2].luckysVariantCount.text == "" and rows[2].Name.width == 190,
+    "a set with one colourway is left as Blizzard drew it")
+assert(rows[2].Label.text == nil, "keeping the difficulty label the tab put there")
 
 print("Lucky's Wardrobe sets browser test passed")

@@ -291,6 +291,16 @@ LuckysWardrobe.Strings = {
     setNames = {
         filter = "Show Set Names",
     },
+    -- Shared by both set lists, the Sets tab's and the Extra Sets tab's, so a
+    -- row reads the same on either. They are one pair on purpose: a row that
+    -- counts colourways in the corner is a row whose line underneath counts
+    -- every look across them, and the two must not drift apart.
+    setRow = {
+        counts = "%d/%d collected",
+        -- The badge in the corner. Short because it shares the row with the
+        -- set's name, which gives up the width it takes.
+        variantCount = "x%d",
+    },
     -- Shared by both filter menus, the Sets tab's and the Extra Sets tab's, so
     -- the same choice reads the same on either. The game supplies the rest of
     -- what these menus say, Collected and Default among them.
@@ -339,11 +349,7 @@ LuckysWardrobe.Strings = {
         noResults = "No extra sets match the current search or filters.",
         select = "Select a set to preview it.",
         loading = "Loading appearance data...",
-        counts = "%d/%d collected",
         colours = "%d colours",
-        -- The badge in the corner of a list row, counting the colourways folded
-        -- behind it. Short because it shares the row with the set's name.
-        variantCount = "x%d",
         variantOption = "%s (%d/%d)",
         alsoListed = "Also listed as %s",
         -- The client names the ensemble item itself, and every one of them is

@@ -91,6 +91,57 @@ local function completionCounts(setID, counts)
     return best
 end
 
+-- Every look a base set and its difficulty variants hold between them, counted
+-- once each, with how many colourways that is.
+--
+-- Blizzard's own row counts the best single variant, which answers "how far
+-- through one difficulty am I" and never "how much of this set is left". The
+-- variants are recolours of one another, so their looks are almost all
+-- different and the two numbers are nothing alike: a tier collected on Normal
+-- and untouched on Heroic reads as finished.
+--
+-- Looks shared between variants count once, because collecting one collects it
+-- everywhere. That is why the total can come out below the sum of what the
+-- picker shows each colourway holding.
+--
+-- The base set is asked about alongside its variants rather than instead of
+-- them. GetVariantSets lists the set among its own variants, so this is usually
+-- a repeat, and a repeated look is already counted once.
+function SetsBrowser:VariantCounts(baseSetID)
+    local variants = C_TransmogSets.GetVariantSets(baseSetID) or {}
+    if #variants < 2 then return nil end
+
+    local seen, collected, total = {}, 0, 0
+    local function count(setID)
+        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
+            local appearanceID = appearance.appearanceID
+            if appearanceID and not seen[appearanceID] then
+                seen[appearanceID] = true
+                total = total + 1
+                if appearance.collected then collected = collected + 1 end
+            end
+        end
+    end
+
+    count(baseSetID)
+    for _, variant in ipairs(variants) do count(variant.setID) end
+    return { colourways = #variants, collected = collected, total = total }
+end
+
+-- What the tab draws itself, plus what it leaves out: a row standing for
+-- several colourways says how many in the corner, and spends the line under the
+-- name on how much of all of them is collected rather than on the difficulty of
+-- whichever one Blizzard picked to show.
+function SetsBrowser:MarkVariants(scrollBox)
+    scrollBox:ForEachFrame(function(button)
+        if not button.setID then return end
+
+        local counts = SetsBrowser:VariantCounts(button.setID)
+        if not LuckysWardrobe.Utils.MarkVariantCount(button, counts and counts.colourways) then return end
+        button.Label:SetText(LuckysWardrobe.Strings.setRow.counts:format(counts.collected, counts.total))
+    end)
+end
+
 function SetsBrowser:FilterAndSort(sets)
     local result, counts, favorites = {}, {}, {}
     local SetSearch = LuckysWardrobe.SetSearch
@@ -352,6 +403,19 @@ function SetsBrowser:Init()
                 SetsBrowser:ApplyListOrder(container)
             end)
             LuckysWardrobe.DevLog("Sets tab: rendered list hooked")
+        end
+
+        -- The rows themselves, which Blizzard fills in as the ScrollBox lays
+        -- them out. Marking them from its own Update catches every scroll, sort
+        -- and filter change from one place, the way the tracking crosshair
+        -- already marks the same rows.
+        local listScrollBox = listContainer and listContainer.ScrollBox
+        if listScrollBox and not SetsBrowser.rowsHooked then
+            SetsBrowser.rowsHooked = true
+            hooksecurefunc(listScrollBox, "Update", function(scrollBox)
+                SetsBrowser:MarkVariants(scrollBox)
+            end)
+            LuckysWardrobe.DevLog("Sets tab: rows hooked")
         end
 
         if setsFrame and type(setsFrame.UpdateProgressBar) == "function"

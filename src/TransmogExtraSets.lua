@@ -673,7 +673,8 @@ local function cardTooltip(card)
         end
 
         local countsColor = entry.collected == entry.total and NORMAL_FONT_COLOR or GREEN_FONT_COLOR
-        local counts = WrapTextInColor(S.counts:format(entry.collected, entry.total), countsColor)
+        local counts = WrapTextInColor(
+            LuckysWardrobe.Strings.setRow.counts:format(entry.collected, entry.total), countsColor)
         if entry.label ~= "" then
             GameTooltip_AddHighlightLine(GameTooltip, entry.label .. " " .. counts)
         else
