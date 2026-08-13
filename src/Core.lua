@@ -34,7 +34,7 @@ local function initialize()
     LuckysWardrobe.Transmog:Init(LuckysWardrobeDB)
     LuckysWardrobe.SituationLabels:Init(LuckysWardrobeDB)
     LuckysWardrobe.SituationPresets:Init(LuckysWardrobeDB)
-    LuckyMinimap:Create({
+    LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
         icon = "Interface\\GossipFrame\\transmogrifyGossipIcon.blp",
         dbKey = "minimap",
@@ -43,6 +43,10 @@ local function initialize()
         onClick = function(_, mouseButton)
             if mouseButton == "RightButton" then
                 LuckysWardrobe.Settings:Open()
+            elseif mouseButton == "MiddleButton" then
+                LuckysWardrobeDB.devMode = not LuckysWardrobeDB.devMode
+                local S = LuckysWardrobe.Strings.settings.devMode
+                LuckysWardrobe.Utils.Say(LuckysWardrobeDB.devMode and S.enabled or S.disabled)
             elseif IsShiftKeyDown() then
                 LuckysWardrobe.SetCompletion:Toggle()
             end
@@ -53,6 +57,7 @@ local function initialize()
             tooltip:AddLine(" ")
             tooltip:AddLine(S.shiftClick, 0.91, 0.86, 0.78)
             tooltip:AddLine(S.rightClick, 0.91, 0.86, 0.78)
+            tooltip:AddLine(S.middleClick, 0.91, 0.86, 0.78)
             tooltip:AddLine(S.drag, 0.54, 0.49, 0.42)
         end,
     })
