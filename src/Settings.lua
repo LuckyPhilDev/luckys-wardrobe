@@ -38,6 +38,20 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
 
+    -- The button seeds db.minimap when it is created, which happens after this
+    -- panel is built, so a first run has no state to read and defaults to shown.
+    local minimapState = db.minimap or {}
+    general:Toggle({
+        label = S.settings.minimapButton.label,
+        desc = S.settings.minimapButton.desc,
+        checked = not minimapState.hide,
+        onToggle = function(checked)
+            if LuckysWardrobe.minimapButton then
+                LuckysWardrobe.minimapButton:SetShown_Persisted(checked)
+            end
+        end,
+    })
+
     general:BottomSection(S.settings.version.section)
     general:BottomLabel({ label = S.settings.version.addon, value = "v" .. addonVersion })
     general:BottomLabel({ label = S.settings.version.utils, value = "v" .. utilsVersion })

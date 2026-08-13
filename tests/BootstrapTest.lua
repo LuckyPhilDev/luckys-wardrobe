@@ -302,11 +302,22 @@ assert(not opened, "left-click did not open settings")
 minimapOptions.onClick(nil, "RightButton")
 assert(opened, "right-click opened settings")
 
+minimapOptions.onClick(nil, "MiddleButton")
+assert(LuckysWardrobeDB.devMode, "middle-click turned dev mode on")
+minimapOptions.onClick(nil, "MiddleButton")
+assert(not LuckysWardrobeDB.devMode, "middle-click turned dev mode back off")
+
 -- Hiding the minimap button is a supported setting, so the list has a slash command
 -- and a keybinding as well. All three reach the same toggle.
 shiftDown = true
 minimapOptions.onClick(nil, "LeftButton")
 assert(setListToggled, "shift-click opened the set list")
+
+-- Shift is held for the set list, so the dev-mode toggle has to answer to the
+-- middle button alone rather than falling through to it.
+minimapOptions.onClick(nil, "MiddleButton")
+assert(LuckysWardrobeDB.devMode, "shift-held middle-click still toggled dev mode")
+LuckysWardrobeDB.devMode = false
 shiftDown = false
 
 opened = false

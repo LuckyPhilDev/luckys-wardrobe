@@ -17,6 +17,7 @@ LuckysWardrobe.Strings = {
     minimap = {
         shiftClick = "Shift-click: Sets you can finish here",
         rightClick = "Right-click: Open settings",
+        middleClick = "Middle-click: Toggle dev mode",
         drag = "Drag: Move button",
     },
     addonConflicts = {
@@ -110,6 +111,11 @@ LuckysWardrobe.Strings = {
             label = "Dev Mode",
             desc = "Shows detailed diagnostics in chat while features are developed.",
             enabled = "Dev mode enabled.",
+            disabled = "Dev mode disabled.",
+        },
+        minimapButton = {
+            label = "Minimap Button",
+            desc = "Shows the Lucky's Wardrobe button on the minimap. Drag the button to move it around the edge.",
         },
         trackSets = {
             label = "Track on Shift-Click",
