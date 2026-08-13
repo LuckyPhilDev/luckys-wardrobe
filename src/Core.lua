@@ -37,6 +37,7 @@ local function initialize()
     LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
         text = LuckysWardrobe.Strings.addon.title,
+        tocname = ADDON_NAME,
         icon = "Interface\\GossipFrame\\transmogrifyGossipIcon.blp",
         dbKey = "minimap",
         db = LuckysWardrobeDB,
