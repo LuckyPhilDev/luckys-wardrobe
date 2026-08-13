@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.4] - 2026-08-13
+
+### Added
+
+- **Hide the minimap button.** A Minimap Button toggle in the General settings takes it off the minimap, leaving `/lw` and the keybinding to reach the addon. (Thanks for the suggestion Razørokk)
+- **Put Lucky's Wardrobe on a panel addon.** The addon now lists itself in Titan Panel, Bazooka and ChocolateBar, so its button can sit on a bar instead of the minimap. (Thanks for the suggestion Razørokk)
+- **Toggle dev mode from the minimap.** Middle-click the minimap button to turn Dev Mode on or off without opening settings.
+
 ## [1.7.3] - 2026-08-12
 
 ### Added
