@@ -178,6 +178,13 @@ LuckysWardrobe.TransmogExtraSets = {
     end,
 }
 
+local undoAppearanceDB
+LuckysWardrobe.UndoAppearance = {
+    Init = function(_, db)
+        undoAppearanceDB = db
+    end,
+}
+
 local reportedVerbose
 local catalogueStarted = false
 LuckysWardrobe.ExtraSetsCatalog = {
@@ -266,6 +273,7 @@ assert(type(LuckysWardrobeDB.hiddenSetSlots) == "table", "applied the preview-sl
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
 assert(transmogItemsInitialized, "initialized the transmogrifier Items tab")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
+assert(undoAppearanceDB == LuckysWardrobeDB, "initialized the undo click with saved variables")
 assert(setNamesDB == LuckysWardrobeDB, "initialized the set card names with saved variables")
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")

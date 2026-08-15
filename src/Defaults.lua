@@ -5,6 +5,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     welcomeShown = false,
     keepTransmogTab = false,
+    undoOnSecondClick = true,
     hideUnwearableSets = true,
     showSetNames = true,
     trackSetsOnShiftClick = true,
