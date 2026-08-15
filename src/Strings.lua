@@ -47,7 +47,7 @@ LuckysWardrobe.Strings = {
     },
     settings = {
         groups = {
-            general = "General",
+            whatsNew = "What's New",
             appearances = "Appearances",
             tooltips = "Tooltips",
             transmog = "Transmog",
@@ -180,11 +180,6 @@ LuckysWardrobe.Strings = {
         showSituationTooltips = {
             label = "Show Situation Tooltips",
             desc = "Shows an outfit's full situation list, with the values selected in each category, in a tooltip when you hover it.",
-        },
-        version = {
-            section = "Version Info",
-            addon = "Lucky's Wardrobe",
-            utils = "Lucky's Utils",
         },
     },
     randomiser = {

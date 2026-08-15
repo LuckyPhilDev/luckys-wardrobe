@@ -1,6 +1,11 @@
 -- Lucky's Wardrobe: Saved-variable defaults.
 LuckysWardrobe = LuckysWardrobe or {}
 
+-- Settings panel: any setting flagged with a `since` version at or above this
+-- gets a "NEW" badge and appears in the What's New group. Bump this each
+-- release cycle so only recent features are highlighted.
+LuckysWardrobe.WHATS_NEW_MIN_VERSION = "1.7.0"
+
 LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     welcomeShown = false,
