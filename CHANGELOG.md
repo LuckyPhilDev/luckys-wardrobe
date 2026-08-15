@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.5] - 2026-08-15
+
+### Added
+
+- **Undo an appearance by clicking it again.** On the Items tab at the transmog NPC, clicking an appearance the slot is already set to puts the slot back to what you are wearing, and the list stays on the page you are reading.
+- **Empty the slot on that second click instead.** An Undo by Hiding the Slot setting in the Transmog settings leaves the slot bare on the second click, for judging a piece against nothing.
+- **Name outfits after saved situations.** An outfit whose situations match one you have saved carries that name on its line in the outfit list, so you can pick out the ones set up the way you meant.
+- **Name near matches too.** An outfit that has everything a saved situation asks for plus a value or two of its own is named after it, with the extras listed after the name, as far past it as you allow in settings.
+- **Rename a saved situation.** The Load Situation menu at the transmog NPC now has a rename button on each saved situation, beside the delete one.
+
 ## [1.7.4] - 2026-08-13
 
 ### Added

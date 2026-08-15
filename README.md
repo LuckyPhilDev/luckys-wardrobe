@@ -43,6 +43,7 @@ It adds to the collection journal instead of replacing it, so it stays light and
 - **Random outfit**: Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Situation presets**: Save the situations you have picked for an outfit under a name, then apply the whole lot to another outfit in one click. Rename or delete them from the same menu.
 - **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown. An outfit whose situations match one you have saved is named after it instead, so you can scan the list for the ones set up the way you meant. Outfits that go a value or two further than the saved situation can be named after it too, with the extra values listed after the name.
+- **Click an appearance again to undo**: On the Items tab at the transmog NPC, clicking an appearance the slot is already set to puts the slot back to what you are wearing, so a piece can be clicked on and off to judge it. A setting makes that second click empty the slot instead, for judging the piece against a bare slot.
 - **Keep your active tab**: Switching outfits at the transmog NPC no longer throws you back to Items. Clicking a slot still opens Items.
 
 ### Everywhere Else
