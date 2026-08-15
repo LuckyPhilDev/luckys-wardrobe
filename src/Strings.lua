@@ -146,12 +146,12 @@ LuckysWardrobe.Strings = {
             desc = "Switching outfits at the transmog NPC keeps you on whichever tab you are on, instead of jumping back to Items. Clicking a slot still opens Items.",
         },
         undoOnSecondClick = {
-            label = "Click Again to Undo",
-            desc = "Clicking the appearance a slot is already queued to wear puts the slot back to what it was wearing, so you can click a piece on and off to compare the two. The page you are reading stays where it is.",
+            label = "Click an Appearance Again to Undo",
+            desc = "On the Items tab at the transmog NPC, clicking an appearance you have already picked for the slot puts the slot back to what it was wearing, so a piece can be clicked on and off to judge it. The list stays on the page you are reading either way.",
         },
         undoHidesSlot = {
-            label = "Hide the Slot Instead",
-            desc = "The second click hides the slot rather than putting back what you are wearing, so a piece is judged against an empty slot. Clicking the hide card itself still puts the slot back.",
+            label = "Undo by Hiding the Slot",
+            desc = "The second click empties the slot instead of putting back what you are wearing, for judging a piece against a bare slot. Clicking the appearance that hides the slot still puts the slot back, there being nothing left to empty.",
         },
         hideUnwearableSets = {
             label = "Hide Sets You Cannot Wear",
