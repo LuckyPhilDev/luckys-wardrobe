@@ -8,7 +8,7 @@ Enum = {
     TransmogOutfitDisplayType = { Unassigned = 0, Assigned = 1, Equipped = 2, Hidden = 3 },
 }
 
-SOUNDKIT = { UI_TRANSMOG_REVERTING_GEAR_SLOT = "revert" }
+SOUNDKIT = { UI_TRANSMOG_REVERTING_GEAR_SLOT = "revert", UI_TRANSMOG_ITEM_CLICK = "pick" }
 
 local soundsPlayed = {}
 function PlaySound(sound) table.insert(soundsPlayed, sound) end
@@ -23,11 +23,13 @@ function IsModifiedClick(action) return modifiers[action] == true end
 local HEAD, MAINHAND = 0, 12
 local HELM_VISUAL, HELM_SOURCE = 100, 1000
 local OTHER_VISUAL, OTHER_SOURCE = 200, 2000
-local ILLUSION_SOURCE = 3000
+local HIDE_VISUAL, HIDE_SOURCE = 0, 500
+local ILLUSION_SOURCE, NO_ILLUSION_SOURCE = 3000, 3500
 
 local sourceOfVisual = {
     [HELM_VISUAL] = HELM_SOURCE,
     [OTHER_VISUAL] = OTHER_SOURCE,
+    [HIDE_VISUAL] = HIDE_SOURCE,
 }
 
 local function makeLocation(slot, transmogType)
@@ -43,6 +45,7 @@ local illusionLocation = makeLocation(MAINHAND, Enum.TransmogType.Illusion)
 
 local slotInfos = {}
 local reverts = {}
+local pendings = {}
 
 C_TransmogOutfitInfo = {
     GetViewedOutfitSlotInfo = function(slot, transmogType, option)
@@ -59,6 +62,15 @@ C_TransmogOutfitInfo = {
     RevertPendingTransmog = function(slot, transmogType, option)
         table.insert(reverts, { slot = slot, transmogType = transmogType, option = option })
     end,
+    SetPendingTransmog = function(slot, transmogType, option, transmogID, displayType)
+        table.insert(pendings, {
+            slot = slot,
+            transmogType = transmogType,
+            option = option,
+            transmogID = transmogID,
+            displayType = displayType,
+        })
+    end,
 }
 
 -- The grid stamps its cards from this mixin after we have wrapped it, so the
@@ -74,6 +86,13 @@ local selectedSlot
 local collection = {
     GetSelectedSlotCallback = function() return selectedSlot end,
     GetAnAppearanceSourceFromVisual = function(_, visualID) return sourceOfVisual[visualID] end,
+    -- The grid holds the list it is showing, with the card that takes the slot
+    -- off among it.
+    itemCollectionEntries = {
+        { visualID = HIDE_VISUAL, isHideVisual = true },
+        { visualID = HELM_VISUAL },
+        { visualID = OTHER_VISUAL },
+    },
 }
 
 local function card(appearanceInfo)
@@ -87,7 +106,8 @@ end
 
 local helmCard = card({ visualID = HELM_VISUAL })
 local otherCard = card({ visualID = OTHER_VISUAL })
-local illusionCard = card({ visualID = 0, sourceID = ILLUSION_SOURCE })
+local hideCard = card({ visualID = HIDE_VISUAL, isHideVisual = true })
+local illusionCard = card({ visualID = 1, sourceID = ILLUSION_SOURCE })
 
 dofile("src/Strings.lua")
 dofile("src/UndoAppearance.lua")
@@ -96,7 +116,7 @@ local db = { undoOnSecondClick = true }
 LuckysWardrobe.UndoAppearance:Init(db)
 
 local function click(model, button)
-    stockClicks, reverts, soundsPlayed = {}, {}, {}
+    stockClicks, reverts, pendings, soundsPlayed = {}, {}, {}, {}
     TransmogItemModelMixin.OnMouseDown(model, button or "LeftButton")
 end
 
@@ -177,6 +197,57 @@ click(illusionCard)
 assert(#reverts == 1, "undid a queued illusion")
 assert(reverts[1].option == Enum.TransmogOutfitSlotOption.MainHand,
     "reverted the weapon option the slot names")
+
+-- Hiding the slot instead. An illusion's entries carry their own source rather
+-- than standing for a visual, here as everywhere else.
+
+db.undoHidesSlot = true
+collection.itemCollectionEntries = {
+    { sourceID = NO_ILLUSION_SOURCE, isHideVisual = true },
+    { sourceID = ILLUSION_SOURCE },
+}
+click(illusionCard)
+assert(#pendings == 1 and #reverts == 0, "took the illusion off rather than putting it back")
+assert(pendings[1].transmogID == NO_ILLUSION_SOURCE, "took the illusion's own hide source")
+
+selectedSlot = { transmogLocation = headLocation }
+slotInfos[HEAD] = {
+    transmogID = HELM_SOURCE,
+    displayType = Enum.TransmogOutfitDisplayType.Assigned,
+    hasPending = true,
+}
+collection.itemCollectionEntries = {
+    { visualID = HIDE_VISUAL, isHideVisual = true },
+    { visualID = HELM_VISUAL },
+}
+
+click(helmCard)
+assert(#pendings == 1 and #reverts == 0, "took the slot off rather than putting it back")
+assert(pendings[1].transmogID == HIDE_SOURCE, "queued the source behind the hide card")
+assert(pendings[1].displayType == Enum.TransmogOutfitDisplayType.Hidden, "queued it as hidden")
+assert(pendings[1].slot == HEAD and pendings[1].option == Enum.TransmogOutfitSlotOption.None,
+    "took off the slot being dressed")
+assert(soundsPlayed[1] == SOUNDKIT.UI_TRANSMOG_ITEM_CLICK, "played the pick sound, not the revert one")
+
+-- The slot is already off, so there is nothing left to take off and the click
+-- puts it back instead.
+slotInfos[HEAD].transmogID = HIDE_SOURCE
+slotInfos[HEAD].displayType = Enum.TransmogOutfitDisplayType.Hidden
+click(hideCard)
+assert(#reverts == 1 and #pendings == 0, "put an already hidden slot back")
+
+-- A search can leave the list without the card that takes the slot off.
+slotInfos[HEAD].transmogID = HELM_SOURCE
+slotInfos[HEAD].displayType = Enum.TransmogOutfitDisplayType.Assigned
+collection.itemCollectionEntries = { { visualID = HELM_VISUAL } }
+click(helmCard)
+assert(#reverts == 1 and #pendings == 0, "put the slot back where the list holds no hide card")
+
+collection.itemCollectionEntries = {
+    { visualID = HIDE_VISUAL, isHideVisual = true },
+    { visualID = HELM_VISUAL },
+}
+db.undoHidesSlot = false
 
 -- Nothing to read the slot off.
 

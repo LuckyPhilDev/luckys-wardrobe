@@ -1,12 +1,14 @@
 -- luacheck: globals C_TransmogOutfitInfo Enum EventUtil IsModifiedClick PlaySound SOUNDKIT TransmogItemModelMixin
 
 -- Lucky's Wardrobe: Clicking the appearance a slot is already queued to wear
--- puts the slot back the way it was. Judging a piece means seeing it on and off
--- one after the other, and the only way to take it off was to find whatever the
--- slot was wearing again, somewhere in a category of hundreds.
+-- takes it back off. Judging a piece means seeing it on and off one after the
+-- other, and the only way to take it off was to find whatever the slot was
+-- wearing again, somewhere in a category of hundreds.
 --
--- The page stays where it is, so the click that put the piece on and the click
--- that takes it off are the same click, twice.
+-- Off means one of two things and a setting says which: back to what the slot
+-- is really wearing, or nothing in the slot at all. Either way the page stays
+-- where it is, so the click that puts a piece on and the click that takes it
+-- off are the same click, twice.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.UndoAppearance = {}
 
@@ -72,13 +74,43 @@ local function undoes(model)
         return nil
     end
 
-    return location, option
+    return collection, location, option
 end
 
--- Reverting fires the slot refresh every card and the preview figure listen for,
--- so there is nothing to redraw by hand, and nothing that would page the list
--- away from where the player is reading.
-local function undo(location, option)
+-- The card that takes the slot off, out of the list the grid is showing. Every
+-- category carries one and no filter of ours takes it away, but Blizzard's own
+-- search does, and a category searched down to a word has nothing to hide the
+-- slot with.
+local function hideSource(collection, location)
+    for _, entry in ipairs(collection.itemCollectionEntries or {}) do
+        if entry.isHideVisual then
+            if not location:IsAppearance() then return entry.sourceID end
+            return collection:GetAnAppearanceSourceFromVisual(entry.visualID, nil)
+        end
+    end
+end
+
+-- Taking the slot off asks for the hide card the way any other pick does, so a
+-- slot already showing nothing has nothing left to take off. Those clicks put
+-- the slot back instead, which is the only thing left for them to mean.
+local function takeOff(model, collection, location, option)
+    if not db.undoHidesSlot or model:GetAppearanceInfo().isHideVisual then return false end
+
+    local sourceID = hideSource(collection, location)
+    if not sourceID then return false end
+
+    PlaySound(SOUNDKIT.UI_TRANSMOG_ITEM_CLICK)
+    C_TransmogOutfitInfo.SetPendingTransmog(location:GetSlot(), location:GetType(), option,
+        sourceID, Enum.TransmogOutfitDisplayType.Hidden)
+    return true
+end
+
+-- Both answers fire the slot refresh every card and the preview figure listen
+-- for, so there is nothing to redraw by hand, and nothing that would page the
+-- list away from where the player is reading.
+local function undo(model, collection, location, option)
+    if takeOff(model, collection, location, option) then return end
+
     PlaySound(SOUNDKIT.UI_TRANSMOG_REVERTING_GEAR_SLOT)
     C_TransmogOutfitInfo.RevertPendingTransmog(location:GetSlot(), location:GetType(), option)
 end
@@ -92,8 +124,8 @@ function UndoAppearance:Init(database)
         local stockMouseDown = TransmogItemModelMixin.OnMouseDown
         function TransmogItemModelMixin:OnMouseDown(button, ...)
             if claimsClick(self, button) then
-                local location, option = undoes(self)
-                if location then return undo(location, option) end
+                local collection, location, option = undoes(self)
+                if location then return undo(self, collection, location, option) end
             end
 
             return stockMouseDown(self, button, ...)
