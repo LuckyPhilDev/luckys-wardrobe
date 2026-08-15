@@ -134,8 +134,12 @@ dofile("src/SituationLabels.lua")
 local labels = LuckysWardrobe.SituationLabels
 
 local presetNames = {}
+local allowedExtras
 LuckysWardrobe.SituationPresets = {
-    NameFor = function(_, values) return values and presetNames[values.Zone] end,
+    NameFor = function(_, values, maxExtras)
+        allowedExtras = maxExtras
+        return values and presetNames[values.Zone]
+    end,
 }
 
 local db = {
@@ -227,6 +231,13 @@ labels:Refresh()
 assert(entry10.infoText == "Errands", "named an outfit after the saved situation it matches")
 assert(entry20.infoText == "Zone, In Combat", "kept the situation detail on an outfit matching nothing")
 assert(entry30.infoShown == false, "left an outfit without situations unnamed")
+
+assert(allowedExtras == 0, "allowed no extra values until the near match setting is on")
+
+db.showSituationPresetExtras = true
+db.situationPresetExtraLimit = 2
+labels:Refresh()
+assert(allowedExtras == 2, "passed on the extra values the player allows")
 
 tooltip.title, tooltip.lines = nil, {}
 entry10.OutfitButton.OnEnter()

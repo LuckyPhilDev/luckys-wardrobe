@@ -169,6 +169,14 @@ LuckysWardrobe.Strings = {
             label = "Name Outfits After Saved Situations",
             desc = "An outfit whose situations match one you have saved shows that saved situation's name on its line, so you can see at a glance which outfits are set up the way you meant. Outfits matching nothing show their situation detail as before.",
         },
+        showSituationPresetExtras = {
+            label = "Name Near Matches Too",
+            desc = "An outfit that has everything a saved situation asks for, plus a value or two of its own, is named after that saved situation with the extra values listed after it. Turn this off to name only the outfits that match exactly.",
+        },
+        situationPresetExtraLimit = {
+            label = "Extra Values Allowed",
+            desc = "How far past a saved situation an outfit can go and still be named after it. Where several saved situations fit, the outfit is named after the closest.",
+        },
         showSituationTooltips = {
             label = "Show Situation Tooltips",
             desc = "Shows an outfit's full situation list, with the values selected in each category, in a tooltip when you hover it.",

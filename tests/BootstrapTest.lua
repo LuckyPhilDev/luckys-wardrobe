@@ -293,6 +293,8 @@ assert(LuckysWardrobeDB.alertWithSound == true and LuckysWardrobeDB.alertWithCha
     "alerted through both sound and chat by default")
 assert(LuckysWardrobeDB.showSituationValues == true, "enabled situation values by default")
 assert(LuckysWardrobeDB.showSituationPresetNames == true, "named outfits after saved situations by default")
+assert(LuckysWardrobeDB.showSituationPresetExtras == false, "named only exact matches by default")
+assert(LuckysWardrobeDB.situationPresetExtraLimit == 1, "allowed one extra value by default")
 assert(LuckysWardrobeDB.showSituationTooltips == true, "enabled situation tooltips by default")
 assert(LuckysWardrobeDB.devMode == false, "applied database defaults")
 assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory by default")

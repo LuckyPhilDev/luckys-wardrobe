@@ -157,6 +157,13 @@ local function selectedValues(outfitID, categoryName)
     if categoryValues ~= "" then return categoryValues end
 end
 
+-- An outfit only carries values beyond its preset's own when the player has asked
+-- for the looser match.
+local function allowedExtras()
+    if not db.showSituationPresetExtras then return 0 end
+    return db.situationPresetExtraLimit or 0
+end
+
 -- The outfit list rebuilds its element data from the API on every refresh, so the
 -- override has to be reapplied per entry rather than stored on the element data.
 local function situationText(elementData)
@@ -171,7 +178,8 @@ local function situationText(elementData)
     elementData.situationDetails = details
 
     if db.showSituationPresetNames and #details > 0 then
-        local presetName = LuckysWardrobe.SituationPresets:NameFor(values and values[elementData.outfitID])
+        local outfitValues = values and values[elementData.outfitID]
+        local presetName = LuckysWardrobe.SituationPresets:NameFor(outfitValues, allowedExtras())
         if presetName then return presetName end
     end
     return table.concat(summary, TRANSMOG_SITUATION_CATEGORY_LIST_SEPARATOR)

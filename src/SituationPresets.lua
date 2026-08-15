@@ -71,46 +71,75 @@ end
 -- reading option keys per outfit.
 local matches
 
-local function categoryValues(category, isSelected)
-    local selected = {}
-    for _, group in ipairs(category.groupData or {}) do
-        for _, entry in ipairs(group.optionData or {}) do
-            if isSelected(entry.option) then selected[#selected + 1] = entry.name end
-        end
-    end
-    return table.concat(selected, "+")
-end
-
-local function signature(categories, valuesFor)
-    local parts = {}
+local function presetValues(categories, selections)
+    local byCategory = {}
+    local total = 0
     for _, category in ipairs(categories) do
-        parts[#parts + 1] = category.name .. "=" .. (valuesFor(category) or "")
+        local names = {}
+        for _, group in ipairs(category.groupData or {}) do
+            for _, entry in ipairs(group.optionData or {}) do
+                if selections[optionKey(entry.option)] then
+                    names[entry.name] = true
+                    total = total + 1
+                end
+            end
+        end
+        byCategory[category.name] = names
     end
-    return table.concat(parts, "\n")
+    return { byCategory = byCategory, total = total }
 end
 
 -- A preset that selects nothing is left out, so an outfit with no situations set
 -- is never named after it.
 local function buildMatches()
     local categories = C_TransmogOutfitInfo.GetUISituationCategoriesAndOptions() or {}
-    local bySignature = {}
+    local presets = {}
     for _, entry in ipairs(availablePresets()) do
-        local selections = entry.preset.selections
-        if next(selections) then
-            bySignature[signature(categories, function(category)
-                return categoryValues(category, function(option) return selections[optionKey(option)] end)
-            end)] = entry.name
+        if next(entry.preset.selections) then
+            local match = presetValues(categories, entry.preset.selections)
+            match.name = entry.name
+            presets[#presets + 1] = match
         end
     end
-    return { categories = categories, bySignature = bySignature }
+    return { categories = categories, presets = presets }
 end
 
-function SituationPresets:NameFor(values)
+-- What the outfit selects on top of the preset, or nil when the preset asks for
+-- something the outfit does not select at all.
+local function extraValues(categories, values, preset)
+    local extras = {}
+    local matched = 0
+    for _, category in ipairs(categories) do
+        local wanted = preset.byCategory[category.name]
+        for name in (values[category.name] or ""):gmatch("[^+]+") do
+            if wanted[name] then
+                matched = matched + 1
+            else
+                extras[#extras + 1] = name
+            end
+        end
+    end
+    if matched < preset.total then return nil end
+    return extras
+end
+
+-- Presets come sorted by name, so the closest fit wins and a tie goes to the first
+-- name alphabetically.
+function SituationPresets:NameFor(values, maxExtras)
     if not values then return end
     matches = matches or buildMatches()
-    return matches.bySignature[signature(matches.categories, function(category)
-        return values[category.name]
-    end)]
+
+    local best, bestExtras
+    for _, preset in ipairs(matches.presets) do
+        local extras = extraValues(matches.categories, values, preset)
+        if extras and #extras <= (maxExtras or 0) and (not bestExtras or #extras < #bestExtras) then
+            best, bestExtras = preset, extras
+        end
+    end
+
+    if not best then return end
+    if #bestExtras == 0 then return best.name end
+    return ("%s + %s"):format(best.name, table.concat(bestExtras, ", "))
 end
 
 function SituationPresets:UpdateLoadButton()

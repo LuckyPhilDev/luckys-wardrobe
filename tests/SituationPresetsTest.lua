@@ -164,6 +164,27 @@ assert(not presets:NameFor(nil), "left an outfit with nothing cached unnamed")
 assert(not presets:NameFor({ Zone = "Cities", Combat = "In Combat", Specialisation = "Fire" }),
     "ignored another class's preset")
 
+-- An outfit may carry values of its own on top of the saved situation, up to the
+-- allowance the caller passes.
+local withExtra = { Zone = "Rested Areas+Cities", Combat = "In Combat", Specialisation = "" }
+assert(presets:NameFor(withExtra, 1) == "Everywhere + Rested Areas", "listed the extra value after the name")
+assert(not presets:NameFor(withExtra, 0), "left a near match unnamed without an allowance")
+local withTwoExtras = { Zone = "Rested Areas+Cities", Combat = "In Combat", Specialisation = "Fire" }
+assert(not presets:NameFor(withTwoExtras, 1), "held a near match to the allowance")
+assert(presets:NameFor(withTwoExtras, 2) == "Everywhere + Rested Areas, Fire", "listed both extra values")
+assert(not presets:NameFor({ Zone = "Rested Areas", Combat = "In Combat" }, 2),
+    "left an outfit missing one of the saved values unnamed")
+
+-- The closest saved situation wins, whatever order the names sort in.
+selected["13:0:0:0"] = false
+assert(presets:Save("City"), "saved a narrower preset")
+selected["13:0:0:0"] = true
+assert(presets:NameFor(outfitValues, 2) == "Everywhere", "named the outfit after the exact match")
+assert(presets:NameFor(withExtra, 2) == "Everywhere + Rested Areas", "named the outfit after the fewest extras")
+assert(presets:NameFor({ Zone = "Rested Areas+Cities", Combat = "" }, 2) == "City + Rested Areas",
+    "fell back to the narrower preset the outfit still covers")
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "City")
+
 StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Everywhere")
 assert(not presets:NameFor(outfitValues), "forgot the name once the preset was deleted")
 

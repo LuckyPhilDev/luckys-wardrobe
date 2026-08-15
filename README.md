@@ -42,7 +42,7 @@ It adds to the collection journal instead of replacing it, so it stays light and
 - **Set names on the cards**: Every set card at the transmog NPC carries its name across the top, on the Sets, Custom Sets and Extra Sets tabs alike, so you can tell one little model from another without hovering each in turn. A set you have not finished is named in the same colour its border carries. Turn the names off from the filter menu on either sets tab, or from settings.
 - **Random outfit**: Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone, and nothing is bought until you press Apply.
 - **Situation presets**: Save the situations you have picked for an outfit under a name, then apply the whole lot to another outfit in one click. Delete them from the same menu.
-- **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown. An outfit whose situations match one you have saved is named after it instead, so you can scan the list for the ones set up the way you meant.
+- **Situation detail on outfits**: Show the values you have chosen on each outfit in the list, and hover an outfit for a tooltip with its full situation breakdown. An outfit whose situations match one you have saved is named after it instead, so you can scan the list for the ones set up the way you meant. Outfits that go a value or two further than the saved situation can be named after it too, with the extra values listed after the name.
 - **Keep your active tab**: Switching outfits at the transmog NPC no longer throws you back to Items. Clicking a slot still opens Items.
 
 ### Everywhere Else
