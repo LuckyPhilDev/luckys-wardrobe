@@ -10,7 +10,6 @@ local db
 
 local OPTION_FIELDS = { "situationID", "specID", "loadoutID", "equipmentSetID" }
 local ICONS_PATH = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\"
-local ICON_GOLD = { 1.0, 0.824, 0.392 }
 
 local function optionKey(option)
     local values = {}
@@ -320,23 +319,7 @@ StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"] = {
 }
 
 local function createIconButton(parent, icon, tooltipText)
-    local texture = ICONS_PATH .. icon
-    local button = CreateFrame("Button", nil, parent)
-    button:SetSize(20, 20)
-    button:SetNormalTexture(texture)
-    button:SetHighlightTexture(texture, "ADD")
-    button:SetDisabledTexture(texture)
-    button:GetNormalTexture():SetVertexColor(unpack(ICON_GOLD))
-    button:GetHighlightTexture():SetVertexColor(unpack(ICON_GOLD))
-    button:GetHighlightTexture():SetAlpha(0.35)
-    button:GetDisabledTexture():SetVertexColor(0.35, 0.35, 0.35)
-    button:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(tooltipText)
-        GameTooltip:Show()
-    end)
-    button:SetScript("OnLeave", GameTooltip_Hide)
-    return button
+    return LuckyUI.CreateIconButton(parent, { icon = ICONS_PATH .. icon, tooltip = tooltipText })
 end
 
 local function installButtons()
