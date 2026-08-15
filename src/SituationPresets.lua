@@ -66,7 +66,86 @@ local function availablePresets()
     return presets
 end
 
+-- An outfit is matched to a preset by the situation values the two would display,
+-- so the outfit list can match what it already has cached without a second scan
+-- reading option keys per outfit.
+local matches
+
+local function presetValues(categories, selections)
+    local byCategory = {}
+    local total = 0
+    for _, category in ipairs(categories) do
+        local names = {}
+        for _, group in ipairs(category.groupData or {}) do
+            for _, entry in ipairs(group.optionData or {}) do
+                if selections[optionKey(entry.option)] then
+                    names[entry.name] = true
+                    total = total + 1
+                end
+            end
+        end
+        byCategory[category.name] = names
+    end
+    return { byCategory = byCategory, total = total }
+end
+
+-- A preset that selects nothing is left out, so an outfit with no situations set
+-- is never named after it.
+local function buildMatches()
+    local categories = C_TransmogOutfitInfo.GetUISituationCategoriesAndOptions() or {}
+    local presets = {}
+    for _, entry in ipairs(availablePresets()) do
+        if next(entry.preset.selections) then
+            local match = presetValues(categories, entry.preset.selections)
+            match.name = entry.name
+            presets[#presets + 1] = match
+        end
+    end
+    return { categories = categories, presets = presets }
+end
+
+-- What the outfit selects on top of the preset, or nil when the preset asks for
+-- something the outfit does not select at all.
+local function extraValues(categories, values, preset)
+    local extras = {}
+    local matched = 0
+    for _, category in ipairs(categories) do
+        local wanted = preset.byCategory[category.name]
+        for name in (values[category.name] or ""):gmatch("[^+]+") do
+            if wanted[name] then
+                matched = matched + 1
+            else
+                extras[#extras + 1] = name
+            end
+        end
+    end
+    if matched < preset.total then return nil end
+    return extras
+end
+
+-- Presets come sorted by name, so the closest fit wins and a tie goes to the first
+-- name alphabetically.
+function SituationPresets:NameFor(values, maxExtras)
+    if not values then return end
+    matches = matches or buildMatches()
+
+    local best, bestExtras
+    for _, preset in ipairs(matches.presets) do
+        local extras = extraValues(matches.categories, values, preset)
+        if extras and #extras <= (maxExtras or 0) and (not bestExtras or #extras < #bestExtras) then
+            best, bestExtras = preset, extras
+        end
+    end
+
+    if not best then return end
+    if #bestExtras == 0 then return best.name end
+    return ("%s + %s"):format(best.name, table.concat(bestExtras, ", "))
+end
+
 function SituationPresets:UpdateLoadButton()
+    -- Every path that changes which presets exist comes through here, so the
+    -- matching is rebuilt from the same point.
+    matches = nil
     if self.loadButton then
         self.loadButton:SetEnabled(#availablePresets() > 0)
     end

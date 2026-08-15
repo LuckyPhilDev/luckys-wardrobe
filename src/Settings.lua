@@ -175,6 +175,38 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     transmog:Toggle({
+        label = S.settings.showSituationPresetNames.label,
+        desc = S.settings.showSituationPresetNames.desc,
+        checked = db.showSituationPresetNames,
+        onToggle = function(checked)
+            db.showSituationPresetNames = checked
+            LuckysWardrobe.SituationLabels:Refresh()
+        end,
+    })
+    transmog:Toggle({
+        label = S.settings.showSituationPresetExtras.label,
+        desc = S.settings.showSituationPresetExtras.desc,
+        parent = S.settings.showSituationPresetNames.label,
+        checked = db.showSituationPresetExtras,
+        onToggle = function(checked)
+            db.showSituationPresetExtras = checked
+            LuckysWardrobe.SituationLabels:Refresh()
+        end,
+    })
+    transmog:Slider({
+        label = S.settings.situationPresetExtraLimit.label,
+        desc = S.settings.situationPresetExtraLimit.desc,
+        parent = S.settings.showSituationPresetExtras.label,
+        min = 1,
+        max = 5,
+        suffix = " values",
+        value = db.situationPresetExtraLimit,
+        onChanged = function(value)
+            db.situationPresetExtraLimit = value
+            LuckysWardrobe.SituationLabels:Refresh()
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.showSituationTooltips.label,
         desc = S.settings.showSituationTooltips.desc,
         image = "transmog/show-situation-tooltips",
