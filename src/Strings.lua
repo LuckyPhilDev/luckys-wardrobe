@@ -203,6 +203,8 @@ LuckysWardrobe.Strings = {
         replaceDialog = "A saved situation named \"%s\" already exists. Replace it?",
         deleteTooltip = "Delete Saved Situation",
         deleteDialog = "Delete saved situation \"%s\"? This cannot be undone.",
+        renameTooltip = "Rename Saved Situation",
+        renameDialog = "Rename saved situation \"%s\"",
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",

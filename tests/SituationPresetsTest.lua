@@ -154,6 +154,42 @@ StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
 presets:UpdateLoadButton()
 assert(not loadEnabled, "hid class scoped presets from other classes after the shared delete")
 
+-- Renaming moves a preset under its new name, keeping what it selects and who sees it.
+selected["0:62:0:0"] = true
+assert(presets:Save("Raid Night"), "saved a preset to rename")
+local renamed = db.situationPresets["class5:Raid Night"]
+assert(presets:Rename("class5:Raid Night", "  Mythic Night  "), "renamed the preset")
+assert(not db.situationPresets["class5:Raid Night"], "dropped the old name")
+assert(db.situationPresets["class5:Mythic Night"] == renamed, "kept the preset itself")
+assert(renamed.name == "Mythic Night", "trimmed the new display name")
+assert(renamed.classID == 5, "kept the class scope")
+assert(renamed.selections["0:62:0:0"], "kept what the preset selects")
+assert(not presets:Rename("class5:Mythic Night", "   "), "ignored a blank rename")
+assert(not presets:Rename("no such preset", "Anything"), "ignored a rename of a missing preset")
+
+-- Renaming onto a name already taken asks before replacing it.
+selected["0:62:0:0"] = false
+assert(presets:Save("Anywhere"), "saved a shared preset to collide with")
+selected["0:62:0:0"] = true
+assert(presets:Save("Raid Night"), "saved a second class scoped preset")
+shownPopup = nil
+assert(presets:Rename("class5:Raid Night", "Anywhere"), "left a shared name free for a class scoped preset")
+assert(not shownPopup, "did not treat a differently scoped name as a duplicate")
+assert(presets:Save("Raid Night"), "saved the preset again to rename onto a taken name")
+assert(presets:Rename("class5:Raid Night", "Mythic Night") == false, "refused to replace without confirmation")
+assert(shownPopup.name == "LUCKYS_WARDROBE_REPLACE_RENAMED_SITUATION", "asked before replacing on rename")
+assert(shownPopup.textArg == "Mythic Night", "named the target preset in the replace prompt")
+assert(db.situationPresets["class5:Raid Night"], "kept the preset until confirmed")
+
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_RENAMED_SITUATION"].OnAccept(nil, shownPopup.data)
+assert(not db.situationPresets["class5:Raid Night"], "moved the preset on confirmation")
+assert(db.situationPresets["class5:Mythic Night"].name == "Mythic Night", "replaced the preset it was renamed onto")
+
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "class5:Mythic Night")
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "class5:Anywhere")
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
+selected["0:62:0:0"] = false
+
 -- An outfit is named after a preset by comparing the values the two would show, so
 -- the outfit list can match what it has cached without storing option keys.
 assert(presets:Save("Everywhere"), "saved a preset to match against")
