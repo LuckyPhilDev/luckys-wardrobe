@@ -117,6 +117,23 @@ function LuckysWardrobe.Settings:Init(db)
 
     local transmog = panel:Group(S.settings.groups.transmog)
     transmog:Toggle({
+        label = S.settings.undoOnSecondClick.label,
+        desc = S.settings.undoOnSecondClick.desc,
+        checked = db.undoOnSecondClick,
+        onToggle = function(checked)
+            db.undoOnSecondClick = checked
+        end,
+    })
+    transmog:Toggle({
+        label = S.settings.undoHidesSlot.label,
+        desc = S.settings.undoHidesSlot.desc,
+        parent = S.settings.undoOnSecondClick.label,
+        checked = db.undoHidesSlot,
+        onToggle = function(checked)
+            db.undoHidesSlot = checked
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.hideUnwearableSets.label,
         desc = S.settings.hideUnwearableSets.desc,
         -- The same switch sits in the Sets tab's own filter menu, so the panel

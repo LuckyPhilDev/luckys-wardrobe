@@ -40,6 +40,7 @@ TransmogSets.lua
 TransmogItems.lua
 TransmogSetNames.lua
 TransmogExtraSets.lua
+UndoAppearance.lua
 RecolorGroups.lua
 Transmog.lua
 SituationLabels.lua
