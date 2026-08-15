@@ -19,42 +19,38 @@ end
 
 function LuckysWardrobe.Settings:Init(db)
     local S = LuckysWardrobe.Strings
-    local addonVersion = C_AddOns.GetAddOnMetadata("Luckys_Wardrobe", "Version") or "?"
-    local utilsVersion = C_AddOns.GetAddOnMetadata("Luckys_Utils", "Version") or "?"
     local panel = LuckySettings:NewRichPanel(S.addon.title, {
         addonFolder = "Luckys_Wardrobe",
         imagesRoot = "Images",
+        minVersion = LuckysWardrobe.WHATS_NEW_MIN_VERSION,
+        devMode = {
+            label = S.settings.devMode.label,
+            desc = S.settings.devMode.desc,
+            checked = function() return db.devMode end,
+            onToggle = function(checked)
+                db.devMode = checked
+                LuckysWardrobe.DevLog(S.settings.devMode.enabled)
+            end,
+        },
+        -- The button seeds db.minimap when it is created, which happens after
+        -- this panel is built, so a first run has no state to read and defaults
+        -- to shown.
+        minimapButton = {
+            label = S.settings.minimapButton.label,
+            desc = S.settings.minimapButton.desc,
+            checked = function() return not (db.minimap or {}).hide end,
+            onToggle = function(checked)
+                if LuckysWardrobe.minimapButton then
+                    LuckysWardrobe.minimapButton:SetShown_Persisted(checked)
+                end
+            end,
+        },
     })
     settingsPanel = panel
 
-    local general = panel:Group(S.settings.groups.general)
-    general:Toggle({
-        label = S.settings.devMode.label,
-        desc = S.settings.devMode.desc,
-        checked = db.devMode,
-        onToggle = function(checked)
-            db.devMode = checked
-            LuckysWardrobe.DevLog(S.settings.devMode.enabled)
-        end,
-    })
-
-    -- The button seeds db.minimap when it is created, which happens after this
-    -- panel is built, so a first run has no state to read and defaults to shown.
-    local minimapState = db.minimap or {}
-    general:Toggle({
-        label = S.settings.minimapButton.label,
-        desc = S.settings.minimapButton.desc,
-        checked = not minimapState.hide,
-        onToggle = function(checked)
-            if LuckysWardrobe.minimapButton then
-                LuckysWardrobe.minimapButton:SetShown_Persisted(checked)
-            end
-        end,
-    })
-
-    general:BottomSection(S.settings.version.section)
-    general:BottomLabel({ label = S.settings.version.addon, value = "v" .. addonVersion })
-    general:BottomLabel({ label = S.settings.version.utils, value = "v" .. utilsVersion })
+    -- Dev Mode and the minimap button live in the title bar now, so this group
+    -- exists to host the What's New list.
+    panel:Group(S.settings.groups.whatsNew)
 
     local appearances = panel:Group(S.settings.groups.appearances)
     appearances:Toggle({
@@ -119,6 +115,7 @@ function LuckysWardrobe.Settings:Init(db)
     transmog:Toggle({
         label = S.settings.undoOnSecondClick.label,
         desc = S.settings.undoOnSecondClick.desc,
+        since = "1.7.5",
         checked = db.undoOnSecondClick,
         onToggle = function(checked)
             db.undoOnSecondClick = checked
@@ -128,6 +125,7 @@ function LuckysWardrobe.Settings:Init(db)
         label = S.settings.undoHidesSlot.label,
         desc = S.settings.undoHidesSlot.desc,
         parent = S.settings.undoOnSecondClick.label,
+        since = "1.7.5",
         checked = db.undoHidesSlot,
         onToggle = function(checked)
             db.undoHidesSlot = checked
@@ -177,6 +175,7 @@ function LuckysWardrobe.Settings:Init(db)
     transmog:Toggle({
         label = S.settings.showSituationPresetNames.label,
         desc = S.settings.showSituationPresetNames.desc,
+        since = "1.7.5",
         checked = db.showSituationPresetNames,
         onToggle = function(checked)
             db.showSituationPresetNames = checked
@@ -187,6 +186,7 @@ function LuckysWardrobe.Settings:Init(db)
         label = S.settings.showSituationPresetExtras.label,
         desc = S.settings.showSituationPresetExtras.desc,
         parent = S.settings.showSituationPresetNames.label,
+        since = "1.7.5",
         checked = db.showSituationPresetExtras,
         onToggle = function(checked)
             db.showSituationPresetExtras = checked
@@ -197,6 +197,7 @@ function LuckysWardrobe.Settings:Init(db)
         label = S.settings.situationPresetExtraLimit.label,
         desc = S.settings.situationPresetExtraLimit.desc,
         parent = S.settings.showSituationPresetExtras.label,
+        since = "1.7.5",
         min = 1,
         max = 5,
         suffix = " values",
@@ -340,6 +341,7 @@ function LuckysWardrobe.Settings:Init(db)
     setTracker:Toggle({
         label = S.settings.alertSound.label,
         desc = S.settings.alertSound.desc,
+        since = "1.7.0",
         checked = db.alertWithSound,
         onToggle = function(checked)
             db.alertWithSound = checked
@@ -348,6 +350,7 @@ function LuckysWardrobe.Settings:Init(db)
     setTracker:Toggle({
         label = S.settings.alertChat.label,
         desc = S.settings.alertChat.desc,
+        since = "1.7.0",
         checked = db.alertWithChat,
         onToggle = function(checked)
             db.alertWithChat = checked
@@ -355,6 +358,7 @@ function LuckysWardrobe.Settings:Init(db)
     })
 
     panel:Finalize()
+    LuckyPromo:AddToRichGroup(panel.whatsNewGroup, "Luckys_Wardrobe")
 end
 
 function LuckysWardrobe.Settings:Open()

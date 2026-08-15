@@ -113,7 +113,7 @@ These report what the addon can see, for working out why something looks wrong.
 
 Open settings with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 
-- **General**: Turn on dev mode for troubleshooting, show or hide the minimap button, and see version info.
+- **What's New**: The settings added in recent releases, each one clicking through to where it lives. Dev mode and the minimap button are buttons in the title bar, and the version you are running reads beside the addon name.
 - **Appearances**: Turn shift-click tracking on or off, choose whether tracked pieces carry a crosshair, and turn alt-click Wowhead addresses on or off.
 - **Tooltips**: Choose whether an item's tooltip names the set the piece belongs to and your progress through it, whether a preview model of the piece appears beside it, and whether that preview covers gear you already have as well.
 - **Transmog**: Hide the sets your character cannot wear from the Sets tab, keep your active tab at the transmog NPC when switching outfits, choose whether set cards carry their names, and choose how much situation detail appears on saved outfits.
