@@ -292,6 +292,7 @@ assert(LuckysWardrobeDB.alertSetPieceLoot == true, "alerted on set pieces by def
 assert(LuckysWardrobeDB.alertWithSound == true and LuckysWardrobeDB.alertWithChat == true,
     "alerted through both sound and chat by default")
 assert(LuckysWardrobeDB.showSituationValues == true, "enabled situation values by default")
+assert(LuckysWardrobeDB.showSituationPresetNames == true, "named outfits after saved situations by default")
 assert(LuckysWardrobeDB.showSituationTooltips == true, "enabled situation tooltips by default")
 assert(LuckysWardrobeDB.devMode == false, "applied database defaults")
 assert(LuckysWardrobeDB.keepTransmogTab == false, "disabled transmog tab memory by default")

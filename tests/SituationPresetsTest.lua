@@ -31,24 +31,27 @@ local selected = {
 
 local options = {
     {
+        name = "Zone",
         groupData = {
             { optionData = {
-                { option = { situationID = 3, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
-                { option = { situationID = 4, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
+                { name = "Rested Areas", option = { situationID = 3, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
+                { name = "Cities", option = { situationID = 4, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
             } },
         },
     },
     {
+        name = "Combat",
         groupData = {
             { optionData = {
-                { option = { situationID = 13, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
+                { name = "In Combat", option = { situationID = 13, specID = 0, loadoutID = 0, equipmentSetID = 0 } },
             } },
         },
     },
     {
+        name = "Specialisation",
         groupData = {
             { optionData = {
-                { option = { situationID = 0, specID = 62, loadoutID = 0, equipmentSetID = 0 } },
+                { name = "Fire", option = { situationID = 0, specID = 62, loadoutID = 0, equipmentSetID = 0 } },
             } },
         },
     },
@@ -150,5 +153,23 @@ assert(loadEnabled, "listed the shared preset on any class")
 StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
 presets:UpdateLoadButton()
 assert(not loadEnabled, "hid class scoped presets from other classes after the shared delete")
+
+-- An outfit is named after a preset by comparing the values the two would show, so
+-- the outfit list can match what it has cached without storing option keys.
+assert(presets:Save("Everywhere"), "saved a preset to match against")
+local outfitValues = { Zone = "Cities", Combat = "In Combat", Specialisation = "" }
+assert(presets:NameFor(outfitValues) == "Everywhere", "named an outfit matching a saved situation")
+assert(not presets:NameFor({ Zone = "Cities", Combat = "", Specialisation = "" }), "left a partly matching outfit unnamed")
+assert(not presets:NameFor(nil), "left an outfit with nothing cached unnamed")
+assert(not presets:NameFor({ Zone = "Cities", Combat = "In Combat", Specialisation = "Fire" }),
+    "ignored another class's preset")
+
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Everywhere")
+assert(not presets:NameFor(outfitValues), "forgot the name once the preset was deleted")
+
+selected["4:0:0:0"], selected["13:0:0:0"] = false, false
+assert(presets:Save("Nothing"), "saved a preset selecting nothing")
+assert(not presets:NameFor({ Zone = "", Combat = "", Specialisation = "" }),
+    "left an outfit with no situations unnamed")
 
 print("Lucky's Wardrobe situation presets test passed")

@@ -66,7 +66,57 @@ local function availablePresets()
     return presets
 end
 
+-- An outfit is matched to a preset by the situation values the two would display,
+-- so the outfit list can match what it already has cached without a second scan
+-- reading option keys per outfit.
+local matches
+
+local function categoryValues(category, isSelected)
+    local selected = {}
+    for _, group in ipairs(category.groupData or {}) do
+        for _, entry in ipairs(group.optionData or {}) do
+            if isSelected(entry.option) then selected[#selected + 1] = entry.name end
+        end
+    end
+    return table.concat(selected, "+")
+end
+
+local function signature(categories, valuesFor)
+    local parts = {}
+    for _, category in ipairs(categories) do
+        parts[#parts + 1] = category.name .. "=" .. (valuesFor(category) or "")
+    end
+    return table.concat(parts, "\n")
+end
+
+-- A preset that selects nothing is left out, so an outfit with no situations set
+-- is never named after it.
+local function buildMatches()
+    local categories = C_TransmogOutfitInfo.GetUISituationCategoriesAndOptions() or {}
+    local bySignature = {}
+    for _, entry in ipairs(availablePresets()) do
+        local selections = entry.preset.selections
+        if next(selections) then
+            bySignature[signature(categories, function(category)
+                return categoryValues(category, function(option) return selections[optionKey(option)] end)
+            end)] = entry.name
+        end
+    end
+    return { categories = categories, bySignature = bySignature }
+end
+
+function SituationPresets:NameFor(values)
+    if not values then return end
+    matches = matches or buildMatches()
+    return matches.bySignature[signature(matches.categories, function(category)
+        return values[category.name]
+    end)]
+end
+
 function SituationPresets:UpdateLoadButton()
+    -- Every path that changes which presets exist comes through here, so the
+    -- matching is rebuilt from the same point.
+    matches = nil
     if self.loadButton then
         self.loadButton:SetEnabled(#availablePresets() > 0)
     end

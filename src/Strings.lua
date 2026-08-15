@@ -165,6 +165,10 @@ LuckysWardrobe.Strings = {
             label = "Show Situation Values",
             desc = "Shows the selected situation values on outfit entries instead of just the category names.",
         },
+        showSituationPresetNames = {
+            label = "Name Outfits After Saved Situations",
+            desc = "An outfit whose situations match one you have saved shows that saved situation's name on its line, so you can see at a glance which outfits are set up the way you meant. Outfits matching nothing show their situation detail as before.",
+        },
         showSituationTooltips = {
             label = "Show Situation Tooltips",
             desc = "Shows an outfit's full situation list, with the values selected in each category, in a tooltip when you hover it.",

@@ -20,6 +20,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     hiddenSetSlots = {},
     situationPresets = {},
     showSituationValues = true,
+    showSituationPresetNames = true,
     showSituationTooltips = true,
     situationLabels = {},
     showInstanceSets = true,

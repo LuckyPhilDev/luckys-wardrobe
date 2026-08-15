@@ -112,7 +112,7 @@ end
 -- The tooltip lists the same values the entry subtitle can show, so the cache is
 -- worth building whenever either surface is on.
 local function valuesNeeded()
-    return db.showSituationValues or db.showSituationTooltips
+    return db.showSituationValues or db.showSituationTooltips or db.showSituationPresetNames
 end
 
 -- Situation selections reference class specialisations and equipment sets, so the
@@ -169,6 +169,11 @@ local function situationText(elementData)
         details[#details + 1] = { name = categoryName, values = categoryValues }
     end
     elementData.situationDetails = details
+
+    if db.showSituationPresetNames and #details > 0 then
+        local presetName = LuckysWardrobe.SituationPresets:NameFor(values and values[elementData.outfitID])
+        if presetName then return presetName end
+    end
     return table.concat(summary, TRANSMOG_SITUATION_CATEGORY_LIST_SEPARATOR)
 end
 

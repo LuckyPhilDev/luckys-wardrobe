@@ -132,6 +132,12 @@ TransmogFrame = {
 dofile("src/SituationLabels.lua")
 
 local labels = LuckysWardrobe.SituationLabels
+
+local presetNames = {}
+LuckysWardrobe.SituationPresets = {
+    NameFor = function(_, values) return values and presetNames[values.Zone] end,
+}
+
 local db = {
     showSituationValues = true,
     showSituationTooltips = true,
@@ -215,7 +221,18 @@ assert(tooltip.title == nil, "suppressed the tooltip when toggled off")
 db.showSituationValues = true
 db.showSituationTooltips = true
 
-outfits[#outfits + 1] = { outfitID = 40, situationCategories = { "Zone" } }
+db.showSituationPresetNames = true
+presetNames["Cities"] = "Errands"
+labels:Refresh()
+assert(entry10.infoText == "Errands", "named an outfit after the saved situation it matches")
+assert(entry20.infoText == "Zone, In Combat", "kept the situation detail on an outfit matching nothing")
+assert(entry30.infoShown == false, "left an outfit without situations unnamed")
+
+tooltip.title, tooltip.lines = nil, {}
+entry10.OutfitButton.OnEnter()
+assert(tooltip.lines[1] == "|gray|Zone:|r Cities", "kept the full detail in a named outfit's tooltip")
+
+outfits[#outfits + 1] ={ outfitID = 40, situationCategories = { "Zone" } }
 fireEvents = false
 frame.OnEvent(nil, "TRANSMOG_OUTFITS_CHANGED")
 assert(cache[40] == nil, "scan stayed pending while the outfit change was unconfirmed")
