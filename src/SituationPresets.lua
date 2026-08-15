@@ -167,6 +167,28 @@ function SituationPresets:Save(name, overwrite)
     return true
 end
 
+-- The key carries the name, so a rename moves the preset rather than editing it in
+-- place, keeping its class scope and selections.
+function SituationPresets:Rename(key, name, overwrite)
+    local preset = db.situationPresets[key]
+    if not preset then return end
+
+    name = strtrim(name)
+    if name == "" or name == preset.name then return end
+
+    local newKey = presetKey(name, preset.classID)
+    if not overwrite and db.situationPresets[newKey] then
+        StaticPopup_Show("LUCKYS_WARDROBE_REPLACE_RENAMED_SITUATION", name, nil, { key = key, name = name })
+        return false
+    end
+
+    preset.name = name
+    db.situationPresets[key] = nil
+    db.situationPresets[newKey] = preset
+    self:UpdateLoadButton()
+    return true
+end
+
 function SituationPresets:Delete(key)
     db.situationPresets[key] = nil
     self:UpdateLoadButton()
@@ -192,6 +214,20 @@ function SituationPresets:Apply(preset, situationsFrame)
     situationsFrame:Refresh()
 end
 
+local function acceptOnEnter(editBox)
+    if editBox:GetParent():GetButton1():IsEnabled() then
+        StaticPopup_OnClick(editBox:GetParent(), 1)
+    end
+end
+
+local function requireName(editBox)
+    editBox:GetParent():GetButton1():SetEnabled(strtrim(editBox:GetText()) ~= "")
+end
+
+local function closeOnEscape(editBox)
+    editBox:GetParent():Hide()
+end
+
 StaticPopupDialogs["LUCKYS_WARDROBE_SAVE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.saveDialog,
@@ -212,16 +248,48 @@ StaticPopupDialogs["LUCKYS_WARDROBE_SAVE_SITUATION"] = {
     OnHide = function(dialog)
         dialog:GetEditBox():SetText("")
     end,
-    EditBoxOnEnterPressed = function(editBox)
-        if editBox:GetParent():GetButton1():IsEnabled() then
-            StaticPopup_OnClick(editBox:GetParent(), 1)
-        end
+    EditBoxOnEnterPressed = acceptOnEnter,
+    EditBoxOnTextChanged = requireName,
+    EditBoxOnEscapePressed = closeOnEscape,
+}
+
+StaticPopupDialogs["LUCKYS_WARDROBE_RENAME_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.renameDialog,
+    button1 = SAVE,
+    button2 = CANCEL,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    hasEditBox = 1,
+    maxLetters = 31,
+    OnAccept = function(dialog, data)
+        SituationPresets:Rename(data.key, dialog:GetEditBox():GetText())
     end,
-    EditBoxOnTextChanged = function(editBox)
-        editBox:GetParent():GetButton1():SetEnabled(strtrim(editBox:GetText()) ~= "")
+    OnShow = function(dialog, data)
+        local editBox = dialog:GetEditBox()
+        editBox:SetText(data.name)
+        editBox:HighlightText()
+        editBox:SetFocus()
     end,
-    EditBoxOnEscapePressed = function(editBox)
-        editBox:GetParent():Hide()
+    OnHide = function(dialog)
+        dialog:GetEditBox():SetText("")
+    end,
+    EditBoxOnEnterPressed = acceptOnEnter,
+    EditBoxOnTextChanged = requireName,
+    EditBoxOnEscapePressed = closeOnEscape,
+}
+
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_RENAMED_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.replaceDialog,
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    OnAccept = function(_dialog, data)
+        SituationPresets:Rename(data.key, data.name, true)
     end,
 }
 
@@ -297,6 +365,20 @@ local function installButtons()
                     end)
                     MenuUtil.HookTooltipScripts(deleteButton, function(tooltip)
                         tooltip:SetText(strings.deleteTooltip)
+                    end)
+
+                    local renameButton = MenuTemplates.AttachBasicButton(menuButton)
+                    renameButton:SetPoint("RIGHT", deleteButton, "LEFT", -2, 0)
+                    local renameIcon = renameButton:AttachTexture()
+                    renameIcon:SetAllPoints()
+                    renameIcon:SetAtlas("Pencil-Icon")
+                    renameButton:SetScript("OnClick", function()
+                        StaticPopup_Show("LUCKYS_WARDROBE_RENAME_SITUATION", entry.name, nil,
+                            { key = entry.key, name = entry.name })
+                        menu:Close()
+                    end)
+                    MenuUtil.HookTooltipScripts(renameButton, function(tooltip)
+                        tooltip:SetText(strings.renameTooltip)
                     end)
                 end)
             end
