@@ -30,6 +30,9 @@ function LuckysWardrobe.Settings:Init(db)
             onToggle = function(checked)
                 db.devMode = checked
                 LuckysWardrobe.DevLog(S.settings.devMode.enabled)
+                -- The Items tab carries dev tags on its tiles, so a toggle
+                -- with the transmogrifier open shows there and then.
+                LuckysWardrobe.TransmogItems:Refresh()
             end,
         },
         -- The button seeds db.minimap when it is created, which happens after

@@ -158,10 +158,14 @@ LuckysWardrobe.TransmogSets = {
 }
 
 local transmogItemsInitialized = false
+local transmogItemsDB
 LuckysWardrobe.TransmogItems = {
-    Init = function()
+    Init = function(_, db)
         transmogItemsInitialized = true
+        transmogItemsDB = db
     end,
+    -- The dev mode toggle redraws the Items tab, its tiles carrying dev tags.
+    Refresh = function() end,
 }
 
 local setNamesDB
@@ -271,7 +275,8 @@ assert(customSetsInitialized, "initialized the Custom Sets subtab")
 assert(previewSlotsDB == LuckysWardrobeDB, "initialized the preview slots with saved variables")
 assert(type(LuckysWardrobeDB.hiddenSetSlots) == "table", "applied the preview-slots default")
 assert(transmogSetsDB == LuckysWardrobeDB, "initialized the transmogrifier Sets tab with saved variables")
-assert(transmogItemsInitialized, "initialized the transmogrifier Items tab")
+assert(transmogItemsInitialized and transmogItemsDB == LuckysWardrobeDB,
+    "initialized the transmogrifier Items tab with saved variables, its dev tags reading devMode")
 assert(transmogExtraSetsInitialized, "initialized the transmogrifier Extra Sets tab")
 assert(undoAppearanceDB == LuckysWardrobeDB, "initialized the undo click with saved variables")
 assert(setNamesDB == LuckysWardrobeDB, "initialized the set card names with saved variables")

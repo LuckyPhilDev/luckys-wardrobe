@@ -14,10 +14,14 @@ local colourPicks = 0
 LuckysWardrobe.Randomiser = { OnColourPicked = function() colourPicks = colourPicks + 1 end }
 
 -- The strip reads its swatches off the presets, the reset included: clearing the
--- colour is a pick of nothing rather than a separate undo.
+-- colour is a pick of nothing rather than a separate undo. The dev tags read
+-- what a piece is made of and how much of the character it paints.
+local madeOf, coverage = {}, {}
 LuckysWardrobe.Colours = {
     PRESETS = { { key = "green", shades = { { 40, 160, 60 } } } },
     Target = function(preset) return preset.shades end,
+    MadeOf = function(visualID) return madeOf[visualID] or false end,
+    Coverage = function(visualID) return coverage[visualID] or 1 end,
 }
 
 CHECK_ALL = "Check All"
@@ -206,6 +210,28 @@ for _, appearance in ipairs(byColour) do order[appearance.visualID] = appearance
 assert(order[3] > order[1], "the piece more of that colour sorts ahead of the other")
 assert(order[1] == -12 and order[3] == -4, "carrying the rank the colours worked out")
 assert(order[4] == nil, "and the way to wear nothing is left as the tab had it")
+
+-- The dev tag on a tile says why the piece fell where it did: its two largest
+-- colours with the percentage of the piece each covers, the colour answering
+-- the picked swatch lit wherever it comes in the order, and the body sections
+-- multiplying its rank when there are more than one.
+
+madeOf[9] = { { key = "red", share = 0.62 }, { key = "black", share = 0.31 },
+              { key = "grey", share = 0.06 } }
+coverage[9] = 5
+assert(TransmogItems.TileTag(9, nil) == "Red 62  Blk 31  x5",
+    "the two largest colours and the size, with no swatch picked to light one")
+assert(TransmogItems.TileTag(9, "red") == "|cff40cc40Red 62|r  Blk 31  x5",
+    "the colour answering the picked swatch is lit")
+
+madeOf[10] = { { key = "black", share = 0.70 }, { key = "grey", share = 0.20 },
+               { key = "red", share = 0.10 } }
+assert(TransmogItems.TileTag(10, "red") == "Blk 70  Gry 20  |cff40cc40Red 10|r",
+    "a colour past the first two still shows when it is the one that answered")
+assert(TransmogItems.TileTag(10, nil) == "Blk 70  Gry 20",
+    "and stays off the tag otherwise, a piece of its size needing no third")
+assert(TransmogItems.TileTag(11, nil) == "?",
+    "a piece the snapshot cannot place says so rather than guessing")
 
 -- The roll beside the strip draws from the page as the filters have left it, so
 -- a colour is what it keeps to. A piece nobody can wear is no use to it, and

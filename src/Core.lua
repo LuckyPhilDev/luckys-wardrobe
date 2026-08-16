@@ -20,7 +20,7 @@ local function initialize()
     LuckysWardrobe.ExtraSets:Init()
     LuckysWardrobe.CustomSets:Init()
     LuckysWardrobe.TransmogSets:Init(LuckysWardrobeDB)
-    LuckysWardrobe.TransmogItems:Init()
+    LuckysWardrobe.TransmogItems:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogSetNames:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogExtraSets:Init()
     LuckysWardrobe.UndoAppearance:Init(LuckysWardrobeDB)
@@ -49,6 +49,9 @@ local function initialize()
                 LuckysWardrobeDB.devMode = not LuckysWardrobeDB.devMode
                 local S = LuckysWardrobe.Strings.settings.devMode
                 LuckysWardrobe.Utils.Say(LuckysWardrobeDB.devMode and S.enabled or S.disabled)
+                -- The Items tab carries dev tags on its tiles, so a toggle at
+                -- the transmogrifier shows there and then.
+                LuckysWardrobe.TransmogItems:Refresh()
             elseif IsShiftKeyDown() then
                 LuckysWardrobe.SetCompletion:Toggle()
             end

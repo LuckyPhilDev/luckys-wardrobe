@@ -1,4 +1,4 @@
--- luacheck: globals C_Item C_TransmogCollection CHECK_ALL CreateFrame EventUtil FILTERS MenuResponse SOURCES TransmogFrame UNCHECK_ALL WardrobeCollectionFrame
+-- luacheck: globals C_Item C_TransmogCollection CHECK_ALL CreateFrame EventUtil FILTERS hooksecurefunc MenuResponse SOURCES TransmogFrame UNCHECK_ALL WardrobeCollectionFrame
 
 -- Lucky's Wardrobe: the Expansion submenu the set lists carry, brought to the
 -- Items tab at the transmogrifier. Picking a weapon to go with a set from one
@@ -20,6 +20,8 @@ LuckysWardrobe.TransmogItems = {}
 local TransmogItems = LuckysWardrobe.TransmogItems
 local ExtraSets = LuckysWardrobe.ExtraSets
 local Utils = LuckysWardrobe.Utils
+
+local db
 
 -- The box for a piece the client files under no expansion at all, keyed by a
 -- name so it can never collide with an expansionID. Shop and promotional pieces
@@ -109,9 +111,10 @@ function TransmogItems.AppearancesFromExpansions(appearances, shownExpansions, e
     return kept
 end
 
--- The appearances made of the colour picked on the strip, most of it first.
--- rank answers for one appearance with how little of it is that colour, so
--- smaller is more, or nil for one that is not made of it at all. An appearance it cannot
+-- The appearances made of the colour picked on the strip, the most of that
+-- colour on show first. rank answers for one appearance with how much of the
+-- colour it shows, negated so that smaller is more, or nil for one that is
+-- not made of it at all. An appearance it cannot
 -- place is dropped rather than kept: the bundled colours cover the whole
 -- collection, so nothing to go on means a piece from a patch newer than the
 -- snapshot, and a page of unplaceable pieces would be the one thing a colour
@@ -448,6 +451,60 @@ local function buildStrip(frame)
     paintSwatches()
 end
 
+-- Dev only. Why a piece fell where it did, written along the bottom of its
+-- tile while dev mode is on: the two largest colours it is made of with the
+-- percentage of the piece each covers, the colour answering the picked swatch
+-- lit green wherever it comes in the order, and the body sections multiplying
+-- its rank when there are more than one.
+local TAG_COLOURS = {
+    red = "Red", orange = "Ora", yellow = "Yel", green = "Grn", teal = "Tea",
+    blue = "Blu", purple = "Pur", pink = "Pnk", brown = "Brn", white = "Wht",
+    grey = "Gry", black = "Blk",
+}
+local TAG_MATCHED = "|cff40cc40%s|r"
+
+-- The tag for one tile. A piece the snapshot cannot place answers with a
+-- question mark, which is exactly the piece worth a tag saying so.
+function TransmogItems.TileTag(visualID, pickedKey)
+    local made = LuckysWardrobe.Colours.MadeOf(visualID)
+    if not made then return "?" end
+
+    local parts = {}
+    for tier, entry in ipairs(made) do
+        if tier <= 2 or entry.key == pickedKey then
+            local label = TAG_COLOURS[entry.key] .. " " .. math.floor(entry.share * 100 + 0.5)
+            if entry.key == pickedKey then label = TAG_MATCHED:format(label) end
+            parts[#parts + 1] = label
+        end
+    end
+
+    local coverage = LuckysWardrobe.Colours.Coverage(visualID)
+    if coverage > 1 then parts[#parts + 1] = "x" .. coverage end
+    return table.concat(parts, "  ")
+end
+
+local function paintTileTags()
+    local frame = itemsFrame()
+    if not frame or not frame.PagedContent then return end
+
+    frame.PagedContent:ForEachFrame(function(tile)
+        local info = tile.GetAppearanceInfo and tile:GetAppearanceInfo()
+        if not (db and db.devMode) or not info or info.isHideVisual then
+            if tile.LuckysColourTag then tile.LuckysColourTag:Hide() end
+            return
+        end
+
+        local tag = tile.LuckysColourTag
+        if not tag then
+            tag = tile:CreateFontString(nil, "OVERLAY", "GameFontWhiteTiny")
+            tag:SetPoint("BOTTOM", 0, 4)
+            tile.LuckysColourTag = tag
+        end
+        tag:SetText(TransmogItems.TileTag(info.visualID, colour))
+        tag:Show()
+    end)
+end
+
 -- The button also marks itself as holding a filter, and offers to put it back.
 -- Left alone it would answer for Blizzard's own boxes and quietly ignore ours,
 -- so a list narrowed by ours would look untouched and the reset would leave it
@@ -458,6 +515,13 @@ local function claimFilterButton()
     if not button then return end
 
     if frame.PagedContent and not strip then buildStrip(frame) end
+
+    -- Every page draw funnels through this one call, so the dev tags follow
+    -- the tiles through page turns, filter changes and pool reuse.
+    if frame.PagedContent and not TransmogItems.tagsHooked then
+        TransmogItems.tagsHooked = true
+        hooksecurefunc(frame.PagedContent, "DisplayViewsForCurrentPage", paintTileTags)
+    end
 
     -- Sources is no longer the whole of what the button holds.
     button:SetText(FILTERS)
@@ -550,7 +614,8 @@ function TransmogItems:PrintDates(box)
     for _, example in ipairs(examples) do Utils.Say(example) end
 end
 
-function TransmogItems:Init()
+function TransmogItems:Init(database)
+    db = database
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", claimFilterButton)
 
     -- The tab builds its page from this one call, so narrowing the answer
