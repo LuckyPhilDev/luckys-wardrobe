@@ -50,6 +50,40 @@ end
 
 setAllExpansions(true)
 
+-- Which colour the strip is set to, as the key of a preset, that preset's shades
+-- ready to be matched against, and the preset itself. Session-only, like the
+-- expansions.
+local colour
+local colourTarget
+local colourPreset
+
+-- What the strip is set to, for the parts of the addon outside this tab that
+-- answer to it. The dice on the character preview offers a roll in this colour
+-- while one is lit, and needs all three: the key to name it, the target to match
+-- a piece against, and the preset to paint its own swatch from.
+function TransmogItems.PickedColour()
+    return colour, colourTarget, colourPreset
+end
+
+-- Paints a texture as the swatch for a preset, wherever the picked colour is
+-- shown: the strip itself and the dice beside the character preview.
+--
+-- The unmatched swatch is not one colour, so it is painted across the two the
+-- preset carries for the purpose rather than in either of them.
+function TransmogItems.PaintSwatch(texture, preset)
+    local shade = preset.shades[1]
+    if not preset.unmatched then
+        texture:SetColorTexture(shade[1] / 255, shade[2] / 255, shade[3] / 255)
+        return
+    end
+
+    local second = preset.shades[2]
+    texture:SetColorTexture(1, 1, 1)
+    texture:SetGradient("HORIZONTAL",
+        CreateColor(shade[1] / 255, shade[2] / 255, shade[3] / 255),
+        CreateColor(second[1] / 255, second[2] / 255, second[3] / 255))
+end
+
 -- Hiding a slot belongs to no expansion, and is the one entry a filter must
 -- never take away: without it there is no way to wear nothing. It is asked
 -- about first so nothing goes looking for a date it could not have.
@@ -75,7 +109,75 @@ function TransmogItems.AppearancesFromExpansions(appearances, shownExpansions, e
     return kept
 end
 
+-- The appearances made of the colour picked on the strip, most of it first.
+-- rank answers for one appearance with how little of it is that colour, so
+-- smaller is more, or nil for one that is not made of it at all. An appearance it cannot
+-- place is dropped rather than kept: the bundled colours cover the whole
+-- collection, so nothing to go on means a piece from a patch newer than the
+-- snapshot, and a page of unplaceable pieces would be the one thing a colour
+-- filter must not show.
+--
+-- Hiding a slot is kept whatever colour is picked, for the same reason the
+-- expansion boxes keep it: it is the only way to wear nothing.
+--
+-- The order is carried on uiOrder rather than by the order of the list, because
+-- the tab sorts what it is given. Its own comparator settles the collected,
+-- usable and favourite pieces first and only then reads uiOrder, so a rank
+-- written here orders the page within those groups and leaves them intact.
+-- Highest first is what that comparator wants, so the rank is negated.
+function TransmogItems.AppearancesInColour(appearances, rank)
+    local kept = {}
+    for _, appearance in ipairs(appearances) do
+        if appearance.isHideVisual then
+            kept[#kept + 1] = appearance
+        else
+            local matched = rank(appearance.visualID)
+            if matched then
+                appearance.uiOrder = -matched
+                kept[#kept + 1] = appearance
+            end
+        end
+    end
+    return kept
+end
+
+-- Which piece a roll lands on, or nil for a page with nothing to land on. It
+-- draws from the page as the filters have left it, so the colour picked on the
+-- strip is what a roll keeps to.
+--
+-- A piece nobody can wear is no use to a roll. Neither is hiding the slot: it is
+-- on the page because no filter may take it away, and a colour roll answering
+-- with the one entry that carries no colour reads as a button gone wrong.
+--
+-- previous is what the last roll landed on. Landing there again looks like a
+-- button doing nothing, so the roll takes the next piece along, which leaves a
+-- page holding one piece still answering with that piece.
+function TransmogItems.RollVisual(appearances, previous, pick)
+    local candidates = {}
+    for _, appearance in ipairs(appearances) do
+        if appearance.isCollected and appearance.isUsable and not appearance.isHideVisual then
+            candidates[#candidates + 1] = appearance.visualID
+        end
+    end
+    if #candidates == 0 then return nil end
+
+    local index = pick(#candidates)
+    if candidates[index] == previous then index = index % #candidates + 1 end
+    return candidates[index]
+end
+
 -- Live glue from here down.
+
+-- The client's own answer, for the parts of the addon that want the whole
+-- collection rather than the page this tab has narrowed. Init replaces the
+-- client's call with one that filters, and anything reading it for its own
+-- purposes gets the filter as well: a roll drawing from the colour on the strip,
+-- and the tab's colour ranking and item requests run over every category on the
+-- way. Callers that mean the collection ask here instead.
+function TransmogItems.CategoryAppearances(category, locationData)
+    local read = TransmogItems.getCategoryAppearances or C_TransmogCollection.GetCategoryAppearances
+    return read(category, locationData)
+end
 
 -- What an appearance is dated to, worked out once and kept for the session. The
 -- tab asks about every appearance it lists on every refresh and a category runs
@@ -149,6 +251,10 @@ local function expansionOf(visualID)
     return expansionID
 end
 
+local function rankColour(visualID)
+    return LuckysWardrobe.Colours.Rank(visualID, colourTarget)
+end
+
 local function itemsFrame()
     local wardrobe = TransmogFrame and TransmogFrame.WardrobeCollection
     local content = wardrobe and wardrobe.TabContent
@@ -169,7 +275,7 @@ end
 -- actually narrowed. The Collections journal reads the same call, and while it
 -- is on screen it is the one asking, so it takes the client's own list back.
 local function narrowing()
-    if not anyExpansionHidden() then return false end
+    if not anyExpansionHidden() and not colour then return false end
     if WardrobeCollectionFrame and WardrobeCollectionFrame:IsVisible() then return false end
 
     local frame = itemsFrame()
@@ -217,6 +323,128 @@ local function buildFilterMenu(_dropdown, rootDescription)
     end, { { key = NO_EXPANSION, label = LuckysWardrobe.Strings.filterMenu.noExpansion } })
 end
 
+-- The colour strip. Blizzard's own colour picker was the other way to do this
+-- and is not what the tab wants: a wheel asks somebody to name a colour before
+-- they can look for it, and the answer they are after is "the green ones". A
+-- dozen swatches are the whole vocabulary, in one row, one click each.
+local SWATCH_SIZE = 16
+local SWATCH_GAP = 4
+
+local strip
+local swatches = {}
+local rollButton
+
+local function paintSwatches()
+    for _, swatch in ipairs(swatches) do
+        local picked = swatch.key == colour
+        swatch.Border:SetColorTexture(picked and 1 or 0, picked and 0.82 or 0, picked and 0.39 or 0,
+            picked and 1 or 0.7)
+        swatch.Border:SetPoint("TOPLEFT", picked and -2 or -1, picked and 2 or 1)
+        swatch.Border:SetPoint("BOTTOMRIGHT", picked and 2 or 1, picked and -2 or -1)
+    end
+    if rollButton then rollButton:SetShown(colour ~= nil) end
+end
+
+-- Picking the colour already picked puts it back, which is the whole of the
+-- undo: a strip with a clear button on the end would spend a swatch's worth of
+-- room saying what clicking the lit one already does.
+local function pickColour(key)
+    colour = key ~= colour and key or nil
+    colourTarget, colourPreset = nil, nil
+    for _, preset in ipairs(LuckysWardrobe.Colours.PRESETS) do
+        if preset.key == colour then
+            colourTarget = LuckysWardrobe.Colours.Target(preset)
+            colourPreset = preset
+        end
+    end
+    paintSwatches()
+    TransmogItems:Refresh()
+end
+
+-- The roll beside the strip, which is the strip's own: it draws from the page as
+-- filtered, so a colour narrows what it can land on, and it dresses the one slot
+-- the tab is open on. The dice on the preview rolls every armour slot at once
+-- from the whole collection and is a different offer, so this one only appears
+-- once a colour is picked, where it has something to say the other cannot.
+local ROLL_SIZE = 20
+
+local rolled
+
+local function roll()
+    local frame = itemsFrame()
+    local entries = frame and frame.itemCollectionEntries
+    if not entries then return end
+
+    local visualID = TransmogItems.RollVisual(entries, rolled, math.random)
+    if not visualID then return end
+
+    rolled = visualID
+    -- The tab's own call, so a rolled piece is worn exactly as a clicked one is:
+    -- it settles which source to use, marks the slot, and clicks.
+    frame:SelectVisual(visualID)
+
+    -- A roll can land pages from where somebody is looking, and the piece it
+    -- landed on is what they carry on browsing from.
+    frame:PageToTransmogID(frame:GetAnAppearanceSourceFromVisual(visualID, true))
+end
+
+local function buildRollButton()
+    local S = LuckysWardrobe.Strings.colours
+
+    rollButton = CreateFrame("Button", nil, strip, "SquareIconButtonTemplate")
+    rollButton:SetSize(ROLL_SIZE, ROLL_SIZE)
+    rollButton:SetPoint("RIGHT", strip, "LEFT", -6, 0)
+    rollButton:SetAtlas("charactercreate-icon-dice")
+
+    rollButton.tooltipTitle = S.roll
+    rollButton.tooltipText = S.rollHint
+    rollButton.tooltipAnchor = "ANCHOR_RIGHT"
+
+    -- Hooked rather than set, so the template keeps its own click.
+    rollButton:HookScript("OnClick", roll)
+end
+
+local function buildStrip(frame)
+    local S = LuckysWardrobe.Strings.colours
+    strip = CreateFrame("Frame", nil, frame)
+    strip:SetSize(#LuckysWardrobe.Colours.PRESETS * (SWATCH_SIZE + SWATCH_GAP), SWATCH_SIZE)
+
+    -- Anchored to the grid rather than to the frame, so the row sits directly
+    -- above whatever the page is showing however the tab's own header is laid
+    -- out for the slot in hand. Weapon slots carry a dropdown armour slots do
+    -- not, and it is the grid that moves for it.
+    strip:SetPoint("BOTTOMRIGHT", frame.PagedContent, "TOPRIGHT", -4, 6)
+
+    for index, preset in ipairs(LuckysWardrobe.Colours.PRESETS) do
+        local swatch = CreateFrame("Button", nil, strip)
+        swatch.key = preset.key
+        swatch:SetSize(SWATCH_SIZE, SWATCH_SIZE)
+        swatch:SetPoint("LEFT", (index - 1) * (SWATCH_SIZE + SWATCH_GAP), 0)
+
+        swatch.Border = swatch:CreateTexture(nil, "BACKGROUND")
+        swatch.Fill = swatch:CreateTexture(nil, "ARTWORK")
+        swatch.Fill:SetAllPoints()
+        TransmogItems.PaintSwatch(swatch.Fill, preset)
+
+        -- What the swatch offers is not what a colour offers, so it says so
+        -- itself rather than leaving the strip's line to cover both.
+        swatch.hint = preset.unmatched and S.otherHint or S.pickHint
+
+        swatch:SetScript("OnClick", function(self) pickColour(self.key) end)
+        swatch:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(S[self.key])
+            GameTooltip:AddLine(self.key == colour and S.clearHint or self.hint, 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        swatch:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        swatches[index] = swatch
+    end
+
+    buildRollButton()
+    paintSwatches()
+end
+
 -- The button also marks itself as holding a filter, and offers to put it back.
 -- Left alone it would answer for Blizzard's own boxes and quietly ignore ours,
 -- so a list narrowed by ours would look untouched and the reset would leave it
@@ -226,17 +454,26 @@ local function claimFilterButton()
     local button = frame and frame.FilterButton
     if not button then return end
 
+    if frame.PagedContent and not strip then buildStrip(frame) end
+
     -- Sources is no longer the whole of what the button holds.
     button:SetText(FILTERS)
     button:SetupMenu(buildFilterMenu)
 
+    -- The strip is a filter like any other, so the button answers for it too.
+    -- Left out, a page narrowed to one colour would look untouched and the
+    -- reset would leave it narrowed.
     button:SetIsDefaultCallback(function()
-        return not anyExpansionHidden() and C_TransmogCollection.IsUsingDefaultFilters()
+        return colour == nil and not anyExpansionHidden()
+            and C_TransmogCollection.IsUsingDefaultFilters()
     end)
     button:SetDefaultCallback(function()
         setAllExpansions(true)
         C_TransmogCollection.SetDefaultFilters()
-        TransmogItems:Refresh()
+        -- Picking nothing is what clears the strip, so the reset goes the same
+        -- way a click on the lit swatch does rather than undoing it by hand. It
+        -- redraws on its way out, which is the one redraw the reset owes.
+        pickColour(nil)
     end)
 end
 
@@ -271,8 +508,8 @@ function TransmogItems:PrintDates(box)
     end
 
     local expansionID = tonumber(box) or (box ~= "" and box) or 0
-    local read = TransmogItems.getCategoryAppearances or C_TransmogCollection.GetCategoryAppearances
-    local appearances = read(frame.activeCategoryID, frame.transmogLocation:GetData()) or {}
+    local appearances =
+        TransmogItems.CategoryAppearances(frame.activeCategoryID, frame.transmogLocation:GetData()) or {}
 
     -- The probe warms the cache the same way a filtered pass does, so running it
     -- twice says more than running it once.
@@ -325,6 +562,11 @@ function TransmogItems:Init()
         if not appearances or not narrowing() then return appearances end
 
         budget = ITEM_LOAD_BUDGET
-        return TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
+        appearances = TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
+        if not colourTarget then return appearances end
+
+        -- Narrowed by expansion first, so the colours are only worked out for
+        -- the pieces still on the page.
+        return TransmogItems.AppearancesInColour(appearances, rankColour)
     end
 end

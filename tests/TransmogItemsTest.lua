@@ -8,6 +8,13 @@
 LuckysWardrobe = {}
 LuckysWardrobe.DevLog = function() end
 
+-- The strip reads its swatches off the presets, the reset included: clearing the
+-- colour is a pick of nothing rather than a separate undo.
+LuckysWardrobe.Colours = {
+    PRESETS = { { key = "green", shades = { { 40, 160, 60 } } } },
+    Target = function(preset) return preset.shades end,
+}
+
 CHECK_ALL = "Check All"
 UNCHECK_ALL = "Uncheck All"
 FILTERS = "Filters"
@@ -169,6 +176,60 @@ assert(visualIDs(TransmogItems.AppearancesFromExpansions(listed, everything, dat
 -- arrived, and the one that arrives a moment later files it properly.
 assert(visualIDs(TransmogItems.AppearancesFromExpansions(listed, classicOnly, dateAs(dates)))
     == "4,1,3", "left out the expansion unticked, and kept the one nothing has answered about")
+
+-- The colour strip narrows the same page. A piece the bundled colours cannot
+-- place is dropped rather than kept: nothing to go on means a piece newer than
+-- the snapshot, and a page of pieces nobody can vouch for is the one thing a
+-- colour filter must not answer with. Hiding a slot survives it regardless.
+
+local inColour = { [1] = 12, [3] = 4 }
+local function ranked(visualID) return inColour[visualID] end
+
+assert(visualIDs(TransmogItems.AppearancesInColour(listed, ranked)) == "4,1,3",
+    "kept the pieces carrying the colour, and the way to wear nothing")
+assert(visualIDs(TransmogItems.AppearancesInColour(listed, function() return nil end)) == "4",
+    "a colour nothing on the page carries leaves only the way to wear nothing")
+
+-- The tab sorts what it is given and reads uiOrder highest first, so the rank
+-- rides on uiOrder negated rather than on the order of the list. The rank is how
+-- little of the piece is that colour, so the smaller rank is the piece more of
+-- it and the one that has to come first.
+
+local byColour = TransmogItems.AppearancesInColour(listed, ranked)
+local order = {}
+for _, appearance in ipairs(byColour) do order[appearance.visualID] = appearance.uiOrder end
+assert(order[3] > order[1], "the piece more of that colour sorts ahead of the other")
+assert(order[1] == -12 and order[3] == -4, "carrying the rank the colours worked out")
+assert(order[4] == nil, "and the way to wear nothing is left as the tab had it")
+
+-- The roll beside the strip draws from the page as the filters have left it, so
+-- a colour is what it keeps to. A piece nobody can wear is no use to it, and
+-- hiding the slot is on the page only because no filter may take it away.
+
+local page = {
+    { visualID = 4, isHideVisual = true, isCollected = true, isUsable = true },
+    { visualID = 1, isCollected = true, isUsable = true },
+    { visualID = 2, isCollected = false, isUsable = true },
+    { visualID = 3, isCollected = true, isUsable = false },
+    { visualID = 5, isCollected = true, isUsable = true },
+}
+local function first() return 1 end
+local function last(count) return count end
+
+assert(TransmogItems.RollVisual(page, nil, first) == 1
+    and TransmogItems.RollVisual(page, nil, last) == 5,
+    "drew from the pieces that can be worn alone, hiding the slot among those left out")
+
+-- Landing where the last roll landed is a button that appears to do nothing.
+assert(TransmogItems.RollVisual(page, 1, first) == 5,
+    "took the next piece along rather than the one already worn")
+assert(TransmogItems.RollVisual(page, 5, last) == 1, "and came round the end of the page")
+
+local alone = { { visualID = 7, isCollected = true, isUsable = true } }
+assert(TransmogItems.RollVisual(alone, 7, first) == 7,
+    "a page holding one piece answers with that piece however often it is rolled")
+assert(TransmogItems.RollVisual({ page[1] }, nil, first) == nil,
+    "a page with nothing wearable on it rolls nothing at all")
 
 -- Hiding a slot is the one entry a filter must never take away: unticking every
 -- expansion still has to leave a way to wear nothing.

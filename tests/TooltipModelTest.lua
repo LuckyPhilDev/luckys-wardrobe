@@ -314,6 +314,14 @@ local said = {}
 dofile("src/Strings.lua")
 LuckysWardrobe.Utils = { Say = function(line) said[#said + 1] = line end }
 
+-- The Items tab replaces the client's own category call with a filtered one, so
+-- the camera lookup reads through the tab's accessor to get past it.
+LuckysWardrobe.TransmogItems = {
+    CategoryAppearances = function(category)
+        return C_TransmogCollection.GetCategoryAppearances(category)
+    end,
+}
+
 dofile("src/TooltipModel.lua")
 
 local TooltipModel = LuckysWardrobe.TooltipModel

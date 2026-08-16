@@ -276,7 +276,10 @@ local slotCameras = {}
 local function slotCamera(slot)
     if slotCameras[slot] then return slotCameras[slot] end
 
-    local listed = C_TransmogCollection.GetCategoryAppearances(SLOT_CATEGORIES[slot]) or {}
+    -- The Items tab narrows the client's own call, and a slot whose category the
+    -- picked colour leaves empty would answer with no camera at all and be asked
+    -- again on every hover.
+    local listed = LuckysWardrobe.TransmogItems.CategoryAppearances(SLOT_CATEGORIES[slot]) or {}
     for _, appearance in ipairs(listed) do
         -- The entry standing for wearing nothing in the slot is not a piece and
         -- is not what the slot should be framed by.
