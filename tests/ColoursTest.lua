@@ -244,8 +244,10 @@ LuckysWardrobe.AppearanceColours[2005] =
 assert(not Colours.Matches(2005, target.red), "a second colour short of its own bar is out")
 assert(not Colours.Matches(2005, target.yellow), "and the third goes with it, being no larger")
 
--- A page is ordered by how much of a piece is that colour and by nothing else,
--- so the pieces that really are yellow lead the yellow page.
+-- A page is ordered by how much of the colour a piece shows: the share of the
+-- piece that is the colour, times how much of the character the piece paints.
+-- Among pieces of a size, the pieces that really are yellow lead the yellow
+-- page.
 
 assert(Colours.Rank(2001, target.white) < Colours.Rank(2001, target.yellow),
     "a piece ranks ahead under the colour more of it is")
@@ -263,6 +265,19 @@ LuckysWardrobe.AppearanceColours[2007] =
     pack({ 235, 205, 60, 3 }, { 200, 30, 30, 2 }, { 30, 105, 215, 2 })
 assert(Colours.Rank(2006, target.yellow) < Colours.Rank(2007, target.yellow),
     "the piece with more yellow on it comes first whichever of its colours yellow is")
+
+-- Size breaks the tie the shares cannot: a robe paints far more of the
+-- character than a vest, so a robe half red shows more red than a vest that
+-- is nothing but red, and leads the page for it. A piece the coverage table
+-- does not list paints one thing and reads as 1.
+
+LuckysWardrobe.AppearanceCoverage = { [2008] = 6 }
+LuckysWardrobe.AppearanceColours[2008] = pack({ 200, 30, 30, 8 }, { 25, 25, 28, 8 })
+LuckysWardrobe.AppearanceColours[2009] = pack({ 200, 30, 30, 15 })
+assert(Colours.Coverage(2008) == 6, "a robe's coverage is read from the table")
+assert(Colours.Coverage(2009) == 1, "a piece not listed paints one thing")
+assert(Colours.Rank(2008, target.red) < Colours.Rank(2009, target.red),
+    "a robe half red shows more red than a vest that is all of it")
 
 -- The last swatch is not a colour. It keeps what could not be read at all,
 -- which is a piece from a patch newer than the snapshot or one whose art could
@@ -339,5 +354,21 @@ for visualID, entry in pairs(LuckysWardrobe.AppearanceColours) do
 end
 assert(rows > 40000, "the snapshot covers the collection rather than a corner of it")
 assert(colours / rows > 1.5, "and most appearances carry more than a single colour")
+
+-- And the real coverage table: keyed the same way, and every value a body
+-- section count a real piece could paint. Pieces that paint one thing or none
+-- are left out of the file, so nothing here may say 1.
+
+LuckysWardrobe.AppearanceCoverage = nil
+dofile("src/Data/AppearanceCoverage.lua")
+
+local coveredRows = 0
+for visualID, count in pairs(LuckysWardrobe.AppearanceCoverage) do
+    assert(type(visualID) == "number" and visualID > 0, "keyed by a visualID")
+    assert(count == math.floor(count) and count >= 2 and count <= 8,
+        "a whole count of sections, and only worth listing past the default")
+    coveredRows = coveredRows + 1
+end
+assert(coveredRows > 15000, "the table covers the worn armour rather than a corner of it")
 
 print("Lucky's Wardrobe colours tests passed")

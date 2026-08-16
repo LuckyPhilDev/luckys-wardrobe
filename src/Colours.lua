@@ -296,6 +296,15 @@ function Colours.MadeOf(visualID)
     return made
 end
 
+-- How much of the character a piece paints, from the bundled coverage table:
+-- a robe runs to six body sections, a tunic to three, and a piece absent from
+-- the table paints one thing, a belt, a weapon, a helm. Guarded because the
+-- tests load this file without the data behind it.
+function Colours.Coverage(visualID)
+    local coverage = LuckysWardrobe.AppearanceCoverage
+    return coverage and coverage[visualID] or 1
+end
+
 -- Whether a colour covers enough of a piece for the place it comes in. The
 -- thresholds are read fresh rather than kept, so moving one and redrawing the
 -- page is enough to see what it does.
@@ -328,10 +337,11 @@ function Colours.Rank(visualID, target)
         if not earns(tier, colour.share) then return nil end
 
         -- Which of the three it is decides whether the piece is on the page at
-        -- all; how much of the piece it covers decides where. A page leads with
-        -- what is most that colour, so a robe half yellow comes before one with
-        -- a yellow trim whichever colour either of them is mostly.
-        if colour.key == target.key then return 1 - colour.share end
+        -- all; how much of the colour the piece shows decides where. That is
+        -- the share of the piece times how much of the character the piece
+        -- paints, so a robe half red sits ahead of a vest that is all red,
+        -- there being more red on it, and a trim never leads a page.
+        if colour.key == target.key then return -(colour.share * Colours.Coverage(visualID)) end
     end
     return nil
 end

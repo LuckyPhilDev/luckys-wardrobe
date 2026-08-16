@@ -20,6 +20,7 @@ Data\MailSets.lua
 Data\PlateSets.lua
 Data\EnsembleSets.lua
 Data\AppearanceColours.lua
+Data\AppearanceCoverage.lua
 Colours.lua
 Classes.lua
 SetSources.lua
