@@ -43,6 +43,26 @@ end
 Utils.ICON_ON = { 1.0, 0.824, 0.392 }
 Utils.ICON_OFF = { 0.35, 0.35, 0.35 }
 
+-- A square icon button stripped to its drawing: the plate is cleared away and
+-- the hover glow is the icon added over itself, the way the padlocks read.
+-- The template's tooltip, press nudge and click handling all stay.
+local GLOW_ALPHA = 0.35
+
+function Utils.BareIcon(button, icon, tint)
+    button:ClearNormalTexture()
+    button:ClearPushedTexture()
+    button:ClearDisabledTexture()
+    button:SetIcon(icon)
+    button.Icon:SetVertexColor(tint[1], tint[2], tint[3])
+
+    button:SetHighlightTexture(icon, "ADD")
+    local glow = button:GetHighlightTexture()
+    glow:SetPoint("TOPLEFT", button.Icon, "TOPLEFT")
+    glow:SetPoint("BOTTOMRIGHT", button.Icon, "BOTTOMRIGHT")
+    glow:SetVertexColor(tint[1], tint[2], tint[3])
+    glow:SetAlpha(GLOW_ALPHA)
+end
+
 -- How long a burst of collection events is allowed to gather before a page
 -- reads the catalogue again. Long enough to collapse a burst, short enough that
 -- collecting something still updates the list while you are looking at it.

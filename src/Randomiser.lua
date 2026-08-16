@@ -645,8 +645,7 @@ local function createButton(preview)
     -- The preview's model scene covers the whole frame, so the button has to
     -- sit above it to take the mouse at all.
     button:SetFrameLevel((preview.ModelScene or preview):GetFrameLevel() + 10)
-    button:SetIcon(DICE_ICON)
-    button.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
+    Utils.BareIcon(button, DICE_ICON, Utils.ICON_ON)
 
     button.tooltipTitle = strings.tooltipTitle
     button.tooltipText = strings.tooltipText
@@ -683,8 +682,7 @@ local function createColourButton(preview)
     colourButton = CreateFrame("Button", nil, preview, "SquareIconButtonTemplate")
     colourButton:SetPoint("RIGHT", button, "LEFT", -4, 0)
     colourButton:SetFrameLevel(button:GetFrameLevel())
-    colourButton:SetIcon(DICE_ICON)
-    colourButton.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
+    Utils.BareIcon(colourButton, DICE_ICON, Utils.ICON_ON)
     colourButton:Hide()
 
     -- Stamped over the dice rather than beside it, so the button reads as the

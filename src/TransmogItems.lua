@@ -402,8 +402,8 @@ local function buildRollButton()
     rollButton:SetPoint("RIGHT", strip, "LEFT", -6, 0)
     -- The same dice the preview's roll buttons wear, in the addon's own icon
     -- style and the lit gold the padlocks share.
-    rollButton:SetIcon("Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice")
-    rollButton.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
+    Utils.BareIcon(rollButton, "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice",
+        Utils.ICON_ON)
 
     rollButton.tooltipTitle = S.roll
     rollButton.tooltipText = S.rollHint

@@ -9,6 +9,13 @@ LuckysWardrobe.Utils = {
     ICON_ON = { 1.0, 0.824, 0.392 },
     ICON_OFF = { 0.35, 0.35, 0.35 },
     Say = function(line) said[#said + 1] = line end,
+    -- The real one also hangs the hover glow off the icon; what the roll
+    -- buttons are asserted on is the plate going and the drawing arriving.
+    BareIcon = function(button, icon, tint)
+        button:ClearNormalTexture()
+        button:SetIcon(icon)
+        button.Icon:SetVertexColor(tint[1], tint[2], tint[3])
+    end,
 }
 
 -- The line dev logging goes out on, which is silent for anyone who has not
@@ -55,6 +62,9 @@ function CreateFrame(_, _, parent, template)
         GetFrameLevel = function(self) return self.level or 1 end,
         SetAtlas = function(self, atlas) self.atlas = atlas end,
         SetIcon = function(self, icon) self.icon = icon end,
+        ClearNormalTexture = function(self) self.plateCleared = true end,
+        ClearPushedTexture = function() end,
+        ClearDisabledTexture = function() end,
         OnMouseDown = function(self) self.depressed = true end,
         OnMouseUp = function(self) self.depressed = false end,
         Icon = makeTexture(),
@@ -564,6 +574,7 @@ assert(button, "created the randomiser button")
 assert(button.parent == characterPreview, "parented the button to the character preview")
 assert(button.level > modelScene:GetFrameLevel(), "put the button above the model scene")
 assert(button.icon, "gave the button the addon's own dice")
+assert(button.plateCleared, "and took the square plate off, leaving the drawing alone")
 assert(button.tooltipTitle and button.tooltipText, "gave the button a tooltip")
 assert(not button.scripts.OnEnter and not button.scripts.OnLeave,
     "left the template's own tooltip scripts alone")
