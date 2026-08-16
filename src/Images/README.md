@@ -15,6 +15,7 @@ Images/
 │   ├── save-situation.tga
 │   ├── lock.tga
 │   ├── lock-open.tga
+│   ├── dice.tga
 │   └── tracked-appearance.tga
 ├── tooltips/
 │   ├── show-a-preview-model.tga
@@ -64,6 +65,7 @@ PNG originals live in `images/` at the repo root. They are excluded from release
 python images/make_tracked_icon.py       # tracked-appearance
 python images/make_situation_icons.py    # save-situation, load-situation
 python images/make_lock_icons.py         # lock, lock-open
+python images/make_dice_icon.py          # dice
 ```
 
-The padlocks are Lucide's `lock` and `lock-open`, traced from their path data rather than rasterised, since the client loads neither SVG nor PNG.
+The padlocks are Lucide's `lock` and `lock-open`, and the dice are its `dices`, traced from their path data rather than rasterised, since the client loads neither SVG nor PNG.

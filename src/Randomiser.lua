@@ -157,6 +157,10 @@ end
 -- the drawing alone and the hover glow is the same drawing added over itself.
 local LOCK_SHUT = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\lock"
 local LOCK_OPEN = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\lock-open"
+
+-- The dice both roll buttons wear, drawn in the addon's own icon style and
+-- tinted the lit gold the padlocks share, rather than Blizzard's atlas art.
+local DICE_ICON = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice"
 local LOCK_SIZE = 20
 local LOCK_GAP = 4
 local GLOW_ALPHA = 0.35
@@ -641,7 +645,8 @@ local function createButton(preview)
     -- The preview's model scene covers the whole frame, so the button has to
     -- sit above it to take the mouse at all.
     button:SetFrameLevel((preview.ModelScene or preview):GetFrameLevel() + 10)
-    button:SetAtlas("charactercreate-icon-dice")
+    button:SetIcon(DICE_ICON)
+    button.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
 
     button.tooltipTitle = strings.tooltipTitle
     button.tooltipText = strings.tooltipText
@@ -678,7 +683,8 @@ local function createColourButton(preview)
     colourButton = CreateFrame("Button", nil, preview, "SquareIconButtonTemplate")
     colourButton:SetPoint("RIGHT", button, "LEFT", -4, 0)
     colourButton:SetFrameLevel(button:GetFrameLevel())
-    colourButton:SetAtlas("charactercreate-icon-dice")
+    colourButton:SetIcon(DICE_ICON)
+    colourButton.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
     colourButton:Hide()
 
     -- Stamped over the dice rather than beside it, so the button reads as the

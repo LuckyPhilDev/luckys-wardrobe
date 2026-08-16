@@ -54,8 +54,10 @@ function CreateFrame(_, _, parent, template)
         SetFrameLevel = function(self, level) self.level = level end,
         GetFrameLevel = function(self) return self.level or 1 end,
         SetAtlas = function(self, atlas) self.atlas = atlas end,
+        SetIcon = function(self, icon) self.icon = icon end,
         OnMouseDown = function(self) self.depressed = true end,
         OnMouseUp = function(self) self.depressed = false end,
+        Icon = makeTexture(),
         CreateTexture = function() return makeTexture() end,
         SetHighlightTexture = function(self, texture)
             self.highlight = self.highlight or makeTexture()
@@ -561,7 +563,7 @@ end
 assert(button, "created the randomiser button")
 assert(button.parent == characterPreview, "parented the button to the character preview")
 assert(button.level > modelScene:GetFrameLevel(), "put the button above the model scene")
-assert(button.atlas, "gave the button an icon")
+assert(button.icon, "gave the button the addon's own dice")
 assert(button.tooltipTitle and button.tooltipText, "gave the button a tooltip")
 assert(not button.scripts.OnEnter and not button.scripts.OnLeave,
     "left the template's own tooltip scripts alone")
@@ -924,7 +926,7 @@ end
 C_TransmogOutfitInfo.ClearAllPendingTransmogs()
 assert(colourButton, "created the colour roll beside the dice")
 assert(colourButton.parent == characterPreview, "parented it to the character preview")
-assert(colourButton.atlas == button.atlas, "gave it the same dice the plain roll carries")
+assert(colourButton.icon == button.icon, "gave it the same dice the plain roll carries")
 assert(not colourButton.shown, "kept it away while the Items tab had no colour lit")
 
 pickColour("green")

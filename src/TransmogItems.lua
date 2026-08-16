@@ -400,7 +400,10 @@ local function buildRollButton()
     rollButton = CreateFrame("Button", nil, strip, "SquareIconButtonTemplate")
     rollButton:SetSize(ROLL_SIZE, ROLL_SIZE)
     rollButton:SetPoint("RIGHT", strip, "LEFT", -6, 0)
-    rollButton:SetAtlas("charactercreate-icon-dice")
+    -- The same dice the preview's roll buttons wear, in the addon's own icon
+    -- style and the lit gold the padlocks share.
+    rollButton:SetIcon("Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice")
+    rollButton.Icon:SetVertexColor(Utils.ICON_ON[1], Utils.ICON_ON[2], Utils.ICON_ON[3])
 
     rollButton.tooltipTitle = S.roll
     rollButton.tooltipText = S.rollHint
