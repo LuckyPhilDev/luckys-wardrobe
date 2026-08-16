@@ -71,15 +71,15 @@ end
 -- shown: the strip itself and the dice beside the character preview.
 --
 -- The unmatched swatch is not one colour, so it is painted across the two the
--- preset carries for the purpose rather than in either of them.
+-- preset carries for the purpose. Every other swatch is painted the same way,
+-- from its one colour to itself, because a gradient set on a texture stays set
+-- and there is nothing to clear it with. The dice carries a single swatch it
+-- repaints on every pick, so a solid colour painted after the unmatched two
+-- would come out multiplied by the gradient still on the texture.
 function TransmogItems.PaintSwatch(texture, preset)
     local shade = preset.shades[1]
-    if not preset.unmatched then
-        texture:SetColorTexture(shade[1] / 255, shade[2] / 255, shade[3] / 255)
-        return
-    end
+    local second = preset.unmatched and preset.shades[2] or shade
 
-    local second = preset.shades[2]
     texture:SetColorTexture(1, 1, 1)
     texture:SetGradient("HORIZONTAL",
         CreateColor(shade[1] / 255, shade[2] / 255, shade[3] / 255),

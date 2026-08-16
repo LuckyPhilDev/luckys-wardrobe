@@ -275,6 +275,28 @@ local unnamed = { [1] = 0, [2] = MOP, [3] = 99 }
 assert(visualIDs(TransmogItems.AppearancesFromExpansions(listed, classicOnly, dateAs(unnamed)))
     == "4,1,3", "kept the appearance dated to an expansion with no box of its own")
 
+-- The swatch the dice on the preview wears is one texture repainted on every
+-- pick, and a gradient set on a texture stays set, so a plain colour has to be
+-- painted as a gradient of its own rather than left to inherit the last one.
+CreateColor = function(r, g, b) return { r, g, b } end
+
+local painted = {}
+local swatchTexture = {
+    SetColorTexture = function(_, r, g, b) painted.base = { r, g, b } end,
+    SetGradient = function(_, _, from, to) painted.from, painted.to = from, to end,
+}
+
+TransmogItems.PaintSwatch(swatchTexture, { key = "other", unmatched = true,
+    shades = { { 122, 116, 84 }, { 84, 96, 118 } } })
+assert(painted.from[1] ~= painted.to[1],
+    "the unmatched swatch is painted across the two colours it carries")
+
+TransmogItems.PaintSwatch(swatchTexture, { key = "purple", shades = { { 145, 45, 200 } } })
+assert(painted.base[1] == 1 and painted.base[2] == 1 and painted.base[3] == 1,
+    "a colour is painted over white, so the gradient is the whole of what shows")
+assert(painted.from[1] == painted.to[1] and painted.from[3] == 200 / 255,
+    "and runs from that colour to itself, leaving nothing of the gradient before it")
+
 -- Narrowing the tab itself.
 
 local refreshes = 0
