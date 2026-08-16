@@ -17,9 +17,13 @@ LuckysWardrobe.Randomiser = { OnColourPicked = function() colourPicks = colourPi
 -- colour is a pick of nothing rather than a separate undo. The dev tags read
 -- what a piece is made of and how much of the character it paints.
 local madeOf, coverage = {}, {}
+-- How much of the picked colour each appearance carries, for the pass that
+-- narrows a grid to it. An appearance with no entry is not made of it.
+local inPickedColour = {}
 LuckysWardrobe.Colours = {
     PRESETS = { { key = "green", shades = { { 40, 160, 60 } } } },
     Target = function(preset) return preset.shades end,
+    Rank = function(visualID) return inPickedColour[visualID] end,
     MadeOf = function(visualID) return madeOf[visualID] or false end,
     Coverage = function(visualID) return coverage[visualID] or 1 end,
 }
@@ -51,14 +55,40 @@ local function runTimers()
     for _, action in ipairs(due) do action() end
 end
 
+local function stubTexture()
+    local texture = {}
+    texture.SetAllPoints = function() end
+    texture.SetPoint = function() end
+    texture.SetColorTexture = function() end
+    texture.SetGradient = function() end
+    return texture
+end
+
 local createdFrames = {}
 CreateFrame = function()
-    local frame = { events = {} }
+    local frame = { events = {}, scripts = {} }
     frame.RegisterEvent = function(self, event) self.events[event] = true end
     frame.UnregisterEvent = function(self, event) self.events[event] = nil end
-    frame.SetScript = function(self, _, handler) self.handler = handler end
+    -- Kept both ways: the item-load listener sets one script and reads it back
+    -- off handler, while a swatch sets three and the test clicks one of them.
+    frame.SetScript = function(self, script, handler)
+        self.handler = handler
+        self.scripts[script] = handler
+    end
+    frame.SetSize = function() end
+    frame.SetPoint = function() end
+    frame.SetShown = function(self, shown) self.shown = shown end
+    frame.CreateTexture = stubTexture
     createdFrames[#createdFrames + 1] = frame
     return frame
+end
+
+hooksecurefunc = function(owner, name, after)
+    local original = owner[name]
+    owner[name] = function(...)
+        original(...)
+        after(...)
+    end
 end
 
 local pendingAddOns = {}
@@ -443,14 +473,34 @@ expansions.checkboxes[S.noExpansion].toggle()
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,2,3,5,6",
     "ticking it again brought the piece back")
 
--- The Collections journal reads the same call and carries no box of ours, so
--- while it is on screen it takes the client's own list back.
-WardrobeCollectionFrame = { visible = true, IsVisible = function(self) return self.visible end }
+-- The Collections journal's Appearances tab reads the same call. The expansion
+-- boxes live in the transmogrifier's own filter menu and the journal carries no
+-- copy of them, so an expansion unticked there leaves the journal's list whole.
+local journalRefreshes, journalPage
+local journalItems = {
+    visible = true,
+    IsVisible = function(self) return self.visible end,
+    Models = { {} },
+    PagingFrame = { SetCurrentPage = function(_, number) journalPage = number end },
+    RefreshVisualsList = function() journalRefreshes = journalRefreshes + 1 end,
+    UpdateItems = function() end,
+}
+local journalFilterButton = {
+    SetIsDefaultCallback = function(self, callback) self.isDefault = callback end,
+    SetDefaultCallback = function(self, callback) self.restoreDefaults = callback end,
+}
+WardrobeCollectionFrame = {
+    ItemsCollectionFrame = journalItems,
+    FilterButton = journalFilterButton,
+    InitItemsFilterButton = function() end,
+    SwitchSearchCategory = function() end,
+}
+
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,1,2,3,5,6",
-    "left the Collections journal's own appearance list alone")
-WardrobeCollectionFrame.visible = false
+    "an expansion unticked at the transmogrifier left the journal's own list whole")
+journalItems.visible = false
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,2,3,5,6",
-    "narrowed the transmogrifier's tab again once the journal was closed")
+    "and narrowed the transmogrifier's tab by it again once the journal was closed")
 
 itemsFrame.shown = false
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,1,2,3,5,6",
@@ -527,5 +577,49 @@ TransmogFrame = nil
 TransmogItems:Refresh()
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,1,2,3,5,6",
     "narrowed nothing before the transmogrifier has built its frames")
+
+-- The strip over the journal's own grid. It is the one filter that reaches that
+-- tab, and the pick behind it is the same one the transmogrifier's strip lights,
+-- the two grids never being read at the same moment.
+
+pendingAddOns["Blizzard_Collections"]()
+journalItems.visible = true
+
+local greenSwatch = createdFrames[#createdFrames]
+journalRefreshes, journalPage = 0, 0
+greenSwatch.scripts.OnClick(greenSwatch)
+
+assert(journalRefreshes == 1 and journalPage == 1,
+    "picking a colour redrew the journal's grid and put it back on the first page")
+
+-- Appearance 1 is Classic, whose box is unticked, and it stays: the colour is
+-- the whole of what narrows this tab.
+inPickedColour = { [1] = 3, [2] = 5, [6] = 1 }
+local journalPageList = C_TransmogCollection.GetCategoryAppearances(1)
+assert(visualIDs(journalPageList) == "4,1,2,6",
+    "kept the pieces carrying the colour whatever expansion box they sit in")
+assert(journalPageList[3].uiOrder == -5,
+    "carrying the rank the colours worked out, so the grid sorts by how much of it shows")
+
+-- Illusions carry no colour to read, and the tab turns its own search and filter
+-- button off for them, so the strip goes too rather than filtering nothing.
+journalItems.transmogLocation = { IsIllusion = function() return true end }
+WardrobeCollectionFrame:SwitchSearchCategory()
+assert(TransmogItems.journalStrip.shown == false, "the strip is away on the illusions page")
+journalItems.transmogLocation = { IsIllusion = function() return false end }
+WardrobeCollectionFrame:SwitchSearchCategory()
+assert(TransmogItems.journalStrip.shown == true, "and back on a page of appearances")
+
+-- Blizzard rebuilds the journal's filter button every time the tab is shown, so
+-- ours goes on after theirs each time rather than once.
+WardrobeCollectionFrame:InitItemsFilterButton()
+assert(not journalFilterButton.isDefault(), "a colour picked marks the journal's filter button")
+
+blizzardFiltersRestored = false
+journalFilterButton.restoreDefaults()
+assert(blizzardFiltersRestored and journalFilterButton.isDefault(),
+    "and its reset put the strip back alongside Blizzard's own boxes")
+assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,1,2,3,5,6",
+    "which brought the whole list back")
 
 print("Lucky's Wardrobe transmog items tests passed")

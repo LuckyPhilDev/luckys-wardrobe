@@ -12,8 +12,11 @@
 -- anything out of it, and a page of loose boxes with a submenu on the end reads
 -- as two different kinds of thing.
 --
--- The Collections journal's Appearances tab reads the same call and carries no
--- box of ours to undo a filter with, so it is left alone.
+-- The colour strip stands over both grids: the transmogrifier's and the
+-- Collections journal's Appearances tab, which reads the same call. The
+-- expansion boxes stay the transmogrifier's own, living in a filter menu the
+-- journal has no copy of, so a journal narrowed by them could not be widened
+-- again from where it was narrowed.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.TransmogItems = {}
 
@@ -264,25 +267,37 @@ local function itemsFrame()
     return content and content.ItemsFrame
 end
 
--- Redraws the tab for a filter changed while the transmogrifier is open. The
--- frame reads the appearance list afresh, so there is nothing of ours to clear
--- first.
-function TransmogItems:Refresh()
-    local frame = itemsFrame()
-    if frame and frame:IsShown() and type(frame.RefreshCollectionEntries) == "function" then
-        frame:RefreshCollectionEntries()
-    end
+local function journalFrame()
+    return WardrobeCollectionFrame and WardrobeCollectionFrame.ItemsCollectionFrame
 end
 
--- Whether this call is the transmogrifier's Items tab asking with something
--- actually narrowed. The Collections journal reads the same call, and while it
--- is on screen it is the one asking, so it takes the client's own list back.
-local function narrowing()
-    if not anyExpansionHidden() and not colour then return false end
-    if WardrobeCollectionFrame and WardrobeCollectionFrame:IsVisible() then return false end
+-- Which grid is asking for the appearance list, and whether it is the journal's.
+-- Nil where neither is on screen, which is every other caller reading the
+-- collection for its own purposes. The journal answers first: both frames can be
+-- open at once and it is the one drawn over the other.
+local function asking()
+    local journal = journalFrame()
+    if journal and journal:IsVisible() then return journal, true end
 
-    local frame = itemsFrame()
-    return frame ~= nil and frame:IsVisible()
+    local vendor = itemsFrame()
+    if vendor and vendor:IsVisible() then return vendor, false end
+end
+
+-- Redraws whichever grid is on screen for a filter that changed under it. Both
+-- read the appearance list afresh, so there is nothing of ours to clear first.
+-- The journal pages its own list and a narrowed one is shorter, so it goes back
+-- to the first page rather than to a page that may no longer be there.
+function TransmogItems:Refresh()
+    local frame, isJournal = asking()
+    if not frame then return end
+
+    if isJournal then
+        frame:RefreshVisualsList()
+        frame.PagingFrame:SetCurrentPage(1)
+        frame:UpdateItems()
+    elseif type(frame.RefreshCollectionEntries) == "function" then
+        frame:RefreshCollectionEntries()
+    end
 end
 
 -- Blizzard's own source boxes, put behind a submenu to sit beside the expansion
@@ -330,10 +345,14 @@ end
 -- and is not what the tab wants: a wheel asks somebody to name a colour before
 -- they can look for it, and the answer they are after is "the green ones". A
 -- dozen swatches are the whole vocabulary, in one row, one click each.
+--
+-- There are two of them, one over each grid, and one pick behind both. A colour
+-- lit at the transmogrifier and not in the journal would be two filters wearing
+-- one face, and the two grids are never read at the same moment anyway.
 local SWATCH_SIZE = 16
 local SWATCH_GAP = 4
 
-local strip
+-- Every swatch on both strips, so a pick lights its colour on each of them.
 local swatches = {}
 local rollButton
 
@@ -394,7 +413,7 @@ local function roll()
     frame:PageToTransmogID(frame:GetAnAppearanceSourceFromVisual(visualID, true))
 end
 
-local function buildRollButton()
+local function buildRollButton(strip)
     local S = LuckysWardrobe.Strings.colours
 
     rollButton = CreateFrame("Button", nil, strip, "SquareIconButtonTemplate")
@@ -413,16 +432,20 @@ local function buildRollButton()
     rollButton:HookScript("OnClick", roll)
 end
 
-local function buildStrip(frame)
+-- Anchored to the grid rather than to the frame, so the row sits directly above
+-- whatever the page is showing however the tab's own header is laid out for the
+-- slot in hand. Weapon slots carry a dropdown armour slots do not, and it is the
+-- grid that moves for it.
+--
+-- corner is which end of the grid the strip is squared off against. The
+-- transmogrifier's is hung from the right, where its own grid ends; the
+-- journal's from the left, the weapon dropdown on that tab reaching back over
+-- the right of the row above the models.
+local function buildStrip(parent, grid, corner, offsetX, offsetY)
     local S = LuckysWardrobe.Strings.colours
-    strip = CreateFrame("Frame", nil, frame)
+    local strip = CreateFrame("Frame", nil, parent)
     strip:SetSize(#LuckysWardrobe.Colours.PRESETS * (SWATCH_SIZE + SWATCH_GAP), SWATCH_SIZE)
-
-    -- Anchored to the grid rather than to the frame, so the row sits directly
-    -- above whatever the page is showing however the tab's own header is laid
-    -- out for the slot in hand. Weapon slots carry a dropdown armour slots do
-    -- not, and it is the grid that moves for it.
-    strip:SetPoint("BOTTOMRIGHT", frame.PagedContent, "TOPRIGHT", -4, 6)
+    strip:SetPoint("BOTTOM" .. corner, grid, "TOP" .. corner, offsetX, offsetY)
 
     for index, preset in ipairs(LuckysWardrobe.Colours.PRESETS) do
         local swatch = CreateFrame("Button", nil, strip)
@@ -447,11 +470,10 @@ local function buildStrip(frame)
             GameTooltip:Show()
         end)
         swatch:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        swatches[index] = swatch
+        swatches[#swatches + 1] = swatch
     end
 
-    buildRollButton()
-    paintSwatches()
+    return strip
 end
 
 -- Dev only. Why a piece fell where it did, written along the bottom of its
@@ -517,7 +539,11 @@ local function claimFilterButton()
     local button = frame and frame.FilterButton
     if not button then return end
 
-    if frame.PagedContent and not strip then buildStrip(frame) end
+    if frame.PagedContent and not TransmogItems.vendorStrip then
+        TransmogItems.vendorStrip = buildStrip(frame, frame.PagedContent, "RIGHT", -4, 6)
+        buildRollButton(TransmogItems.vendorStrip)
+        paintSwatches()
+    end
 
     -- Every page draw funnels through this one call, so the dev tags follow
     -- the tiles through page turns, filter changes and pool reuse.
@@ -544,6 +570,44 @@ local function claimFilterButton()
         -- way a click on the lit swatch does rather than undoing it by hand. It
         -- redraws on its way out, which is the one redraw the reset owes.
         pickColour(nil)
+    end)
+end
+
+-- The journal's Appearances tab gets a strip of its own over its models. Its
+-- filter button is Blizzard's, rebuilt from scratch every time the tab is shown,
+-- so ours goes on after theirs each time rather than once: without it a page
+-- narrowed to a colour would look untouched and the reset would leave it
+-- narrowed, which is what the button is for.
+--
+-- The menu itself is left as Blizzard built it. The expansion boxes are the
+-- transmogrifier's, and a box here would be the second place to set a filter the
+-- two tabs share.
+local function claimJournalFrame()
+    local frame = journalFrame()
+    if not frame or TransmogItems.journalStrip then return end
+
+    -- Squared off against the left of the grid, under the slot buttons, the
+    -- weapon dropdown holding the right of that row on the slots that carry one.
+    TransmogItems.journalStrip = buildStrip(frame, frame.Models[1], "LEFT", 0, 6)
+    paintSwatches()
+
+    -- Illusions are the one category with nothing behind them to read a colour
+    -- off, and the tab disables its own search and filter button for them. The
+    -- strip goes the same way rather than standing over them filtering nothing.
+    hooksecurefunc(WardrobeCollectionFrame, "SwitchSearchCategory", function(collection)
+        local location = collection.ItemsCollectionFrame.transmogLocation
+        TransmogItems.journalStrip:SetShown(not (location and location:IsIllusion()))
+    end)
+
+    hooksecurefunc(WardrobeCollectionFrame, "InitItemsFilterButton", function(collection)
+        local button = collection.FilterButton
+        button:SetIsDefaultCallback(function()
+            return colour == nil and C_TransmogCollection.IsUsingDefaultFilters()
+        end)
+        button:SetDefaultCallback(function()
+            C_TransmogCollection.SetDefaultFilters()
+            pickColour(nil)
+        end)
     end)
 end
 
@@ -620,6 +684,7 @@ end
 function TransmogItems:Init(database)
     db = database
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", claimFilterButton)
+    EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", claimJournalFrame)
 
     -- The tab builds its page from this one call, so narrowing the answer
     -- narrows the tab without touching a frame the client owns.
@@ -630,10 +695,17 @@ function TransmogItems:Init(database)
     TransmogItems.getCategoryAppearances = C_TransmogCollection.GetCategoryAppearances
     C_TransmogCollection.GetCategoryAppearances = function(...)
         local appearances = TransmogItems.getCategoryAppearances(...)
-        if not appearances or not narrowing() then return appearances end
+        local _, isJournal = asking()
+        if not appearances or isJournal == nil then return appearances end
 
-        budget = ITEM_LOAD_BUDGET
-        appearances = TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
+        -- The expansion boxes are the transmogrifier's own. The journal carries
+        -- no copy of them, so one left unticked there would narrow a tab with
+        -- nothing on it to say so and no way to widen it again.
+        if not isJournal and anyExpansionHidden() then
+            budget = ITEM_LOAD_BUDGET
+            appearances =
+                TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
+        end
         if not colourTarget then return appearances end
 
         -- Narrowed by expansion first, so the colours are only worked out for
