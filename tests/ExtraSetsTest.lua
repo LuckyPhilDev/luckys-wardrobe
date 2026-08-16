@@ -872,6 +872,95 @@ assert(ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Snowy",
     "with no way to ask the client at all, the shared word is still what there is")
 end
 
+-- Model families, from the bundled index. A season ships one set of armour under
+-- half a dozen unrelated names, and no name rule can see that; the client's own
+-- display records can, and the index carries what they say.
+
+do
+for id = 7100, 7160 do sourceStates[id] = { appearanceID = 8100 + id, collected = false } end
+
+local function modelled(setID, name, model, sourceIDs, overrides)
+    local record = validRecord({ setID = setID, name = name, model = model,
+        pieces = pieces({ "HEAD", sourceIDs[1] }, { "CHEST", sourceIDs[2] }, { "LEGS", sourceIDs[3] }) })
+    for key, value in pairs(overrides or {}) do record[key] = value end
+    return record
+end
+
+local function rowsOf(family)
+    return ExtraSets.BuildRows(ExtraSets.BuildEntries(family, stubResolver(CLOTH_CLASS)))
+end
+
+local modelRows = rowsOf({
+    modelled(801, "Nitroclad Kit", 176, { 7100, 7101, 7102 }),
+    modelled(802, "Smoketrail Racer Suit", 176, { 7103, 7104, 7105 }),
+    modelled(803, "Upcycled Outfit", 176, { 7106, 7107, 7108 }),
+})
+assert(#modelRows == 1 and modelRows[1].isGroup, "three sets built on one model became one row")
+assert(modelRows[1].name == "Nitroclad Kit", "named for the first of them, having no name in common")
+assert(modelRows[1].label == "3 colours", "and counted as the colours of one garment")
+assert(modelRows[1].total == 9, "the row counts every look across them")
+assert(ExtraSets.VariantLabelFor(modelRows[1].variants[2]) == "Smoketrail Racer Suit",
+    "the picker names each in full, there being no qualifier to tell them apart by")
+
+-- The rule is a fact about the armour rather than a reading of the names, so
+-- nothing the name rules refuse applies: these are far past the piece ceiling
+-- the colourway rule holds itself to, and come from the armour lists.
+local bigRows = rowsOf({
+    modelled(811, "Gladiator's Leather Armor", 200, { 7109, 7110, 7111 }),
+    modelled(812, "Prized Aspirant's Leather Armor", 200, { 7112, 7113, 7114 }),
+})
+assert(#bigRows == 1, "a set from the armour lists groups on its model as readily as an ensemble does")
+
+-- Nothing shares a model with these, so the index says nothing about them.
+local aloneRows = rowsOf({
+    modelled(821, "Lone Garb", 301, { 7115, 7116, 7117 }),
+    modelled(822, "Other Garb", 302, { 7118, 7119, 7120 }),
+    modelled(823, "Unindexed Garb", nil, { 7121, 7122, 7123 }),
+})
+assert(#aloneRows == 3, "a model no other set is built on leaves the row standing alone")
+
+-- The names gather first, and hand the model rule a row rather than its members.
+local nestedRows = rowsOf({
+    modelled(831, "Charm Vestments (Heroic Recolor)", 400, { 7124, 7125, 7126 }),
+    modelled(832, "Charm Vestments (Normal Recolor)", 400, { 7127, 7128, 7129 }),
+    modelled(833, "Wholly Other Name", 400, { 7130, 7131, 7132 }),
+})
+assert(#nestedRows == 1 and #nestedRows[1].variants == 3,
+    "the pair that shared a name came in as colourways beside the set that did not")
+
+-- A shared name can gather two models together. The row that makes answers for
+-- no model at all, or it would drag the odd set into a family it is not part of.
+local mixedRows = rowsOf({
+    modelled(841, "Twinned Regalia", 500, { 7133, 7134, 7135 }),
+    modelled(842, "Twinned Regalia", 501, { 7136, 7137, 7138 }),
+    modelled(843, "Elsewhere Robes", 500, { 7139, 7140, 7141 }),
+})
+assert(#mixedRows == 2, "the row holding two models stayed out of both their families")
+assert(mixedRows[1].name == "Twinned Regalia" and #mixedRows[1].variants == 2,
+    "keeping the colourways its name gathered")
+assert(mixedRows[2].name == "Elsewhere Robes" and not mixedRows[2].isGroup,
+    "and the set whose model it shares is a plain row rather than folded into it")
+
+-- Two families can end up named alike: a colourway family is named for the words
+-- its members share, and another set can simply be called that. Nothing here
+-- reads names, so nothing else keeps the two rows apart, and a repeated key
+-- would have each showing the other's colourway.
+local twinRows = rowsOf({
+    validRecord({ setID = 851, name = "Red Silk Robe", model = 600, ensembles = { 79101 },
+        pieces = pieces({ "HEAD", 7142 }, { "CHEST", 7143 }) }),
+    validRecord({ setID = 852, name = "Blue Silk Robe", model = 600, ensembles = { 79102 },
+        pieces = pieces({ "HEAD", 7144 }, { "CHEST", 7145 }) }),
+    modelled(853, "Distinct Name", 600, { 7146, 7147, 7148 }),
+    modelled(854, "Silk Robe", 601, { 7149, 7150, 7151 }),
+    modelled(855, "Other Thing", 601, { 7152, 7153, 7154 }),
+})
+assert(#twinRows == 2, "the two colourways and the set beside them formed one family, the other pair another")
+assert(twinRows[1].name == "Silk Robe" and twinRows[2].name == "Silk Robe",
+    "and both are named Silk Robe, one for the words its colourways share and one for its first set")
+assert(twinRows[1].key ~= twinRows[2].key,
+    "so the rows are told apart by model rather than by the name they landed on")
+end
+
 -- Search.
 
 assert(#ExtraSets.FilterEntries(entries, "") == 3, "blank query keeps everything")
@@ -1130,7 +1219,7 @@ local createdFontStrings = {}
 
 local function newFontString()
     local fontString = recordAnchors({ shown = true, truncated = false })
-    function fontString:SetWidth() end
+    function fontString:SetWidth(width) self.width = width end
     function fontString:SetTextColor() end
     function fontString:SetText(text) self.text = text end
     function fontString:SetFormattedText(format, ...) self.text = format:format(...) end
@@ -1826,6 +1915,7 @@ local function newRowButton()
             self.scripts = self.scripts or {}
             self.scripts[script] = handler
         end,
+        CreateFontString = function() return newFontString() end,
     }
     rowButton.IconFrame.SetScript = rowButton.SetScript
     return rowButton
@@ -1860,6 +1950,38 @@ button.scripts.OnClick(button, "LeftButton")
 assert(trackedSources == nil and playedSound, "selected the set instead when tracking is turned off")
 shiftClickTracks = true
 shiftDown = false
+
+-- A row standing for several colourways. What the player wants off it is how
+-- much of the whole family is left, so the line under the name counts all of
+-- them and the corner says how many sets are folded behind it.
+
+do
+for id = 7200, 7208 do sourceStates[id] = { appearanceID = 8200 + id, collected = id % 3 == 0 } end
+
+local familyRows = ExtraSets.BuildRows(ExtraSets.BuildEntries({
+    validRecord({ setID = 901, name = "Nitroclad Kit", model = 42,
+        pieces = pieces({ "HEAD", 7200 }, { "CHEST", 7201 }, { "LEGS", 7202 }) }),
+    validRecord({ setID = 902, name = "Smoketrail Racer Suit", model = 42,
+        pieces = pieces({ "HEAD", 7203 }, { "CHEST", 7204 }, { "LEGS", 7205 }) }),
+    validRecord({ setID = 903, name = "Upcycled Outfit", model = 42,
+        pieces = pieces({ "HEAD", 7206 }, { "CHEST", 7207 }, { "LEGS", 7208 }) }),
+}, stubResolver(CLOTH_CLASS)))
+assert(#familyRows == 1 and #familyRows[1].variants == 3, "the three colourways are one row")
+
+local familyButton = newRowButton()
+capturedView.initializer(familyButton, familyRows[1])
+assert(familyButton.Label.text == "3/9 collected",
+    "the line under the name counts every look across the colourways, not the first set's three")
+assert(familyButton.luckysVariantCount.text == "x3", "and the corner says how many sets stand behind it")
+assert(familyButton.Name.width == 168, "the name gives up the width the badge needs")
+
+-- The same row template is reused as the list scrolls, so a plain set drawn
+-- into a button that just held a family must not keep its badge.
+capturedView.initializer(familyButton, entry)
+assert(familyButton.luckysVariantCount.text == "", "a set with one colourway shows no badge")
+assert(familyButton.Name.width == 190, "and takes the full width of the row back")
+assert(familyButton.Label.text:find("collected"), "and counts itself the way it always did")
+end
 
 -- Preview slots. The choice is one module shared with every set pane, so
 -- hiding a slot redresses the open set without its piece on the spot, and
@@ -2309,7 +2431,10 @@ assert(#scrollBox.dataProvider == 2, "the page lists one row per set, not one pe
 local groupButton = newRowButton()
 capturedView.initializer(groupButton, scrollBox.dataProvider[1])
 assert(groupButton.Name.text == "Charm Vestments", "the row is named for the set, not a colourway")
-assert(groupButton.Label.text == "2 colours", "and says how many colourways it holds without being opened")
+assert(groupButton.Label.text == "4/6 collected",
+    "and counts every look across its colourways rather than the first one's")
+assert(groupButton.luckysVariantCount.text == "x2",
+    "with how many colourways it holds in the corner, where it costs the counts no room")
 
 local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
 assert(variantDropdown, "built a colourway picker for the details pane")

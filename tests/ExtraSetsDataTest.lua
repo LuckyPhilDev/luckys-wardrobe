@@ -101,5 +101,37 @@ end
 assert(ensembleSets > 1500, "the ensembles hold the sets they should, got " .. ensembleSets)
 assert(ensembleItems >= ensembleSets, "every ensemble set is taught by at least one item")
 
-print(("Lucky's Wardrobe extra sets data test passed (%d sets, %d ensemble sets, %d pieces)")
-    :format(totalSets, ensembleSets, totalPieces))
+-- The model index says which sets are one garment in several colours. It is
+-- generated separately from the sets themselves, so its date is what the
+-- catalogue checks before believing a word of it.
+
+dofile("src/Data/SetModels.lua")
+local models = Data.models
+assert(type(models) == "table", "the model index loaded")
+assert(models.snapshot == Data.snapshot,
+    "and was built against this snapshot, or the catalogue will refuse it: got "
+    .. tostring(models.snapshot) .. " against " .. tostring(Data.snapshot))
+
+local indexed, families = 0, {}
+for _, listing in ipairs({ "cloth", "leather", "mail", "plate", "ensembles" }) do
+    assert(type(models[listing]) == "table", listing .. " has a model index")
+    local sets = listing == "ensembles" and Data.ensembles or Data.sets[listing]
+    for setID, model in pairs(models[listing]) do
+        assert(type(model) == "number" and model > 0 and model % 1 == 0,
+            listing .. " set " .. tostring(setID) .. " carries a model number")
+        assert(sets[setID], listing .. " set " .. tostring(setID) .. " is a set the snapshot holds")
+        families[model] = (families[model] or 0) + 1
+        indexed = indexed + 1
+    end
+end
+
+local shared = 0
+for _, count in pairs(families) do
+    assert(count > 1, "a model only one set is built on is left out of the index")
+    shared = shared + 1
+end
+assert(indexed > 1000, "the sets that share a model are indexed, got " .. indexed)
+
+print(("Lucky's Wardrobe extra sets data test passed (%d sets, %d ensemble sets, %d pieces, "
+    .. "%d sets across %d shared models)")
+    :format(totalSets, ensembleSets, totalPieces, indexed, shared))

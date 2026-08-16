@@ -136,6 +136,15 @@ LuckysWardrobe.ExtraSetsData = {
             pieces = { 66001, 66002 },
         },
     },
+    -- Which sets are the same armour in another colour, worked out against the
+    -- snapshot above. Each listing is indexed under its own numbering, so the
+    -- cloth 20 and the ensemble 20 are told apart here the way they are there.
+    models = {
+        snapshot = "2026-08-04",
+        cloth = { [20] = 7, [21] = 7 },
+        plate = { [40] = 9 },
+        ensembles = { [20] = 11 },
+    },
 }
 
 local classFilter = 99
@@ -301,6 +310,15 @@ assert(pieceKeys(garb) == "HEAD=2001@62001,SHOULDER=2002@62002,CHEST=2003@62003,
     "ordered the pieces head to feet whatever order the snapshot listed them in")
 assert(garb.unresolvedPieces == 0, "a fully resolved set has nothing missing")
 
+-- The model index rides onto the record, read under the numbering of the
+-- listing the set came from.
+assert(garb.model == 7 and recordFor(21).model == 7,
+    "two sets built on one model carry the same number out of the catalogue")
+assert(recordFor(22) == nil and recordFor(23).model == nil,
+    "and a set the index says nothing about carries none")
+assert(ensembleRecordFor(20).model == 11,
+    "the ensemble 20 took its own listing's model, not the cloth 20's")
+
 -- Where the client knows a set it is the authority; the snapshot fills the rest.
 assert(garb.name == "Fixture Hidden Garb", "took the name from the client, not the snapshot")
 assert(garb.classMask == 8 and garb.expansionID == 5 and garb.label == "Fixture Quest",
@@ -419,6 +437,37 @@ Catalog:Rebuild()
 runBuild()
 assert(fingerprint() == first, "a rebuild on the same client produces the same catalogue")
 assert(Catalog:OfficialLooks(1) ~= classOneLooks, "a rebuild reads the Sets tab's looks afresh")
+
+-- A model index built against another snapshot describes another numbering, so
+-- the sets it names are not the sets it means. Folding the wrong armour together
+-- is worse than folding none, so the whole file is refused rather than trusted
+-- in part.
+
+do
+local index = LuckysWardrobe.ExtraSetsData.models
+LuckysWardrobe.ExtraSetsData.models = {
+    snapshot = "2026-01-01",
+    cloth = { [20] = 7, [21] = 7 },
+    plate = {}, ensembles = {},
+}
+Catalog:Rebuild()
+runBuild()
+assert(recordFor(20).model == nil and recordFor(21).model == nil,
+    "an index for another snapshot groups nothing at all")
+local said = false
+for _, message in ipairs(devLogs) do said = said or message:find("another snapshot") ~= nil end
+assert(said, "and says so, since the tab quietly stopping grouping needs a reason")
+
+LuckysWardrobe.ExtraSetsData.models = nil
+Catalog:Rebuild()
+runBuild()
+assert(recordFor(20).model == nil, "no index at all is no grouping either")
+
+LuckysWardrobe.ExtraSetsData.models = index
+Catalog:Rebuild()
+runBuild()
+assert(recordFor(20).model == 7, "and the matching index groups again")
+end
 
 -- Rejection grouping.
 

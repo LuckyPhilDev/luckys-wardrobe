@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil GRAY_FONT_COLOR IN_PROGRESS_FONT_COLOR NORMAL_FONT_COLOR EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 121
 
 local devLogs = {}
@@ -7,6 +7,11 @@ LuckysWardrobe = {
 }
 DEFAULT = "Default"
 SOURCES = "Sources"
+-- The three colours a row paints a set's progress in, named here the way
+-- Blizzard names them so the assertions below read as what they check.
+NORMAL_FONT_COLOR = { r = 1, g = 0.82, b = 0 }
+IN_PROGRESS_FONT_COLOR = { r = 0.251, g = 0.753, b = 0.251 }
+GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 for index = 0, 11 do _G["EXPANSION_NAME" .. index] = "Expansion " .. index end
 
 local testSets = {
@@ -14,6 +19,8 @@ local testSets = {
     { setID = 1, expansionID = 1, favorite = false },
 }
 local collectedSets = {}
+-- Which looks the player holds, so a row can be redrawn part way through a set.
+local collectedAppearances = { [901] = true, [902] = true }
 -- Sets the game itself would never put on this list, which is how another class's
 -- set reads to the Sets tab.
 local unlistedSets = {}
@@ -36,11 +43,27 @@ C_TransmogSets = {
             [1] = { { collected = true }, { collected = true }, { collected = false } },
             [2] = { { collected = true }, { collected = false } },
             [3] = { { collected = false } },
+            -- A tier and its difficulty recolours. The two colourways are
+            -- different looks but for the one piece that was never retinted,
+            -- which both of them grant.
+            [70] = {
+                { appearanceID = 901, collected = collectedAppearances[901] or false },
+                { appearanceID = 902, collected = collectedAppearances[902] or false },
+                { appearanceID = 909, collected = collectedAppearances[909] or false },
+            },
+            [71] = {
+                { appearanceID = 911, collected = collectedAppearances[911] or false },
+                { appearanceID = 912, collected = collectedAppearances[912] or false },
+                { appearanceID = 909, collected = collectedAppearances[909] or false },
+            },
         })[setID] or {}
     end,
     GetVariantSets = function(setID)
         return ({
             [4] = { { setID = 41, favorite = true } },
+            -- The client lists a set among its own variants, which is why the
+            -- base is counted alongside them rather than instead of them.
+            [70] = { { setID = 70 }, { setID = 71 } },
         })[setID] or {}
     end,
 }
@@ -250,5 +273,87 @@ assert(setsFrame.selectedSetID == 9 and setsFrame.displayedSetID == 9,
 setsFrame.selectedSetID = 4
 setsFrame:OnSearchUpdate()
 assert(setsFrame.selectedSetID == 5, "the selection stayed on a set the filters had hidden")
+
+-- Colourways on the Sets tab. Blizzard's row counts the best single difficulty,
+-- which says nothing about how much of the set is left to collect.
+
+local counts = browser:VariantCounts(70)
+assert(counts.colourways == 2, "counted the colourways the client lists")
+assert(counts.total == 5, "counted five distinct looks, not the six the two colourways list between them")
+assert(counts.collected == 2, "and counted what is collected across all of them")
+assert(browser:VariantCounts(1) == nil, "a set with no colourways has nothing to count")
+assert(browser:VariantCounts(4) == nil, "nor has one the client lists a single variant for")
+
+local function newRowButton(setID)
+    return {
+        setID = setID,
+        Name = {
+            SetWidth = function(self, width) self.width = width end,
+            SetTextColor = function(self, r, g, b) self.colour = { r, g, b } end,
+        },
+        Label = { SetText = function(self, text) self.text = text end },
+        IconFrame = { SetIconCoverShown = function(self, shown) self.cover = shown end },
+        ProgressBar = {
+            SetShown = function(self, shown) self.shown = shown end,
+            SetWidth = function(self, width) self.width = width end,
+        },
+        CreateFontString = function()
+            return {
+                SetPoint = function() end,
+                SetTextColor = function() end,
+                SetText = function(self, text) self.text = text end,
+            }
+        end,
+    }
+end
+
+local rows = { newRowButton(70), newRowButton(1) }
+browser:MarkVariants({ ForEachFrame = function(_, action)
+    for _, row in ipairs(rows) do action(row) end
+end })
+assert(rows[1].luckysVariantCount.text == "x2", "the row says how many colourways stand behind it")
+assert(rows[1].Label.text == "2/5 collected", "and counts every look across them under the name")
+assert(rows[1].Name.width == 168, "the name gives up the width the badge needs")
+assert(rows[2].luckysVariantCount.text == "" and rows[2].Name.width == 190,
+    "a set with one colourway is left as Blizzard drew it")
+assert(rows[2].Label.text == nil, "keeping the difficulty label the tab put there")
+assert(rows[2].ProgressBar.shown == nil and rows[2].Name.colour == nil,
+    "and its progress untouched, being about the only colourway there is")
+
+-- The bar is the same statement as the counts beside it. Blizzard fills it from
+-- the best single difficulty, which on this set would read as nearly half.
+assert(rows[1].ProgressBar.shown == true, "a part-collected set shows its bar")
+assert(math.abs(rows[1].ProgressBar.width - 204 * 2 / 5) < 0.001,
+    "filled to what is collected across every colourway, got " .. tostring(rows[1].ProgressBar.width))
+assert(rows[1].Name.colour[2] == IN_PROGRESS_FONT_COLOR.g, "and the name reads as still in progress")
+assert(rows[1].IconFrame.cover == true, "with the icon still covered")
+
+-- Finishing one difficulty is what makes Blizzard call the whole set collected.
+-- Every look of the other one is still out there.
+collectedAppearances = { [901] = true, [902] = true, [909] = true }
+local oneDifficultyDone = { newRowButton(70) }
+browser:MarkVariants({ ForEachFrame = function(_, action)
+    for _, row in ipairs(oneDifficultyDone) do action(row) end
+end })
+local row = oneDifficultyDone[1]
+assert(row.Label.text == "3/5 collected", "the row counts what is left across the rest")
+assert(row.ProgressBar.shown == true and row.Name.colour[1] == IN_PROGRESS_FONT_COLOR.r,
+    "and neither the bar nor the name calls the set finished")
+assert(row.IconFrame.cover == true, "nor does the icon")
+
+-- Nothing collected anywhere, and the whole lot collected, are the two ends.
+collectedAppearances = {}
+local untouched = newRowButton(70)
+browser:MarkVariants({ ForEachFrame = function(_, action) action(untouched) end })
+assert(untouched.ProgressBar.shown == false and untouched.Name.colour[1] == GRAY_FONT_COLOR.r,
+    "a set with nothing collected shows no bar at all")
+
+collectedAppearances = { [901] = true, [902] = true, [909] = true, [911] = true, [912] = true }
+local finished = newRowButton(70)
+browser:MarkVariants({ ForEachFrame = function(_, action) action(finished) end })
+assert(finished.Label.text == "5/5 collected", "every look across every colourway")
+assert(finished.ProgressBar.shown == false and finished.Name.colour[1] == NORMAL_FONT_COLOR.r,
+    "and only then does the row read as finished")
+assert(finished.IconFrame.cover == false, "the cover coming off the icon with it")
 
 print("Lucky's Wardrobe sets browser test passed")
