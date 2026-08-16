@@ -38,6 +38,11 @@ function Utils.Say(line)
     print(("%s %s"):format(LuckysWardrobe.Strings.addon.prefix, line))
 end
 
+-- The tint on an icon the addon draws into the game's own frames: lit when
+-- whatever it stands for is on, grey when it is not.
+Utils.ICON_ON = { 1.0, 0.824, 0.392 }
+Utils.ICON_OFF = { 0.35, 0.35, 0.35 }
+
 -- How long a burst of collection events is allowed to gather before a page
 -- reads the catalogue again. Long enough to collapse a burst, short enough that
 -- collecting something still updates the list while you are looking at it.

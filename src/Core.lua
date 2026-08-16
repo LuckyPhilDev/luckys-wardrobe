@@ -92,6 +92,10 @@ local function initialize()
             LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "items" then
             LuckysWardrobe.TransmogItems:PrintDates(argument)
+        elseif command == "roll" then
+            LuckysWardrobe.Randomiser:PrintPools(argument)
+        elseif command == "slots" then
+            LuckysWardrobe.Randomiser:PrintSlots()
         elseif command == "replay" then
             LuckysWardrobe.SetCompletion:ReplayEntry()
         elseif command == "extrasets" then

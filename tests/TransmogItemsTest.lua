@@ -8,6 +8,11 @@
 LuckysWardrobe = {}
 LuckysWardrobe.DevLog = function() end
 
+-- The dice on the character preview carries a swatch of whatever the strip is
+-- set to, so picking a colour tells it.
+local colourPicks = 0
+LuckysWardrobe.Randomiser = { OnColourPicked = function() colourPicks = colourPicks + 1 end }
+
 -- The strip reads its swatches off the presets, the reset included: clearing the
 -- colour is a pick of nothing rather than a separate undo.
 LuckysWardrobe.Colours = {
@@ -415,10 +420,12 @@ blizzardFiltersDefault = false
 assert(not filterButton.isDefault(), "one of Blizzard's own boxes still marks the button")
 blizzardFiltersDefault = true
 
-refreshes = 0
+refreshes, colourPicks = 0, 0
 filterButton.restoreDefaults()
 assert(blizzardFiltersRestored and refreshes == 1 and filterButton.isDefault(),
     "the reset put our expansions back alongside Blizzard's own boxes and redrew the tab")
+assert(colourPicks == 1,
+    "and told the dice on the preview, which only stands there while a colour is lit")
 assert(visualIDs(C_TransmogCollection.GetCategoryAppearances(1)) == "4,1,2,3,5,6",
     "the whole list came back with it")
 

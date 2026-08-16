@@ -184,7 +184,37 @@ LuckysWardrobe.Strings = {
     },
     randomiser = {
         tooltipTitle = "Roll a Random Outfit",
-        tooltipText = "Hold to spin every armour slot through appearances you own, then let go and watch it slow to a stop. Weapons are left alone, and nothing is bought until you press Apply.",
+        tooltipText = "Hold to spin every armour slot through appearances you own, then let go and watch it slow to a stop. A slot you set a piece on locks itself and sits out the spin, and the padlock beside a slot locks or unlocks it. Weapons are left alone, and nothing is bought until you press Apply.",
+        poolsClosed = "The transmogrifier is not open, so there is nothing to roll.",
+        poolsHeader = "Randomiser: %d slots in play.",
+        poolsSkipped = "  %s (category %s): skipped, %s",
+        poolsNoCategory = "the client files it under no appearance category",
+        poolsSecondary = "it is a secondary slot",
+        poolsNotAppearance = "it is not an appearance slot",
+        poolsWeapon = "it is a weapon slot",
+        poolsNothingCollected = "nothing in it is collected and usable",
+        poolsSlot = "  %s (category %s): %d listed, %d collected and usable, "
+            .. "can transmogrify %s, can hide %s",
+        poolsColour = "      in the lit colour: %d to draw from, "
+            .. "plus %d not collected and %d collected but not wearable",
+        poolsPiece = "      visual %d: collected %s, wearable %s, %s",
+        poolsDetailEnd = "      (every piece the client lists for category %s in that colour)",
+        stuckSlot = "Roll left %s in an error: visual %s, source %s, error %s %s (%s), "
+            .. "can transmogrify %s, has pending %s, locked %s",
+        stuckBefore = "the slot was already in this error before the spin",
+        stuckFromRoll = "the slot was clear before the spin",
+        slotsHeader = "Randomiser: what %d slots are holding.",
+        slotsSlot = "  %s: source %s, error %s %s, display type %s",
+        slotsRolled = "      rolled by us %s (visual %s, source %s)",
+        slotsSource = "      source: %s, collected %s, useErrorType %s, useError %s, "
+            .. "valid for player %s",
+        colourTitle = "Roll a %s Outfit",
+        otherTitle = "Roll an Outfit of Other Colours",
+        colourText = "Hold to spin every slot you have not locked through the pieces you own in the colour lit on the Items tab. A slot with nothing in that colour is hidden instead, since wearing nothing is the only other way to keep to it. Nothing is bought until you press Apply.",
+        lockTitle = "Lock This Slot",
+        lockHint = "Click to leave this slot as it is when you roll a random outfit.",
+        unlockTitle = "Unlock This Slot",
+        unlockHint = "Click to let a random outfit roll this slot again.",
     },
     situationLabels = {
         scanTitle = "Reading Outfit Situations",

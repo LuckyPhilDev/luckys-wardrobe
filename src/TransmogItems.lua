@@ -358,6 +358,9 @@ local function pickColour(key)
         end
     end
     paintSwatches()
+    -- The dice on the character preview carries a swatch of whatever is lit here
+    -- and only stands there while something is, so it hears about every pick.
+    LuckysWardrobe.Randomiser:OnColourPicked()
     TransmogItems:Refresh()
 end
 

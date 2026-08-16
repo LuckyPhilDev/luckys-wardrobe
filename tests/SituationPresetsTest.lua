@@ -2,6 +2,12 @@
 
 LuckysWardrobe = {}
 
+-- The icon palette Utils carries, shared with the padlocks beside the slots.
+LuckysWardrobe.Utils = {
+    ICON_ON = { 1.0, 0.824, 0.392 },
+    ICON_OFF = { 0.35, 0.35, 0.35 },
+}
+
 dofile("src/Strings.lua")
 
 function CreateFrame()
