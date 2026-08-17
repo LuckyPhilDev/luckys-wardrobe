@@ -171,12 +171,12 @@ C_TransmogCollection = {
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 dofile("src/Data/ExtraSetsData.lua")
-dofile("src/Classes.lua")
+dofile("src/domain/Classes.lua")
 dofile("src/Perf.lua")
 -- The submenu and the Unknown box are the Extra Sets lists' own, shared rather
 -- than built again, so the real ones run here.
-dofile("src/ExtraSets.lua")
-dofile("src/TransmogItems.lua")
+dofile("src/features/journal/ExtraSets.lua")
+dofile("src/features/transmogrifier/TransmogItems.lua")
 
 local TransmogItems = LuckysWardrobe.TransmogItems
 local Utils = LuckysWardrobe.Utils

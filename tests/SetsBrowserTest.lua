@@ -70,9 +70,9 @@ C_TransmogSets = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/SetSearch.lua")
-dofile("src/SetSources.lua")
-dofile("src/SetsBrowser.lua")
+dofile("src/domain/SetSearch.lua")
+dofile("src/domain/SetSources.lua")
+dofile("src/features/journal/SetsBrowser.lua")
 
 local browser = LuckysWardrobe.SetsBrowser
 local sorted = browser:FilterAndSort({

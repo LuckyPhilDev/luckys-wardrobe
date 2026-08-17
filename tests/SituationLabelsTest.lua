@@ -129,7 +129,7 @@ TransmogFrame = {
     },
 }
 
-dofile("src/SituationLabels.lua")
+dofile("src/features/transmogrifier/SituationLabels.lua")
 
 local labels = LuckysWardrobe.SituationLabels
 

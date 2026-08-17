@@ -51,9 +51,9 @@ EventUtil = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/SetSources.lua")
-dofile("src/SetSearch.lua")
-dofile("src/TransmogSets.lua")
+dofile("src/domain/SetSources.lua")
+dofile("src/domain/SetSearch.lua")
+dofile("src/features/transmogrifier/TransmogSets.lua")
 
 local TransmogSets = LuckysWardrobe.TransmogSets
 

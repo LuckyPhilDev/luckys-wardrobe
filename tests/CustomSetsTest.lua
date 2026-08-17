@@ -14,7 +14,7 @@ INVSLOT_WAIST, INVSLOT_LEGS, INVSLOT_FEET = 6, 7, 8
 INVSLOT_WRIST, INVSLOT_HAND, INVSLOT_SHOULDER = 9, 10, 3
 INVSLOT_BACK, INVSLOT_MAINHAND, INVSLOT_OFFHAND, INVSLOT_TABARD = 15, 16, 17, 19
 
-dofile("src/CustomSets.lua")
+dofile("src/features/journal/CustomSets.lua")
 
 local CustomSets = LuckysWardrobe.CustomSets
 

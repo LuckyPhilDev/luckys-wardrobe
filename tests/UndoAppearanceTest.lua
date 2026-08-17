@@ -110,7 +110,7 @@ local hideCard = card({ visualID = HIDE_VISUAL, isHideVisual = true })
 local illusionCard = card({ visualID = 1, sourceID = ILLUSION_SOURCE })
 
 dofile("src/Strings.lua")
-dofile("src/UndoAppearance.lua")
+dofile("src/features/transmogrifier/UndoAppearance.lua")
 
 local db = { undoOnSecondClick = true }
 LuckysWardrobe.UndoAppearance:Init(db)

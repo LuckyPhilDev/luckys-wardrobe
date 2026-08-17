@@ -139,7 +139,7 @@ function TransmogSetModelMixin:UpdateSet() nativeUpdates = nativeUpdates + 1 end
 TransmogCustomSetModelMixin = {}
 function TransmogCustomSetModelMixin:UpdateSet() customUpdates = customUpdates + 1 end
 
-dofile("src/TransmogSetNames.lua")
+dofile("src/features/transmogrifier/TransmogSetNames.lua")
 
 local db = { showSetNames = true }
 LuckysWardrobe.TransmogSetNames:Init(db)

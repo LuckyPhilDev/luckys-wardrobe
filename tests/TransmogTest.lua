@@ -519,8 +519,8 @@ local function pickColour(key, unmatched)
 end
 
 dofile("src/Strings.lua")
-dofile("src/Randomiser.lua")
-dofile("src/Transmog.lua")
+dofile("src/features/transmogrifier/Randomiser.lua")
+dofile("src/features/transmogrifier/Transmog.lua")
 
 local db = { keepTransmogTab = true }
 LuckysWardrobe.Transmog:Init(db)

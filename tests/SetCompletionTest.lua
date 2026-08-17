@@ -168,9 +168,9 @@ _G.C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/Classes.lua")
-dofile("src/SetSources.lua")
-dofile("src/SetCompletion.lua")
+dofile("src/domain/Classes.lua")
+dofile("src/domain/SetSources.lua")
+dofile("src/features/completion/SetCompletion.lua")
 
 local SetCompletion = LuckysWardrobe.SetCompletion
 -- Everything below the tier block wants to see every set that qualifies, including

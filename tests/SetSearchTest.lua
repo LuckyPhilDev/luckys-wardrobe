@@ -17,7 +17,7 @@ local EXPANSION_NAMES = {
 }
 LuckysWardrobe.Utils = { EXPANSION_NAMES = EXPANSION_NAMES }
 
-dofile("src/SetSearch.lua")
+dofile("src/domain/SetSearch.lua")
 local SetSearch = LuckysWardrobe.SetSearch
 
 local function expansionFor(text)

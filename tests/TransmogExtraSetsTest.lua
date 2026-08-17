@@ -32,17 +32,17 @@ C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/SetSources.lua")
-dofile("src/SetSearch.lua")
-dofile("src/Classes.lua")
+dofile("src/domain/SetSources.lua")
+dofile("src/domain/SetSearch.lua")
+dofile("src/domain/Classes.lua")
 dofile("src/Perf.lua")
 local clock = 0
 LuckysWardrobe.Perf.Clock = function()
     clock = clock + 1
     return clock
 end
-dofile("src/ExtraSets.lua")
-dofile("src/TransmogExtraSets.lua")
+dofile("src/features/journal/ExtraSets.lua")
+dofile("src/features/transmogrifier/TransmogExtraSets.lua")
 
 local ExtraSets = LuckysWardrobe.ExtraSets
 local TransmogExtraSets = LuckysWardrobe.TransmogExtraSets

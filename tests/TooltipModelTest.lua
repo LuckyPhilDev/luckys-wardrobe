@@ -322,7 +322,7 @@ LuckysWardrobe.TransmogItems = {
     end,
 }
 
-dofile("src/TooltipModel.lua")
+dofile("src/features/tooltips/TooltipModel.lua")
 
 local TooltipModel = LuckysWardrobe.TooltipModel
 local settings = { tooltipModel = true, tooltipModelWornAndBags = false }

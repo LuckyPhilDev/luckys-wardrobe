@@ -15,7 +15,7 @@ function CreateFrame()
 end
 
 dofile("src/Utils.lua")
-dofile("src/RecolorGroups.lua")
+dofile("src/domain/RecolorGroups.lua")
 local RecolorGroups = LuckysWardrobe.RecolorGroups
 
 -- Category IDs mirror Enum.TransmogCollectionType: 1 head, 2 shoulder, 4 chest,

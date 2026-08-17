@@ -7,7 +7,7 @@
 
 LuckysWardrobe = {}
 
-dofile("src/Colours.lua")
+dofile("src/domain/Colours.lua")
 
 local Colours = LuckysWardrobe.Colours
 

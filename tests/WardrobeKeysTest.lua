@@ -31,7 +31,7 @@ function wardrobe:SetPropagateKeyboardInput(propagate) self.propagateKeys = prop
 
 WardrobeCollectionFrame = wardrobe
 
-dofile("src/WardrobeKeys.lua")
+dofile("src/features/journal/WardrobeKeys.lua")
 
 local WardrobeKeys = LuckysWardrobe.WardrobeKeys
 

@@ -30,10 +30,10 @@ C_ClassColor = {
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/SetSources.lua")
-dofile("src/SetSearch.lua")
+dofile("src/domain/SetSources.lua")
+dofile("src/domain/SetSearch.lua")
 dofile("src/Data/ExtraSetsData.lua")
-dofile("src/Classes.lua")
+dofile("src/domain/Classes.lua")
 -- The page measures its own work, so the real stopwatch runs here too, wound
 -- by hand rather than by the clock the client would provide.
 dofile("src/Perf.lua")
@@ -42,13 +42,13 @@ LuckysWardrobe.Perf.Clock = function()
     clock = clock + 1
     return clock
 end
-dofile("src/ExtraSets.lua")
+dofile("src/features/journal/ExtraSets.lua")
 -- The preview-slots choice is real here, so hiding a slot drives the same
 -- module the page leans on. Its own Sets tab wiring waits on a collections
 -- addon this harness never announces, so that wait is swallowed; the harness
 -- below defines the EventUtil the page's attach goes through.
 EventUtil = { ContinueOnAddOnLoaded = function() end }
-dofile("src/PreviewSlots.lua")
+dofile("src/features/journal/PreviewSlots.lua")
 LuckysWardrobe.PreviewSlots:Init({ hiddenSetSlots = {} })
 
 local ExtraSets = LuckysWardrobe.ExtraSets

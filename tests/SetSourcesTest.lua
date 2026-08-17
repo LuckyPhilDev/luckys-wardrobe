@@ -7,7 +7,7 @@ LuckysWardrobe = {}
 PLAYER_DIFFICULTY6 = "Mythisch"
 
 dofile("src/Strings.lua")
-dofile("src/SetSources.lua")
+dofile("src/domain/SetSources.lua")
 
 local SetSources = LuckysWardrobe.SetSources
 

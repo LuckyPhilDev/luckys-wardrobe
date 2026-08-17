@@ -80,7 +80,7 @@ LuckyUI = {
 }
 
 dofile("src/Strings.lua")
-dofile("src/AddonConflicts.lua")
+dofile("src/features/AddonConflicts.lua")
 
 local S = LuckysWardrobe.Strings.addonConflicts
 local AddonConflicts = LuckysWardrobe.AddonConflicts

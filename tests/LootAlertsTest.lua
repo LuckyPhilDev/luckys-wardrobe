@@ -75,8 +75,8 @@ _G.NUM_BAG_SLOTS, _G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED = 4, 1, 19
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
-dofile("src/Catalyst.lua")
-dofile("src/LootAlerts.lua")
+dofile("src/domain/Catalyst.lua")
+dofile("src/features/completion/LootAlerts.lua")
 
 local settings = {
     alertSetPieceLoot = true,

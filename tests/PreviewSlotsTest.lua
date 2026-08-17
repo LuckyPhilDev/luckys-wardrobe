@@ -88,7 +88,7 @@ end
 
 WardrobeCollectionFrame = { SetsCollectionFrame = setsFrame }
 
-dofile("src/PreviewSlots.lua")
+dofile("src/features/journal/PreviewSlots.lua")
 
 local PreviewSlots = LuckysWardrobe.PreviewSlots
 

@@ -149,7 +149,7 @@ _G.TooltipUtil = {
 }
 
 dofile("src/Strings.lua")
-dofile("src/ItemTooltips.lua")
+dofile("src/features/tooltips/ItemTooltips.lua")
 
 local settings = { tooltipSetProgress = true }
 LuckysWardrobe.ItemTooltips:Init(settings)

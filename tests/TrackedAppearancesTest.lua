@@ -103,7 +103,7 @@ setsCollection.ListContainer = { ScrollBox = listScrollBox }
 
 WardrobeCollectionFrame = { SetsCollectionFrame = setsCollection }
 
-dofile("src/TrackedAppearances.lua")
+dofile("src/features/journal/TrackedAppearances.lua")
 
 local TrackedAppearances = LuckysWardrobe.TrackedAppearances
 local db = { markTrackedAppearances = true }

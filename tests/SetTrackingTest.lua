@@ -128,7 +128,7 @@ WardrobeCollectionFrame = {
 }
 
 dofile("src/Utils.lua")
-dofile("src/SetTracking.lua")
+dofile("src/features/journal/SetTracking.lua")
 
 local db = { trackSetsOnShiftClick = true }
 LuckysWardrobe.SetTracking:Init(db)

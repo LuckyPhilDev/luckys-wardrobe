@@ -84,7 +84,7 @@ C_TransmogOutfitInfo = {
     CommitPendingSituations = function() calls[#calls + 1] = "commit" end,
 }
 
-dofile("src/SituationPresets.lua")
+dofile("src/features/transmogrifier/SituationPresets.lua")
 
 local presets = LuckysWardrobe.SituationPresets
 local db = { situationPresets = {} }

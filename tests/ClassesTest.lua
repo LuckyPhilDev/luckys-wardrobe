@@ -31,7 +31,7 @@ _G.C_ClassColor = {
     end,
 }
 
-dofile("src/Classes.lua")
+dofile("src/domain/Classes.lua")
 
 local Classes = LuckysWardrobe.Classes
 

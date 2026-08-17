@@ -81,7 +81,7 @@ _G.C_TransmogCollection = {
     GetSourceInfo = function(sourceID) return { isCollected = collectedSources[sourceID] or false } end,
 }
 
-dofile("src/Catalyst.lua")
+dofile("src/domain/Catalyst.lua")
 local Catalyst = LuckysWardrobe.Catalyst
 
 -- Without Transmog Upgrade Master there is no honest answer, so everything is no.

@@ -61,7 +61,7 @@ WardrobeCollectionFrame = {
 }
 
 dofile("src/Strings.lua")
-dofile("src/WowheadLink.lua")
+dofile("src/features/journal/WowheadLink.lua")
 
 local WowheadLink = LuckysWardrobe.WowheadLink
 local popup = StaticPopupDialogs["LUCKYS_WARDROBE_WOWHEAD_LINK"]
