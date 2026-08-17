@@ -288,6 +288,10 @@ end
 -- The journal pages its own list and a narrowed one is shorter, so it goes back
 -- to the first page rather than to a page that may no longer be there.
 function TransmogItems:Refresh()
+    -- Every filter change funnels through here, so this is where the client's
+    -- call is swapped for the narrowing one and put back; see SyncListFilter.
+    TransmogItems.SyncListFilter()
+
     local frame, isJournal = asking()
     if not frame then return end
 
@@ -681,35 +685,51 @@ function TransmogItems:PrintDates(box)
     for _, example in ipairs(examples) do Utils.Say(example) end
 end
 
+-- The tab builds its page from this one call, so narrowing the answer narrows
+-- the tab without touching a frame the client owns.
+local function filteredCategoryAppearances(...)
+    local appearances = TransmogItems.getCategoryAppearances(...)
+    local _, isJournal = asking()
+    if not appearances or isJournal == nil then return appearances end
+
+    -- The expansion boxes are the transmogrifier's own. The journal carries
+    -- no copy of them, so one left unticked there would narrow a tab with
+    -- nothing on it to say so and no way to widen it again.
+    if not isJournal and anyExpansionHidden() then
+        budget = ITEM_LOAD_BUDGET
+        appearances =
+            TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
+    end
+    if not colourTarget then return appearances end
+
+    -- Narrowed by expansion first, so the colours are only worked out for
+    -- the pieces still on the page.
+    return TransmogItems.AppearancesInColour(appearances, rankColour)
+end
+
+-- The replacement only sits in the client's table while a filter of ours is
+-- actually narrowing. It is a Lua function, and a secure caller that goes
+-- through one is tainted for the rest of that execution: the journal calls
+-- this while building its grid, the tainted build writes the fields every
+-- appearance tooltip reads, and the tooltip's taint reaches the key handler,
+-- which eats movement keys whenever one is up. With nothing narrowed the
+-- client's own function is back in place and that whole chain stays secure;
+-- while a colour or expansion filter is lit, the narrowing is worth the keys.
+function TransmogItems.SyncListFilter()
+    if not TransmogItems.getCategoryAppearances then return end
+    C_TransmogCollection.GetCategoryAppearances =
+        (colourTarget ~= nil or anyExpansionHidden()) and filteredCategoryAppearances
+        or TransmogItems.getCategoryAppearances
+end
+
 function TransmogItems:Init(database)
     db = database
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Transmog", claimFilterButton)
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Collections", claimJournalFrame)
 
-    -- The tab builds its page from this one call, so narrowing the answer
-    -- narrows the tab without touching a frame the client owns.
     if TransmogItems.getCategoryAppearances
         or type(C_TransmogCollection.GetCategoryAppearances) ~= "function" then
         return
     end
     TransmogItems.getCategoryAppearances = C_TransmogCollection.GetCategoryAppearances
-    C_TransmogCollection.GetCategoryAppearances = function(...)
-        local appearances = TransmogItems.getCategoryAppearances(...)
-        local _, isJournal = asking()
-        if not appearances or isJournal == nil then return appearances end
-
-        -- The expansion boxes are the transmogrifier's own. The journal carries
-        -- no copy of them, so one left unticked there would narrow a tab with
-        -- nothing on it to say so and no way to widen it again.
-        if not isJournal and anyExpansionHidden() then
-            budget = ITEM_LOAD_BUDGET
-            appearances =
-                TransmogItems.AppearancesFromExpansions(appearances, expansions, expansionOf)
-        end
-        if not colourTarget then return appearances end
-
-        -- Narrowed by expansion first, so the colours are only worked out for
-        -- the pieces still on the page.
-        return TransmogItems.AppearancesInColour(appearances, rankColour)
-    end
 end

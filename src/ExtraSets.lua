@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual EventUtil GetUICameraInfo IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ResetCursor ScrollBoxConstants ScrollUtil ShowInspectCursor UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual EventUtil GetUICameraInfo InCombatLockdown IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_DeselectTab PanelTemplates_SelectTab PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON ResetCursor SOUNDKIT ScrollBoxConstants ScrollUtil ShowInspectCursor UNCHECK_ALL UnitClass WARDROBE_CYCLE_KEY WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -14,8 +14,6 @@ local Utils = LuckysWardrobe.Utils
 local SetRow = LuckysWardrobe.Strings.setRow
 
 local TAB_FIT_WIDTH = 275
-local NATIVE_ITEMS_TAB_ID = 1
-local NATIVE_SETS_TAB_ID = 2
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -190,8 +188,6 @@ setAllSources(true)
 
 local attachedWardrobe
 local extraPage
-local extraTab
-local extraTabID
 
 -- The colourway picker, sized like the one the Sets tab hangs in the top
 -- corner of its own details pane.
@@ -1481,22 +1477,21 @@ local function updateCursor()
     end
 end
 
--- The tooltip a set's piece shows, as the native Sets tab shows its own. The
--- tooltip offers Tab to cycle through the items sharing a look, and it is the
--- wardrobe's own key handler that does the cycling: it moves the source index
--- and asks whichever frame owns the tooltip to draw it again. A page that draws
--- its tooltips behind the wardrobe's back never gets asked, which is why the
--- offer went unanswered here.
+-- The tooltip a set's piece shows, as the native Sets tab shows its own,
+-- offering Tab to cycle through the items sharing a look.
 --
--- Handing the tooltip back matters as much as claiming it: the index Tab walks
--- belongs to the piece that was hovered, and the next piece starts again from
--- its own item.
+-- The wardrobe does its cycling through fields on its own frame, and those are
+-- fields this addon must not write (see addonTabs): a written one re-poisons
+-- the wardrobe's every later read of it. So the index and the offer live on
+-- the page, and the page listens for the key itself while a piece is hovered,
+-- passing through everything it does not handle. The index still belongs to
+-- the piece that was hovered, so the next piece starts again from its own
+-- item.
 --
 -- Both of this addon's set pages hover the same kind of piece, so both take
--- their tooltip from here and neither can drift from the other. Answers the two
--- scripts a piece frame hangs on, and gives the page the redraw the wardrobe
--- calls on whichever frame owns the tooltip.
-function ExtraSets.PieceTooltips(page, wardrobe)
+-- their tooltip from here and neither can drift from the other. Answers the
+-- two scripts a piece frame hangs on.
+function ExtraSets.PieceTooltips(page)
     local hovered
     local hoveredFrame
 
@@ -1509,12 +1504,11 @@ function ExtraSets.PieceTooltips(page, wardrobe)
             return
         end
 
-        wardrobe.tooltipContentFrame = page
-        wardrobe.tooltipSourceIndex, wardrobe.tooltipCycle =
+        page.tooltipSourceIndex, page.tooltipCycle =
             CollectionWardrobeUtil.SetAppearanceTooltip(GameTooltip, {
                 sources = sources,
                 primarySourceID = hovered.sourceID,
-                selectedIndex = wardrobe.tooltipSourceIndex,
+                selectedIndex = page.tooltipSourceIndex,
                 showUseError = true,
                 showTrackingInfo = false,
                 slotType = _G[SLOT_TOOLTIP_GLOBALS[hovered.slot] or hovered.slot],
@@ -1530,10 +1524,28 @@ function ExtraSets.PieceTooltips(page, wardrobe)
         if hovered then draw() end
     end
 
+    page:SetScript("OnKeyDown", function(self, key)
+        local handled = self.tooltipCycle and key == WARDROBE_CYCLE_KEY
+        -- Setting propagation is combat-protected for addon code; in combat
+        -- the keyboard was never claimed, so there is nothing to answer.
+        if not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
+        if handled then
+            self.tooltipSourceIndex = self.tooltipSourceIndex + (IsShiftKeyDown() and -1 or 1)
+            draw()
+        end
+    end)
+
     local function show(itemFrame)
         hovered = itemFrame.piece
         hoveredFrame = itemFrame
         itemFrame:SetScript("OnUpdate", updateCursor)
+        -- Claimed only while a piece is hovered, and only when propagation can
+        -- be granted, or every other key would be swallowed with no way to
+        -- hand it back.
+        if not InCombatLockdown() then
+            page:EnableKeyboard(true)
+            page:SetPropagateKeyboardInput(true)
+        end
         GameTooltip:SetOwner(itemFrame, "ANCHOR_RIGHT")
         draw()
     end
@@ -1542,12 +1554,14 @@ function ExtraSets.PieceTooltips(page, wardrobe)
     -- frame it stops watching is the one it remembers rather than one passed in.
     local function hide()
         hovered = nil
+        page.tooltipSourceIndex, page.tooltipCycle = nil, nil
+        page:EnableKeyboard(false)
         if hoveredFrame then
             hoveredFrame:SetScript("OnUpdate", nil)
             hoveredFrame = nil
         end
         ResetCursor()
-        wardrobe:HideAppearanceTooltip()
+        GameTooltip:Hide()
     end
 
     return show, hide
@@ -1750,7 +1764,7 @@ function ExtraSets:CreatePage(wardrobe)
         end
     end
 
-    local pieceTooltip, hidePieceTooltip = ExtraSets.PieceTooltips(page, wardrobe)
+    local pieceTooltip, hidePieceTooltip = ExtraSets.PieceTooltips(page)
     local pieceClick = ExtraSets.PieceClicks(function() return selectedEntry and selectedEntry.name end)
 
     local function getItemFrame(index)
@@ -2493,15 +2507,28 @@ local function layOutClassDropdown(dropdown)
     dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
 end
 
+-- The tabs this addon hangs past the end of the journal's own strip, in the
+-- order they were attached. They are deliberately not enrolled in Blizzard's
+-- tab machinery: no numTabs bump, no ContentFrames entry, no activeFrame, and
+-- no SetTab call ever selects one. Any field an addon writes on the wardrobe is
+-- tainted, the wardrobe's secure SetTab reads numTabs on every tab change, and
+-- that one read sours its whole execution, down to the tooltipCycle field the
+-- key handler checks on every keypress. A tainted "propagate this key" answer
+-- is one the client ignores, which ate WASD whenever an appearance tooltip was
+-- up. So the tabs live entirely on this side of the fence: selection is a
+-- plain OnClick that swaps pages, and the one hook below puts everything back
+-- when a native tab is chosen.
+local addonTabs = {}
+
+local function nativeTab(wardrobe, index)
+    return wardrobe.Tabs and wardrobe.Tabs[index]
+        or _G[wardrobe:GetName() .. "Tab" .. index]
+end
+
 -- The bar sits past the end of the tab strip, so it hangs off whichever tab is
--- last rather than this page's own. Anything that adds a tab of its own, this
--- addon's Custom Sets page or another addon's, would otherwise end up
--- underneath the bar.
+-- last, which is the last one this addon added.
 local function lastTab()
-    local wardrobe = attachedWardrobe
-    return wardrobe.Tabs and wardrobe.Tabs[wardrobe.numTabs]
-        or _G[wardrobe:GetName() .. "Tab" .. wardrobe.numTabs]
-        or extraTab
+    return addonTabs[#addonTabs].tab
 end
 
 -- How much room the strip leaves the bar, measured against the nearest anything
@@ -2538,59 +2565,105 @@ local function layOutProgressBars()
     layOutProgressBar(extraPage.progressBar)
 end
 
-local function updateSelectedTab(wardrobe, selectedTabID)
-    local selected = selectedTabID == extraTabID
-    extraPage:SetShown(selected)
-    layOutProgressBars()
-
-    if selected then
-        wardrobe.ItemsCollectionFrame:Hide()
-        wardrobe.SetsCollectionFrame:Hide()
-        wardrobe.SearchBox:Hide()
-        wardrobe.FilterButton:Hide()
-        wardrobe.progressBar:Hide()
-        wardrobe.activeFrame = extraPage
-        layOutClassDropdown(wardrobe.ClassDropdown)
-        wardrobe.ClassDropdown:Show()
-        -- Blizzard refreshes the dropdown from the active page's filter while
-        -- the active page is still the one being left, so it reads the name on
-        -- the button again now that this page is the active one.
-        wardrobe.ClassDropdown:Refresh()
-    elseif selectedTabID == NATIVE_ITEMS_TAB_ID or selectedTabID == NATIVE_SETS_TAB_ID then
-        wardrobe.SearchBox:Show()
-        wardrobe.FilterButton:Show()
-        wardrobe.ClassDropdown:Show()
+-- Every SetTab call means a native tab: ours never go through it. Blizzard
+-- redraws its own tab visuals securely, so this only has to take our pages off
+-- the screen and put back the chrome selecting one of ours hid.
+local function showNativeChrome(wardrobe)
+    for _, entry in ipairs(addonTabs) do
+        entry.page:Hide()
+        PanelTemplates_DeselectTab(entry.tab)
     end
+    wardrobe.SearchBox:Show()
+    wardrobe.FilterButton:Show()
+    wardrobe.ClassDropdown:Show()
+    if extraPage then layOutProgressBars() end
+end
+
+-- Selecting one of our tabs by hand. The native tabs are drawn deselected with
+-- the same widget calls Blizzard's own strip uses, which touch no field the
+-- secure side reads, and the next real SetTab draws them again itself.
+local function selectAddonTab(wardrobe, chosen)
+    for index = 1, wardrobe.numTabs do
+        PanelTemplates_DeselectTab(nativeTab(wardrobe, index))
+    end
+    wardrobe.ItemsCollectionFrame:Hide()
+    wardrobe.SetsCollectionFrame:Hide()
+    wardrobe.SearchBox:Hide()
+    wardrobe.FilterButton:Hide()
+    wardrobe.progressBar:Hide()
+
+    for _, entry in ipairs(addonTabs) do
+        local selected = entry.tab == chosen
+        entry.page:SetShown(selected)
+        if selected then
+            PanelTemplates_SelectTab(entry.tab)
+            entry.onSelected()
+        else
+            PanelTemplates_DeselectTab(entry.tab)
+        end
+    end
+
+    if extraPage then layOutProgressBars() end
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+end
+
+-- What PanelTemplates_ResizeTabsToFit does for the strip it can see: the whole
+-- row squeezed once it outgrows the room. It reads the count off the frame,
+-- which is the field this addon must not write, so the squeeze runs here over
+-- the native tabs and ours together.
+local function resizeTabStrip(wardrobe)
+    local tabs = {}
+    for index = 1, wardrobe.numTabs do tabs[#tabs + 1] = nativeTab(wardrobe, index) end
+    for _, entry in ipairs(addonTabs) do tabs[#tabs + 1] = entry.tab end
+
+    local width = 0
+    for _, tab in ipairs(tabs) do width = width + tab:GetWidth() end
+    if width <= TAB_FIT_WIDTH then return end
+
+    local widthPerTab = TAB_FIT_WIDTH / #tabs
+    for _, tab in ipairs(tabs) do
+        PanelTemplates_TabResize(tab, 0, nil, tab.minWidth, widthPerTab)
+    end
+end
+
+--- Adds a tab to the journal for the given page, kept outside Blizzard's tab
+--- state entirely; see addonTabs for why. The Custom tab attaches through here
+--- too, so both stay outside it the same way. onSelected is the page's own
+--- chrome: what it wants done with the class dropdown the pages share.
+function ExtraSets.AddWardrobeTab(wardrobe, name, label, page, onSelected)
+    local tab = CreateFrame("Button", name, wardrobe, "PanelTopTabButtonTemplate")
+    tab:SetText(label)
+    tab.minWidth = 75
+    PanelTemplates_TabResize(tab, 0)
+    PanelTemplates_DeselectTab(tab)
+    local previous = addonTabs[#addonTabs] and addonTabs[#addonTabs].tab
+        or nativeTab(wardrobe, wardrobe.numTabs)
+    tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 3, 0)
+    tab:SetScript("OnClick", function() selectAddonTab(wardrobe, tab) end)
+
+    addonTabs[#addonTabs + 1] = { tab = tab, page = page, onSelected = onSelected }
+    if #addonTabs == 1 then
+        hooksecurefunc(wardrobe, "SetTab", showNativeChrome)
+    end
+    resizeTabStrip(wardrobe)
+    page:Hide()
+    return tab
 end
 
 function ExtraSets:Attach(wardrobe)
     if attachedWardrobe or not wardrobe or not wardrobe.numTabs then return end
 
     attachedWardrobe = wardrobe
-    extraTabID = wardrobe.numTabs + 1
     extraPage = self:CreatePage(wardrobe)
-    extraPage.searchType = wardrobe.SetsCollectionFrame.searchType
-    table.insert(wardrobe.ContentFrames, extraPage)
-
-    extraTab = CreateFrame(
-        "Button",
-        wardrobe:GetName() .. "Tab" .. extraTabID,
-        wardrobe,
-        "PanelTopTabButtonTemplate"
-    )
-    extraTab:SetID(extraTabID)
-    extraTab:SetText(LuckysWardrobe.Strings.extraSets.tab)
-    extraTab.minWidth = 75
-    PanelTemplates_TabResize(extraTab, 0)
-    extraTab:SetScript("OnClick", function()
-        wardrobe:ClickTab(extraTab)
-    end)
-
-    hooksecurefunc(wardrobe, "SetTab", updateSelectedTab)
-    hooksecurefunc(wardrobe, "ClickTab", function(self)
-        PanelTemplates_ResizeTabsToFit(self, TAB_FIT_WIDTH)
-        layOutProgressBars()
-    end)
+    ExtraSets.AddWardrobeTab(wardrobe, "LuckysWardrobeExtraSetsTab",
+        LuckysWardrobe.Strings.extraSets.tab, extraPage, function()
+            layOutClassDropdown(wardrobe.ClassDropdown)
+            wardrobe.ClassDropdown:Show()
+            -- The dropdown was last refreshed for the page being left, so it
+            -- reads the name on the button again now that this page is the one
+            -- on screen.
+            wardrobe.ClassDropdown:Refresh()
+        end)
 
     -- One class for both pages: the Sets tab's dropdown is the only class
     -- control there is, so a choice made in it is a choice made here.
@@ -2605,9 +2678,7 @@ function ExtraSets:Attach(wardrobe)
         if extraPage:IsShown() then extraPage.Refresh() end
     end)
 
-    PanelTemplates_SetNumTabs(wardrobe, extraTabID)
-    PanelTemplates_ResizeTabsToFit(wardrobe, TAB_FIT_WIDTH)
-    updateSelectedTab(wardrobe, wardrobe.selectedCollectionTab)
+    layOutProgressBars()
 end
 
 function ExtraSets:Init()

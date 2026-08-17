@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual dressUp EventUtil GameTooltip GetUICameraInfo IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe ResetCursor ShowInspectCursor MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateFrame Enum FACTION_ALLIANCE FACTION_HORDE UnitFactionGroup CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual dressUp EventUtil GameTooltip GetUICameraInfo IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI LuckysWardrobe ResetCursor ShowInspectCursor MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_DeselectTab PanelTemplates_SelectTab PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON SOUNDKIT ScrollBoxConstants ScrollUtil UNCHECK_ALL UnitClass WARDROBE_CYCLE_KEY InCombatLockdown WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc GetNumClasses C_ClassColor C_CreatureInfo C_TransmogSets C_TransmogCollection C_Item C_Timer
 -- luacheck: ignore 121
 
 LuckysWardrobe = {}
@@ -1269,10 +1269,13 @@ function CreateFrame(frameType, name, parent, template)
     function frame:SetAllPoints() end
     function frame:SetSize() end
     function frame:SetWidth(width) self.width = width end
+    function frame:GetWidth() return self.width or 0 end
     function frame:SetFrameStrata() end
     function frame:SetFrameLevel(level) self.frameLevel = level end
     function frame:GetFrameLevel() return self.frameLevel end
     function frame:EnableMouse() end
+    function frame:EnableKeyboard(enable) self.keyboardEnabled = enable end
+    function frame:SetPropagateKeyboardInput(propagate) self.propagateKeys = propagate end
     function frame:SetID(id) self.id = id end
     function frame:GetID() return self.id end
     function frame:SetText(text) self.text = text end
@@ -1382,10 +1385,11 @@ function IsUnitModelReadyForUI() return true end
 function UnitClass() return "Class 5", "CLASS5", CLOTH_CLASS end
 function Model_ApplyUICamera() end
 function GetUICameraInfo() return 0, 0, 0, 0 end
-function PanelTemplates_SetNumTabs(frame, count) frame.numTabs = count end
+function InCombatLockdown() return false end
+WARDROBE_CYCLE_KEY = "TAB"
 function PanelTemplates_TabResize() end
-local resizeWidth
-function PanelTemplates_ResizeTabsToFit(_, width) resizeWidth = width end
+function PanelTemplates_SelectTab(tab) tab.selected = true end
+function PanelTemplates_DeselectTab(tab) tab.selected = false end
 
 function hooksecurefunc(owner, method, hook)
     local original = owner[method]
@@ -1585,11 +1589,19 @@ local function nativeProgressBar()
     return bar
 end
 
+-- The journal's own two tabs, which the addon may read but never resize the
+-- count of. Drawn selected or not through the same PanelTemplates calls the
+-- client uses, which the stubs above record on the tab.
+local function nativeTabStub()
+    return { selected = false, GetWidth = function() return 60 end }
+end
+
 local wardrobe
 wardrobe = {
     name = "WardrobeCollectionFrame",
     frameLevel = 20,
     numTabs = 2,
+    Tabs = { nativeTabStub(), nativeTabStub() },
     selectedCollectionTab = 1,
     ItemsCollectionFrame = visibilityFrame(true),
     SetsCollectionFrame = visibilityFrame(false),
@@ -1626,23 +1638,6 @@ end
 function wardrobe:ClickTab(tab)
     self:SetTab(tab:GetID())
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-end
-
-function wardrobe:HideAppearanceTooltip()
-    self.tooltipContentFrame = nil
-    self.tooltipCycle = nil
-    self.tooltipSourceIndex = nil
-    GameTooltip:Hide()
-end
-
--- Blizzard's own key handler, the one thing that makes Tab cycle a tooltip: it
--- walks the source index and asks the frame that owns the tooltip to draw
--- itself again.
-function wardrobe:OnKeyDown(key)
-    if not (self.tooltipCycle and key == "TAB") then return end
-
-    self.tooltipSourceIndex = self.tooltipSourceIndex + (IsShiftKeyDown() and -1 or 1)
-    self.tooltipContentFrame:RefreshAppearanceTooltip()
 end
 
 local originalSetTab = wardrobe.SetTab
@@ -1690,12 +1685,21 @@ local page = findFrame(function(frame) return frame.name == "LuckysWardrobeExtra
 local extraTab = findFrame(function(frame) return frame.template == "PanelTopTabButtonTemplate" end)
 assert(page and extraTab, "created the Extra Sets page and subtab")
 assert(page.shown == false, "kept the page hidden on the native tab")
-assert(extraTab.name == "WardrobeCollectionFrameTab3" and extraTab.id == 3, "followed native tab naming and IDs")
+assert(extraTab.name == "LuckysWardrobeExtraSetsTab", "named the subtab as the addon's own")
 assert(extraTab.text == "Extra Sets", "labelled the subtab")
-assert(wardrobe.numTabs == 3, "registered exactly one extra subtab")
-assert(wardrobe.ContentFrames[1] == page, "joined the native content lifecycle")
-assert(page.searchType == wardrobe.SetsCollectionFrame.searchType, "kept the native search-event contract")
-assert(resizeWidth ~= nil, "made room for the third tab")
+-- The wardrobe's own tab state is exactly what the addon must never write: the
+-- secure SetTab reads numTabs on every switch, and one addon-written field
+-- taints that whole execution, down to the propagate answer the key handler
+-- gives for every keypress. A tainted answer is ignored, and movement keys die
+-- whenever an appearance tooltip is up.
+assert(wardrobe.numTabs == 2, "left the native tab count alone")
+assert(#wardrobe.ContentFrames == 0, "stayed out of the native content lifecycle")
+assert(wardrobe.activeFrame == nil, "never wrote the active frame")
+do
+    local tabPoint, tabRelativeTo, tabRelativePoint = extraTab:GetPoint()
+    assert(tabPoint == "TOPLEFT" and tabRelativeTo == wardrobe.Tabs[2] and tabRelativePoint == "TOPRIGHT",
+        "hung the subtab off the end of the native strip")
+end
 assert(capturedView.template == "WardrobeSetsScrollFrameButtonTemplate", "reused the native sets row template")
 
 -- The page answers collection events on the next frame, so every test that
@@ -1751,12 +1755,15 @@ local function progressBarLayout()
 end
 
 extraTab.scripts.OnClick()
-assert(wardrobe.selectedCollectionTab == 3 and page.shown, "selected and showed Extra Sets")
+assert(page.shown, "showed Extra Sets")
+assert(wardrobe.selectedCollectionTab == 1, "left the native selection state alone")
 assert(not wardrobe.ItemsCollectionFrame.shown and not wardrobe.SetsCollectionFrame.shown, "hid native pages")
 assert(not wardrobe.SearchBox.shown and not wardrobe.FilterButton.shown, "hid native-only controls")
 assert(not wardrobe.progressBar.shown, "hid the rest of the native controls")
 assert(wardrobe.ClassDropdown.shown, "kept the native class dropdown, which this page shares")
-assert(wardrobe.activeFrame == page, "became the active Appearances page")
+assert(wardrobe.activeFrame == nil, "never wrote the active frame")
+assert(extraTab.selected and not wardrobe.Tabs[1].selected and not wardrobe.Tabs[2].selected,
+    "drew the strip with this tab selected")
 assert(playedSound == SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON, "used the native tab sound")
 
 -- Resizing the strip measured the room again. There is plenty of it here, so the
@@ -1767,12 +1774,16 @@ assert(onExtraSets.x > 0 and onExtraSets.width == FULL_BAR_WIDTH,
 assert(onExtraSets.x + onExtraSets.width < SETS_CLASS_DROPDOWN_LEFT - TAB_STRIP_RIGHT,
     "left the class dropdown clear")
 
+-- Every SetTab call is Blizzard's side of the fence, whoever's ID it names:
+-- our pages come off the screen and the chrome they hid goes back.
 wardrobe:SetTab(4)
-assert(not page.shown and not wardrobe.SearchBox.shown, "left unknown third-party tabs alone")
+assert(not page.shown and wardrobe.SearchBox.shown, "any SetTab call puts the journal back")
 
+extraTab.scripts.OnClick()
 wardrobe:SetTab(2)
 assert(not page.shown and wardrobe.SetsCollectionFrame.shown, "restored the native Sets page")
 assert(wardrobe.SearchBox.shown and wardrobe.FilterButton.shown and wardrobe.ClassDropdown.shown, "restored native controls")
+assert(not extraTab.selected, "drew the subtab deselected again")
 assert(wardrobe.SetTab ~= originalSetTab, "hooked rather than replaced SetTab")
 
 -- The Items tab hands the corner to its search box, which comes nearer the tab
@@ -1804,14 +1815,20 @@ extraTab.right = TAB_STRIP_RIGHT
 wardrobe:SetTab(1)
 
 ExtraSets:Attach(wardrobe)
-assert(wardrobe.numTabs == 3, "attach is idempotent")
+do
+    local tabCount = 0
+    for _, frame in ipairs(createdFrames) do
+        if frame.template == "PanelTopTabButtonTemplate" then tabCount = tabCount + 1 end
+    end
+    assert(tabCount == 1, "attach is idempotent")
+end
 
 -- Catalogue lifecycle: building state first, then a repaint when the
 -- catalogue lands while the page is open.
 
 local scrollBox = findFrame(function(frame) return frame.template == "WowScrollBoxList" end)
 catalogReady = false
-wardrobe:SetTab(3)
+extraTab.scripts.OnClick()
 page.scripts.OnShow(page)
 assert(#scrollBox.dataProvider == 0, "no rows while the catalogue is still building")
 
@@ -2070,23 +2087,31 @@ assert(tooltip.lines[#tooltip.lines] == LuckysWardrobe.Strings.tracking.stopHint
 huntedSource = nil
 
 -- The tooltip offers Tab to cycle through the items sharing a look, and the
--- wardrobe's key handler is what answers: it moves the index and asks the frame
--- that owns the tooltip to draw it again. Sources 2003 and 2004 share one look,
--- so this piece has something to cycle to.
-assert(wardrobe.tooltipContentFrame == page, "claimed the tooltip while a piece is hovered")
-assert(wardrobe.tooltipCycle, "told the wardrobe there are items to cycle through")
-local firstIndex = wardrobe.tooltipSourceIndex
-wardrobe:OnKeyDown("TAB")
-assert(wardrobe.tooltipSourceIndex == firstIndex + 1, "Tab moved on to the next item")
+-- page's own key handler is what answers: the wardrobe's fields are the ones
+-- this addon must never write, so the index lives on the page and the page
+-- listens for the key itself. Sources 2003 and 2004 share one look, so this
+-- piece has something to cycle to.
+assert(wardrobe.tooltipCycle == nil and wardrobe.tooltipSourceIndex == nil,
+    "wrote nothing on the wardrobe while a piece is hovered")
+assert(page.keyboardEnabled, "listened for the key while a piece is hovered")
+assert(page.tooltipCycle, "there are items to cycle through")
+local firstIndex = page.tooltipSourceIndex
+page.scripts.OnKeyDown(page, "TAB")
+assert(page.tooltipSourceIndex == firstIndex + 1, "Tab moved on to the next item")
 assert(tooltip.appearanceData.selectedIndex == firstIndex + 1, "and the tooltip was drawn again at it")
+assert(page.propagateKeys == false, "kept the Tab it handled")
 shiftDown = true
-wardrobe:OnKeyDown("TAB")
+page.scripts.OnKeyDown(page, "TAB")
 assert(tooltip.appearanceData.selectedIndex == firstIndex, "shift-Tab went back the other way")
 shiftDown = false
+page.scripts.OnKeyDown(page, "W")
+assert(page.propagateKeys == true, "handed every other key straight back")
 
 -- A look with a single item has nothing to cycle, and the offer is not made.
 collectedPiece.scripts.OnEnter(collectedPiece)
-assert(not wardrobe.tooltipCycle, "one item behind a look means nothing to cycle through")
+assert(not page.tooltipCycle, "one item behind a look means nothing to cycle through")
+page.scripts.OnKeyDown(page, "TAB")
+assert(page.propagateKeys == true, "a Tab with nothing to cycle passes through")
 
 -- Alt-click hands back a piece's Wowhead address, and shift-click still tracks.
 toggledPiece = nil
@@ -2138,8 +2163,9 @@ assert(dressUp.cursor == nil, "and put it away when the key came up")
 collectedPiece.scripts.OnLeave(collectedPiece)
 assert(collectedPiece.scripts.OnUpdate == nil, "stopped watching the cursor once the piece was left")
 assert(not tooltip.shown, "leaving a piece hides the tooltip")
-assert(wardrobe.tooltipContentFrame == nil and wardrobe.tooltipSourceIndex == nil,
-    "handed the tooltip back, so the next piece starts at its own item")
+assert(not page.keyboardEnabled, "let go of the keyboard once the piece was left")
+assert(page.tooltipSourceIndex == nil,
+    "dropped the index, so the next piece starts at its own item")
 
 catalogRecords = { records[2] }
 collectionUpdated()
@@ -2406,7 +2432,7 @@ assert(#scrollBox.dataProvider == 0, "a class that wears neither armour type see
 -- A class chosen on the Sets tab is the class this page opens on.
 wardrobe:SetTab(2)
 classDropdown:SetClassFilter(CLOTH_CLASS)
-wardrobe:SetTab(3)
+extraTab.scripts.OnClick()
 page.scripts.OnShow(page)
 assert(#scrollBox.dataProvider == 2, "opened on the class the Sets tab was left showing")
 

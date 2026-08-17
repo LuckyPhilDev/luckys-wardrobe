@@ -26,6 +26,7 @@ Colours.lua
 Classes.lua
 SetSources.lua
 PreviewSlots.lua
+WardrobeKeys.lua
 SetSearch.lua
 SetsBrowser.lua
 SetTracking.lua

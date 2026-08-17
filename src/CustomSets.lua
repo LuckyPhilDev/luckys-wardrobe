@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin C_Transmog C_TransmogCollection C_TransmogSets Constants CreateDataProvider CreateScrollBoxListLinearView EventUtil GetUICameraInfo INVSLOT_BACK INVSLOT_BODY INVSLOT_CHEST INVSLOT_FEET INVSLOT_HAND INVSLOT_HEAD INVSLOT_LEGS INVSLOT_MAINHAND INVSLOT_OFFHAND INVSLOT_SHOULDER INVSLOT_TABARD INVSLOT_WAIST INVSLOT_WRIST IsUnitModelReadyForUI Mixin Model_ApplyUICamera PanelTemplates_ResizeTabsToFit PanelTemplates_SetNumTabs PanelTemplates_TabResize QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin C_Transmog C_TransmogCollection C_TransmogSets Constants CreateDataProvider CreateScrollBoxListLinearView EventUtil GetUICameraInfo INVSLOT_BACK INVSLOT_BODY INVSLOT_CHEST INVSLOT_FEET INVSLOT_HAND INVSLOT_HEAD INVSLOT_LEGS INVSLOT_MAINHAND INVSLOT_OFFHAND INVSLOT_SHOULDER INVSLOT_TABARD INVSLOT_WAIST INVSLOT_WRIST IsUnitModelReadyForUI Mixin Model_ApplyUICamera QUESTION_MARK_ICON ScrollBoxConstants ScrollUtil WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
 
 -- Lucky's Wardrobe: Custom Sets, a fourth Appearances subtab listing the outfits
 -- you have saved at the transmogrifier. The transmogrifier shows them as a wall
@@ -9,8 +9,6 @@ LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.CustomSets = {}
 
 local CustomSets = LuckysWardrobe.CustomSets
-
-local TAB_FIT_WIDTH = 275
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -41,8 +39,6 @@ local NO_TRANSMOG = Constants.Transmog.NoTransmogID
 
 local attachedWardrobe
 local customPage
-local customTab
-local customTabID
 
 -- Pure catalogue logic. Everything below takes an injected resolver so the
 -- rules stay testable outside the client.
@@ -309,7 +305,7 @@ function CustomSets:CreatePage(wardrobe)
         end
     end
 
-    local pieceTooltip, hidePieceTooltip = LuckysWardrobe.ExtraSets.PieceTooltips(page, wardrobe)
+    local pieceTooltip, hidePieceTooltip = LuckysWardrobe.ExtraSets.PieceTooltips(page)
     local pieceClick =
         LuckysWardrobe.ExtraSets.PieceClicks(function() return selectedEntry and selectedEntry.name end)
 
@@ -561,51 +557,20 @@ function CustomSets:CreatePage(wardrobe)
     return page
 end
 
-local function updateSelectedTab(wardrobe, selectedTabID)
-    local selected = selectedTabID == customTabID
-    customPage:SetShown(selected)
-    if not selected then return end
-
-    wardrobe.ItemsCollectionFrame:Hide()
-    wardrobe.SetsCollectionFrame:Hide()
-    wardrobe.SearchBox:Hide()
-    wardrobe.FilterButton:Hide()
-    wardrobe.progressBar:Hide()
-    -- The outfits you have saved are the same ones whichever class the Sets tab
-    -- is showing, so the class dropdown has nothing to say about this page.
-    wardrobe.ClassDropdown:Hide()
-    wardrobe.activeFrame = customPage
-end
-
 function CustomSets:Attach(wardrobe)
     if attachedWardrobe or not wardrobe or not wardrobe.numTabs then return end
 
     attachedWardrobe = wardrobe
-    customTabID = wardrobe.numTabs + 1
     customPage = self:CreatePage(wardrobe)
-    customPage.searchType = wardrobe.SetsCollectionFrame.searchType
-    table.insert(wardrobe.ContentFrames, customPage)
-
-    customTab = CreateFrame(
-        "Button",
-        wardrobe:GetName() .. "Tab" .. customTabID,
-        wardrobe,
-        "PanelTopTabButtonTemplate"
-    )
-    customTab:SetID(customTabID)
-    customTab:SetText(LuckysWardrobe.Strings.customSets.tab)
-    PanelTemplates_TabResize(customTab, 0)
-    customTab:SetScript("OnClick", function()
-        wardrobe:ClickTab(customTab)
-    end)
-
-    -- Resizing the strip on a click is already hooked by the Extra Sets tab,
-    -- which sits beside this one and shares the budget.
-    hooksecurefunc(wardrobe, "SetTab", updateSelectedTab)
-
-    PanelTemplates_SetNumTabs(wardrobe, customTabID)
-    PanelTemplates_ResizeTabsToFit(wardrobe, TAB_FIT_WIDTH)
-    updateSelectedTab(wardrobe, wardrobe.selectedCollectionTab)
+    -- Attached the way the Extra Sets tab is, outside Blizzard's tab state;
+    -- the why lives with the registry in ExtraSets.
+    LuckysWardrobe.ExtraSets.AddWardrobeTab(wardrobe, "LuckysWardrobeCustomSetsTab",
+        LuckysWardrobe.Strings.customSets.tab, customPage, function()
+            -- The outfits you have saved are the same ones whichever class the
+            -- Sets tab is showing, so the class dropdown has nothing to say
+            -- about this page.
+            wardrobe.ClassDropdown:Hide()
+        end)
 end
 
 function CustomSets:Init()

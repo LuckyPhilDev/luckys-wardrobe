@@ -136,6 +136,10 @@ LuckysWardrobe.PreviewSlots = {
     end,
 }
 
+LuckysWardrobe.WardrobeKeys = {
+    Init = function() end,
+}
+
 local extraSetsInitialized = false
 LuckysWardrobe.ExtraSets = {
     Init = function()
