@@ -570,7 +570,7 @@ function CustomSets:Attach(wardrobe)
             -- Sets tab is showing, so the class dropdown has nothing to say
             -- about this page.
             wardrobe.ClassDropdown:Hide()
-        end)
+        end, 2)
 end
 
 function CustomSets:Init()

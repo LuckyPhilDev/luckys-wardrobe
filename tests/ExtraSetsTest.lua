@@ -1823,6 +1823,18 @@ do
     assert(tabCount == 1, "attach is idempotent")
 end
 
+-- Attach callbacks arrive in no promised order, so a tab's place in the strip
+-- comes from the order it asks for, not from who attached first: registered
+-- backwards, the strip still reads left to right.
+do
+    local noop = function() end
+    local lastTab = ExtraSets.AddWardrobeTab(wardrobe, "OrderLast", "Last", CreateFrame("Frame"), noop, 3)
+    local middleTab = ExtraSets.AddWardrobeTab(wardrobe, "OrderMiddle", "Middle", CreateFrame("Frame"), noop, 2)
+    assert(select(2, middleTab:GetPoint()) == extraTab, "the middle tab hangs off the first")
+    assert(select(2, lastTab:GetPoint()) == middleTab, "and the last off the middle")
+    assert(select(2, extraTab:GetPoint()) == wardrobe.Tabs[2], "with the first still on the native strip")
+end
+
 -- Catalogue lifecycle: building state first, then a repaint when the
 -- catalogue lands while the page is open.
 

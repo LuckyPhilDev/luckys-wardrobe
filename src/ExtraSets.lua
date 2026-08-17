@@ -2630,18 +2630,27 @@ end
 --- state entirely; see addonTabs for why. The Custom tab attaches through here
 --- too, so both stay outside it the same way. onSelected is the page's own
 --- chrome: what it wants done with the class dropdown the pages share.
-function ExtraSets.AddWardrobeTab(wardrobe, name, label, page, onSelected)
+---
+--- order fixes where the tab sits in the strip. The pages attach from
+--- load-order callbacks that arrive in no promised order, so the strip is
+--- re-anchored from the order asked for rather than from whoever came first.
+function ExtraSets.AddWardrobeTab(wardrobe, name, label, page, onSelected, order)
     local tab = CreateFrame("Button", name, wardrobe, "PanelTopTabButtonTemplate")
     tab:SetText(label)
     tab.minWidth = 75
     PanelTemplates_TabResize(tab, 0)
     PanelTemplates_DeselectTab(tab)
-    local previous = addonTabs[#addonTabs] and addonTabs[#addonTabs].tab
-        or nativeTab(wardrobe, wardrobe.numTabs)
-    tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 3, 0)
     tab:SetScript("OnClick", function() selectAddonTab(wardrobe, tab) end)
 
-    addonTabs[#addonTabs + 1] = { tab = tab, page = page, onSelected = onSelected }
+    addonTabs[#addonTabs + 1] = { tab = tab, page = page, onSelected = onSelected, order = order }
+    table.sort(addonTabs, function(a, b) return a.order < b.order end)
+    local previous = nativeTab(wardrobe, wardrobe.numTabs)
+    for _, entry in ipairs(addonTabs) do
+        entry.tab:ClearAllPoints()
+        entry.tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 3, 0)
+        previous = entry.tab
+    end
+
     if #addonTabs == 1 then
         hooksecurefunc(wardrobe, "SetTab", showNativeChrome)
     end
@@ -2663,7 +2672,7 @@ function ExtraSets:Attach(wardrobe)
             -- reads the name on the button again now that this page is the one
             -- on screen.
             wardrobe.ClassDropdown:Refresh()
-        end)
+        end, 1)
 
     -- One class for both pages: the Sets tab's dropdown is the only class
     -- control there is, so a choice made in it is a choice made here.
