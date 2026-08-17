@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.1] - 2026-08-17
+
+### Fixed
+
+- Hovering an appearance or a set's pieces in the Appearances journal no longer stops your movement keys working.
+
 ## [1.9.0] - 2026-08-16
 
 ### Added
