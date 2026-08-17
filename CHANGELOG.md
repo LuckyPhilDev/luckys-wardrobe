@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Hovering an appearance or a set's pieces in the Appearances journal no longer stops your movement keys working.
+- Hovering an appearance or a set's pieces in the Appearances journal no longer stops your movement keys working. (Thanks for the report Tuulani)
 
 ## [1.9.0] - 2026-08-16
 
