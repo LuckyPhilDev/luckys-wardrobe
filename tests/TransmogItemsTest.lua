@@ -169,6 +169,7 @@ C_TransmogCollection = {
 }
 
 dofile("src/Strings.lua")
+dofile("../Luckys_Utils/LuckyUtils.lua")  -- Utils.Debounced delegates to it
 dofile("src/Utils.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/domain/Classes.lua")

@@ -79,16 +79,7 @@ Utils.ITEM_LOAD_PASSES = 3
 --- every set again costs far more than a frame. The delay is not felt: nothing
 --- on screen changes until the pass runs either way.
 function Utils.Debounced(seconds, action)
-    local queued = false
-    return function()
-        if queued then return end
-
-        queued = true
-        C_Timer.After(seconds, function()
-            queued = false
-            action()
-        end)
-    end
+    return LuckyUtils.Debounced(seconds, action)
 end
 
 -- Every expansion, named as the game names it, for the Expansion submenu both

@@ -29,6 +29,7 @@ C_ClassColor = {
 }
 
 dofile("src/Strings.lua")
+dofile("../Luckys_Utils/LuckyUtils.lua")  -- Utils.Debounced delegates to it
 dofile("src/Utils.lua")
 dofile("src/domain/SetSources.lua")
 dofile("src/domain/SetSearch.lua")
