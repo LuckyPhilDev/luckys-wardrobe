@@ -641,7 +641,7 @@ assert(#rows == 2, "the colourways of one set became one row, and the other set 
 local group = rows[1]
 assert(group.isGroup and group.name == "Charm Vestments", "the row is named for the set, not a colourway")
 assert(#group.variants == 2, "and holds every colourway of it")
-assert(group.label == "2 colours", "saying how many there are without opening it")
+assert(group.label == "2 Colourways", "saying how many there are without opening it")
 assert(group.pieces == collapsed[1].pieces, "the row carries the first colourway's pieces")
 assert(rows[2].setID == 605 and not rows[2].isGroup,
     "a set with a single look stays the plain row it was")
@@ -764,7 +764,7 @@ colourRows = rowsOf({
 assert(#colourRows == 1 and colourRows[1].isGroup and colourRows[1].isColourFamily,
     "three names differing in one word became one row")
 assert(colourRows[1].name == "Sweatsuit", "named for the words the colourways share")
-assert(colourRows[1].label == "3 colours", "saying how many there are without opening it")
+assert(colourRows[1].label == "3 Colourways", "saying how many there are without opening it")
 assert(ExtraSets.VariantLabelFor(colourRows[1].variants[1]) == "Midnight"
     and ExtraSets.VariantLabelFor(colourRows[1].variants[3]) == "Sepia",
     "and each colourway offered under the word that tells it from the rest")
@@ -898,7 +898,7 @@ local modelRows = rowsOf({
 })
 assert(#modelRows == 1 and modelRows[1].isGroup, "three sets built on one model became one row")
 assert(modelRows[1].name == "Nitroclad Kit", "named for the first of them, having no name in common")
-assert(modelRows[1].label == "3 colours", "and counted as the colours of one garment")
+assert(modelRows[1].label == "3 Colourways", "and counted as the colours of one garment")
 assert(modelRows[1].total == 9, "the row counts every look across them")
 assert(ExtraSets.VariantLabelFor(modelRows[1].variants[2]) == "Smoketrail Racer Suit",
     "the picker names each in full, there being no qualifier to tell them apart by")
@@ -2485,7 +2485,7 @@ assert(groupButton.luckysVariantCount.Text.text == "x2",
 -- Hovering the row's icon names the colourways the corner badge counted, each
 -- with its own progress, so the badge explains itself without opening the set.
 groupButton.IconFrame.scripts.OnEnter(groupButton.IconFrame)
-assert(tooltip.lines[2] == "2 colours", "the tooltip says what the badge was counting")
+assert(tooltip.lines[2] == "2 Colourways", "the tooltip says what the badge was counting")
 assert(tooltip.lines[4] == "Heroic Recolor (3/3)" and tooltip.lines[5] == "Normal Recolor (1/3)",
     "then names each colourway the way the pane's picker does")
 
@@ -2493,7 +2493,7 @@ assert(tooltip.lines[4] == "Heroic Recolor (3/3)" and tooltip.lines[5] == "Norma
 -- x2 can ask the x2. No new local for it: this file has spent all 200.
 groupButton.luckysVariantCount.scripts.OnEnter(groupButton.luckysVariantCount)
 assert(tooltip.owner == groupButton.luckysVariantCount, "the badge's tooltip hangs off the badge")
-assert(tooltip.lines[1] == "2 colours", "opening on what the badge counts")
+assert(tooltip.lines[1] == "2 Colourways", "opening on what the badge counts")
 assert(tooltip.lines[2] == "Heroic Recolor (3/3)" and tooltip.lines[3] == "Normal Recolor (1/3)",
     "then naming the colourways the way the icon's tooltip does")
 

@@ -392,7 +392,7 @@ assert(rows[2].ProgressBar.shown == nil and rows[2].Name.colour == nil,
 -- how far through each is, so the badge explains itself where the player meets it.
 GameTooltip.owner = rows[1].IconFrame
 rows[1].IconFrame.onEnter(rows[1].IconFrame)
-assert(tooltipLines[1].text == "2 colours", "the tooltip says what the badge was counting")
+assert(tooltipLines[1].text == "2 Colourways", "the tooltip says what the badge was counting")
 assert(tooltipLines[2].text == "Normal (2/3)", "then names each colourway with its own progress")
 assert(math.abs(tooltipLines[2].green - IN_PROGRESS_FONT_COLOR.g) < 0.001,
     "a started colourway reading green, the way the list names do")
@@ -410,7 +410,7 @@ assert(#tooltipLines == linesBefore, "a set that is only itself adds nothing")
 local badge = rows[1].luckysVariantCount
 badge.scripts.OnEnter(badge)
 assert(GameTooltip.owner == badge, "the badge's tooltip hangs off the badge")
-assert(tooltipLines[1].text == "2 colours", "opening on what the badge counts")
+assert(tooltipLines[1].text == "2 Colourways", "opening on what the badge counts")
 assert(tooltipLines[2].text == "Normal (2/3)" and tooltipLines[3].text == "Heroic (0/3)",
     "then naming the colourways the way the icon's tooltip does")
 

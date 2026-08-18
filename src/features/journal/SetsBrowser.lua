@@ -213,7 +213,7 @@ function SetsBrowser:HookColourwayTooltip(button)
     button.IconFrame:HookScript("OnEnter", function(iconFrame)
         local counts = button.setID and SetsBrowser:VariantCounts(button.setID)
         if not counts or not GameTooltip:IsShown() or GameTooltip:GetOwner() ~= iconFrame then return end
-        GameTooltip:AddLine(LuckysWardrobe.Strings.setRow.colours:format(#counts.colourways), 1, 1, 1)
+        GameTooltip:AddLine(LuckysWardrobe.Strings.setRow.colourways:format(#counts.colourways), 1, 1, 1)
         addColourwayLines(counts)
         GameTooltip:Show()
     end)
@@ -221,7 +221,7 @@ function SetsBrowser:HookColourwayTooltip(button)
         local counts = button.setID and SetsBrowser:VariantCounts(button.setID)
         if not counts then return end
         GameTooltip:SetOwner(badge, "ANCHOR_RIGHT")
-        GameTooltip:SetText(LuckysWardrobe.Strings.setRow.colours:format(#counts.colourways), 1, 1, 1)
+        GameTooltip:SetText(LuckysWardrobe.Strings.setRow.colourways:format(#counts.colourways), 1, 1, 1)
         addColourwayLines(counts)
         GameTooltip:Show()
     end

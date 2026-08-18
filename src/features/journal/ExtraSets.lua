@@ -791,7 +791,7 @@ function ExtraSets.BuildGroup(variants, name)
         isGroup = true,
         variants = variants,
         name = name,
-        label = LuckysWardrobe.Strings.setRow.colours:format(#variants),
+        label = LuckysWardrobe.Strings.setRow.colourways:format(#variants),
         expansionID = first.expansionID,
         armorType = first.armorType,
         classMask = first.classMask,

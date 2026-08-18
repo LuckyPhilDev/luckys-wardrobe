@@ -301,7 +301,7 @@ LuckysWardrobe.Strings = {
         -- The badge in the corner. Short because it shares the row with the
         -- set's name, which gives up the width it takes.
         variantCount = "x%d",
-        colours = "%d colours",
+        colourways = "%d Colourways",
         variantOption = "%s (%d/%d)",
     },
     -- Shared by both filter menus, the Sets tab's and the Extra Sets tab's, so
