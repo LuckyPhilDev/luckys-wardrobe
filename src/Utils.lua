@@ -132,12 +132,31 @@ local VARIANT_BADGE_INSET = 6
 local VARIANT_BADGE_COLOUR = { r = 1, g = 0.95, b = 0.2 }
 
 -- Made once per row and kept on it, because the lists redraw their rows on
--- every scroll.
+-- every scroll. A frame holding the string rather than a bare string so the
+-- badge itself can answer a hover; it takes mouse motion only, so a click on
+-- the corner still lands on the row beneath.
+--
+-- What the hover says is the row owner's to decide: each list stores its own
+-- teller on the button as luckysBadgeTooltip, read at hover time because the
+-- pooled rows change sets under the badge as the list scrolls.
 local function badgeFor(button)
     if not button.luckysVariantCount then
-        local badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        local badge = CreateFrame("Frame", nil, button)
         badge:SetPoint("TOPRIGHT", -VARIANT_BADGE_INSET, -VARIANT_BADGE_INSET)
-        badge:SetTextColor(VARIANT_BADGE_COLOUR.r, VARIANT_BADGE_COLOUR.g, VARIANT_BADGE_COLOUR.b)
+        badge:SetMouseClickEnabled(false)
+        badge:SetMouseMotionEnabled(true)
+        -- The row lights its own highlight while the cursor is on it, and a
+        -- child taking the motion for itself would put that out over the corner.
+        badge:SetPropagateMouseMotion(true)
+        badge:SetScript("OnEnter", function(self)
+            local tell = button.luckysBadgeTooltip
+            if tell then tell(self) end
+        end)
+        badge:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        local text = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetPoint("TOPRIGHT")
+        text:SetTextColor(VARIANT_BADGE_COLOUR.r, VARIANT_BADGE_COLOUR.g, VARIANT_BADGE_COLOUR.b)
+        badge.Text = text
         button.luckysVariantCount = badge
     end
     return button.luckysVariantCount
@@ -187,7 +206,12 @@ end
 function Utils.MarkVariantCount(button, colourways)
     local several = colourways and colourways > 1
     button.Name:SetWidth(several and ROW_NAME_WIDTH_WITH_BADGE or ROW_NAME_WIDTH)
-    badgeFor(button):SetText(several
+    local badge = badgeFor(button)
+    badge.Text:SetText(several
         and LuckysWardrobe.Strings.setRow.variantCount:format(colourways) or "")
+    -- Sized to the string so the hover zone is the badge, not a dead corner of
+    -- the row, and hidden with it so an unbadged row offers no hover at all.
+    badge:SetShown(several or false)
+    if several then badge:SetSize(badge.Text:GetStringWidth(), badge.Text:GetStringHeight()) end
     return several
 end

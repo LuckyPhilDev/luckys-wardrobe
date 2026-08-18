@@ -192,27 +192,39 @@ function SetsBrowser:MarkVariants(scrollBox)
     end)
 end
 
+local function addColourwayLines(counts)
+    for _, colourway in ipairs(counts.colourways) do
+        LuckysWardrobe.Utils.AddColourwayLine(GameTooltip,
+            colourway.name, colourway.collected, colourway.total)
+    end
+end
+
 -- The icon already carries Blizzard's tooltip, the set's name. A row standing
 -- for several colourways appends what they are and how each is coming along,
--- which is what the badge in the corner was counting.
+-- which is what the badge in the corner was counting. The badge answers the
+-- same hover itself, minus the name sitting beside it.
 --
 -- Hooked once per row and left in place: rows are recycled across sets as the
--- list scrolls, so the tooltip asks about the set the row holds at the time,
--- and says nothing extra when that set is only itself.
+-- list scrolls, so both hovers ask about the set the row holds at the time,
+-- and say nothing when that set is only itself.
 function SetsBrowser:HookColourwayTooltip(button)
     if button.luckysColourwayTooltip then return end
     button.luckysColourwayTooltip = true
     button.IconFrame:HookScript("OnEnter", function(iconFrame)
-        local setID = iconFrame:GetParent().setID
-        local counts = setID and SetsBrowser:VariantCounts(setID)
+        local counts = button.setID and SetsBrowser:VariantCounts(button.setID)
         if not counts or not GameTooltip:IsShown() or GameTooltip:GetOwner() ~= iconFrame then return end
         GameTooltip:AddLine(LuckysWardrobe.Strings.setRow.colours:format(#counts.colourways), 1, 1, 1)
-        for _, colourway in ipairs(counts.colourways) do
-            LuckysWardrobe.Utils.AddColourwayLine(GameTooltip,
-                colourway.name, colourway.collected, colourway.total)
-        end
+        addColourwayLines(counts)
         GameTooltip:Show()
     end)
+    button.luckysBadgeTooltip = function(badge)
+        local counts = button.setID and SetsBrowser:VariantCounts(button.setID)
+        if not counts then return end
+        GameTooltip:SetOwner(badge, "ANCHOR_RIGHT")
+        GameTooltip:SetText(LuckysWardrobe.Strings.setRow.colours:format(#counts.colourways), 1, 1, 1)
+        addColourwayLines(counts)
+        GameTooltip:Show()
+    end
 end
 
 function SetsBrowser:FilterAndSort(sets)

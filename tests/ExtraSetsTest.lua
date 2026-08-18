@@ -1229,6 +1229,8 @@ local function newFontString()
     function fontString:Hide() self.shown = false end
     function fontString:SetMaxLines(lines) self.maxLines = lines end
     function fontString:IsTruncated() return self.truncated end
+    function fontString:GetStringWidth() return 20 end
+    function fontString:GetStringHeight() return 10 end
     createdFontStrings[#createdFontStrings + 1] = fontString
     return fontString
 end
@@ -1275,6 +1277,9 @@ function CreateFrame(frameType, name, parent, template)
     function frame:SetFrameLevel(level) self.frameLevel = level end
     function frame:GetFrameLevel() return self.frameLevel end
     function frame:EnableMouse() end
+    function frame:SetMouseClickEnabled() end
+    function frame:SetMouseMotionEnabled() end
+    function frame:SetPropagateMouseMotion() end
     function frame:EnableKeyboard(enable) self.keyboardEnabled = enable end
     function frame:SetPropagateKeyboardInput(propagate) self.propagateKeys = propagate end
     function frame:SetID(id) self.id = id end
@@ -2002,13 +2007,15 @@ local familyButton = newRowButton()
 capturedView.initializer(familyButton, familyRows[1])
 assert(familyButton.Label.text == "3/9 collected",
     "the line under the name counts every look across the colourways, not the first set's three")
-assert(familyButton.luckysVariantCount.text == "x3", "and the corner says how many sets stand behind it")
+assert(familyButton.luckysVariantCount.Text.text == "x3", "and the corner says how many sets stand behind it")
 assert(familyButton.Name.width == 168, "the name gives up the width the badge needs")
 
 -- The same row template is reused as the list scrolls, so a plain set drawn
 -- into a button that just held a family must not keep its badge.
 capturedView.initializer(familyButton, entry)
-assert(familyButton.luckysVariantCount.text == "", "a set with one colourway shows no badge")
+assert(familyButton.luckysVariantCount.Text.text == "", "a set with one colourway shows no badge")
+assert(familyButton.luckysVariantCount.shown == false and familyButton.luckysBadgeTooltip == nil,
+    "and its badge neither offers a hover nor has anything to say")
 assert(familyButton.Name.width == 190, "and takes the full width of the row back")
 assert(familyButton.Label.text:find("collected"), "and counts itself the way it always did")
 end
@@ -2472,7 +2479,7 @@ capturedView.initializer(groupButton, scrollBox.dataProvider[1])
 assert(groupButton.Name.text == "Charm Vestments", "the row is named for the set, not a colourway")
 assert(groupButton.Label.text == "4/6 collected",
     "and counts every look across its colourways rather than the first one's")
-assert(groupButton.luckysVariantCount.text == "x2",
+assert(groupButton.luckysVariantCount.Text.text == "x2",
     "with how many colourways it holds in the corner, where it costs the counts no room")
 
 -- Hovering the row's icon names the colourways the corner badge counted, each
@@ -2481,6 +2488,14 @@ groupButton.IconFrame.scripts.OnEnter(groupButton.IconFrame)
 assert(tooltip.lines[2] == "2 colours", "the tooltip says what the badge was counting")
 assert(tooltip.lines[4] == "Heroic Recolor (3/3)" and tooltip.lines[5] == "Normal Recolor (1/3)",
     "then names each colourway the way the pane's picker does")
+
+-- The badge answers the same hover itself, so the player who wonders at the
+-- x2 can ask the x2. No new local for it: this file has spent all 200.
+groupButton.luckysVariantCount.scripts.OnEnter(groupButton.luckysVariantCount)
+assert(tooltip.owner == groupButton.luckysVariantCount, "the badge's tooltip hangs off the badge")
+assert(tooltip.lines[1] == "2 colours", "opening on what the badge counts")
+assert(tooltip.lines[2] == "Heroic Recolor (3/3)" and tooltip.lines[3] == "Normal Recolor (1/3)",
+    "then naming the colourways the way the icon's tooltip does")
 
 local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
 assert(variantDropdown, "built a colourway picker for the details pane")

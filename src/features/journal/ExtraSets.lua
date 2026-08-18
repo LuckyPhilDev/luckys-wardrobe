@@ -2024,6 +2024,16 @@ function ExtraSets:CreatePage(wardrobe)
         refreshVisibleSelection()
     end
 
+    -- The colourways behind a row, one tooltip line each, named the way the
+    -- pane's picker names them, with how much of each is collected.
+    local function addColourwayLines(entry)
+        for _, variant in ipairs(entry.variants or {}) do
+            Utils.AddColourwayLine(GameTooltip,
+                ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
+                variant.collected, variant.total)
+        end
+    end
+
     local view = CreateScrollBoxListLinearView()
     view:SetElementInitializer("WardrobeSetsScrollFrameButtonTemplate", function(button, entry)
         local complete = ExtraSets.IsComplete(entry)
@@ -2035,6 +2045,16 @@ function ExtraSets:CreatePage(wardrobe)
         -- is offering to finish, where one colourway's own progress says nothing
         -- about the rest of what is folded behind it.
         local several = Utils.MarkVariantCount(button, entry.variants and #entry.variants)
+
+        -- The badge answers a hover with what it counted, minus the name that
+        -- sits beside it. Cleared when the pooled row goes back to a plain set,
+        -- whose badge is hidden and must have nothing to say.
+        button.luckysBadgeTooltip = several and function(badge)
+            GameTooltip:SetOwner(badge, "ANCHOR_RIGHT")
+            GameTooltip:SetText(entry.label, 1, 1, 1)
+            addColourwayLines(entry)
+            GameTooltip:Show()
+        end or nil
 
         -- Counts beat a loading notice as soon as anything resolves, so a set
         -- with one slow piece still says something useful.
@@ -2079,13 +2099,7 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
             GameTooltip:AddLine(SetRow.counts:format(entry.collected, entry.total), 1, 1, 1)
-            -- The colourways the label counted, each named the way the pane's
-            -- picker names them, with how much of it is collected.
-            for _, variant in ipairs(entry.variants or {}) do
-                Utils.AddColourwayLine(GameTooltip,
-                    ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
-                    variant.collected, variant.total)
-            end
+            addColourwayLines(entry)
             for _, name in ipairs(ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)) do
                 GameTooltip:AddLine(S.ensembleSource:format(name), 0.6, 0.8, 1)
             end

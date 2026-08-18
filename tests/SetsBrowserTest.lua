@@ -88,11 +88,38 @@ local tooltipLines = {}
 GameTooltip = {
     IsShown = function() return true end,
     GetOwner = function(self) return self.owner end,
+    SetOwner = function(self, owner)
+        self.owner = owner
+        for index = #tooltipLines, 1, -1 do tooltipLines[index] = nil end
+    end,
+    SetText = function(_, text, red, green, blue)
+        tooltipLines[#tooltipLines + 1] = { text = text, red = red, green = green, blue = blue }
+    end,
     AddLine = function(_, text, red, green, blue)
         tooltipLines[#tooltipLines + 1] = { text = text, red = red, green = green, blue = blue }
     end,
     Show = function() end,
 }
+function CreateFrame()
+    local frame = { scripts = {} }
+    function frame:SetPoint() end
+    function frame:SetMouseClickEnabled() end
+    function frame:SetMouseMotionEnabled() end
+    function frame:SetPropagateMouseMotion() end
+    function frame:SetScript(script, handler) self.scripts[script] = handler end
+    function frame:SetShown(shown) self.shown = shown end
+    function frame:SetSize() end
+    frame.CreateFontString = function()
+        return {
+            SetPoint = function() end,
+            SetTextColor = function() end,
+            SetText = function(self, text) self.text = text end,
+            GetStringWidth = function() return 20 end,
+            GetStringHeight = function() return 10 end,
+        }
+    end
+    return frame
+end
 
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
@@ -341,13 +368,6 @@ local function newRowButton(setID)
             SetShown = function(self, shown) self.shown = shown end,
             SetWidth = function(self, width) self.width = width end,
         },
-        CreateFontString = function()
-            return {
-                SetPoint = function() end,
-                SetTextColor = function() end,
-                SetText = function(self, text) self.text = text end,
-            }
-        end,
     }
     rowButton.IconFrame.GetParent = function() return rowButton end
     return rowButton
@@ -357,11 +377,13 @@ local rows = { newRowButton(70), newRowButton(1) }
 browser:MarkVariants({ ForEachFrame = function(_, action)
     for _, row in ipairs(rows) do action(row) end
 end })
-assert(rows[1].luckysVariantCount.text == "x2", "the row says how many colourways stand behind it")
+assert(rows[1].luckysVariantCount.Text.text == "x2", "the row says how many colourways stand behind it")
+assert(rows[1].luckysVariantCount.shown == true, "on a badge offered to the cursor")
 assert(rows[1].Label.text == "2/5 collected", "and counts every look across them under the name")
 assert(rows[1].Name.width == 168, "the name gives up the width the badge needs")
-assert(rows[2].luckysVariantCount.text == "" and rows[2].Name.width == 190,
+assert(rows[2].luckysVariantCount.Text.text == "" and rows[2].Name.width == 190,
     "a set with one colourway is left as Blizzard drew it")
+assert(rows[2].luckysVariantCount.shown == false, "its hidden badge offering no hover")
 assert(rows[2].Label.text == nil, "keeping the difficulty label the tab put there")
 assert(rows[2].ProgressBar.shown == nil and rows[2].Name.colour == nil,
     "and its progress untouched, being about the only colourway there is")
@@ -382,6 +404,20 @@ local linesBefore = #tooltipLines
 GameTooltip.owner = rows[2].IconFrame
 rows[2].IconFrame.onEnter(rows[2].IconFrame)
 assert(#tooltipLines == linesBefore, "a set that is only itself adds nothing")
+
+-- The badge answers the same hover itself, so the player who wonders at the
+-- x2 can ask the x2.
+local badge = rows[1].luckysVariantCount
+badge.scripts.OnEnter(badge)
+assert(GameTooltip.owner == badge, "the badge's tooltip hangs off the badge")
+assert(tooltipLines[1].text == "2 colours", "opening on what the badge counts")
+assert(tooltipLines[2].text == "Normal (2/3)" and tooltipLines[3].text == "Heroic (0/3)",
+    "then naming the colourways the way the icon's tooltip does")
+
+local plainBadge = rows[2].luckysVariantCount
+linesBefore = #tooltipLines
+plainBadge.scripts.OnEnter(plainBadge)
+assert(#tooltipLines == linesBefore, "a plain set's badge would say nothing even if reached")
 
 -- The bar is the same statement as the counts beside it. Blizzard fills it from
 -- the best single difficulty, which on this set would read as nearly half.
