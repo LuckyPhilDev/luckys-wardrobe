@@ -1,4 +1,4 @@
--- luacheck: globals CreateFrame IsShiftKeyDown LuckyLog LuckyMinimap LuckyUtils LuckysWardrobe LuckysWardrobeDB SlashCmdList SLASH_LUCKYSWARDROBE1 SLASH_LUCKYSWARDROBE2
+-- luacheck: globals CreateFrame IsShiftKeyDown LuckyLog LuckyMedia LuckyMinimap LuckyUtils LuckysWardrobe LuckysWardrobeDB SlashCmdList SLASH_LUCKYSWARDROBE1 SLASH_LUCKYSWARDROBE2
 
 LuckysWardrobe = {}
 LuckysWardrobeDB = nil
@@ -56,6 +56,12 @@ LuckyMinimap = {
         return {}
     end,
 }
+
+-- The library resolves a media path against whichever copy of itself won, which
+-- off the client is just the name back.
+function LuckyMedia(fileName)
+    return fileName
+end
 
 local conflictsChecked = false
 LuckysWardrobe.AddonConflicts = {
