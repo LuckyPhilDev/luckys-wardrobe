@@ -166,6 +166,21 @@ function Utils.ColourSetName(button, complete, collected)
     button.Name:SetTextColor(colour[1], colour[2], colour[3])
 end
 
+--- Appends one colourway to a row's tooltip, named beside its own progress and
+--- coloured the way the lists colour a set's name, so how far through reads the
+--- same everywhere. Both set lists call this, each naming its colourways the
+--- way its own picker does.
+function Utils.AddColourwayLine(tooltip, name, collected, total)
+    local colour = NAME_COLOURS.started
+    if total > 0 and collected >= total then
+        colour = NAME_COLOURS.complete
+    elseif collected == 0 then
+        colour = NAME_COLOURS.none
+    end
+    tooltip:AddLine(LuckysWardrobe.Strings.setRow.variantOption:format(name, collected, total),
+        colour[1], colour[2], colour[3])
+end
+
 --- Marks a set row with how many colourways stand behind it. Pass nothing, or
 --- one, for a set that is only itself: the badge goes quiet and the name takes
 --- the row's full width back.

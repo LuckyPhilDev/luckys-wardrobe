@@ -791,7 +791,7 @@ function ExtraSets.BuildGroup(variants, name)
         isGroup = true,
         variants = variants,
         name = name,
-        label = LuckysWardrobe.Strings.extraSets.colours:format(#variants),
+        label = LuckysWardrobe.Strings.setRow.colours:format(#variants),
         expansionID = first.expansionID,
         armorType = first.armorType,
         classMask = first.classMask,
@@ -1897,12 +1897,12 @@ function ExtraSets:CreatePage(wardrobe)
         if not row.isGroup then return end
 
         local chosen = ExtraSets.VariantOf(row, selectedVariants[row.key])
-        variantDropdown:SetText(S.variantOption:format(
+        variantDropdown:SetText(SetRow.variantOption:format(
             ExtraSets.VariantLabelFor(chosen, C_Item.GetItemInfo), chosen.collected, chosen.total))
         variantDropdown:SetupMenu(function(_, menu)
             for _, variant in ipairs(row.variants) do
                 menu:CreateRadio(
-                    S.variantOption:format(
+                    SetRow.variantOption:format(
                         ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
                         variant.collected, variant.total),
                     function() return ExtraSets.VariantOf(row, selectedVariants[row.key]) == variant end,
@@ -2079,6 +2079,13 @@ function ExtraSets:CreatePage(wardrobe)
             GameTooltip:SetText(entry.name)
             if entry.label ~= "" then GameTooltip:AddLine(entry.label, 1, 1, 1) end
             GameTooltip:AddLine(SetRow.counts:format(entry.collected, entry.total), 1, 1, 1)
+            -- The colourways the label counted, each named the way the pane's
+            -- picker names them, with how much of it is collected.
+            for _, variant in ipairs(entry.variants or {}) do
+                Utils.AddColourwayLine(GameTooltip,
+                    ExtraSets.VariantLabelFor(variant, C_Item.GetItemInfo),
+                    variant.collected, variant.total)
+            end
             for _, name in ipairs(ExtraSets.EnsembleNames(entry, C_Item.GetItemInfo)) do
                 GameTooltip:AddLine(S.ensembleSource:format(name), 0.6, 0.8, 1)
             end

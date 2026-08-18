@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil GRAY_FONT_COLOR IN_PROGRESS_FONT_COLOR NORMAL_FONT_COLOR EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
+-- luacheck: globals C_TransmogSets CreateDataProvider DEFAULT EventUtil GameTooltip GRAY_FONT_COLOR IN_PROGRESS_FONT_COLOR NORMAL_FONT_COLOR EXPANSION_NAME0 EXPANSION_NAME1 EXPANSION_NAME2 EXPANSION_NAME3 EXPANSION_NAME4 EXPANSION_NAME5 EXPANSION_NAME6 EXPANSION_NAME7 EXPANSION_NAME8 EXPANSION_NAME9 EXPANSION_NAME10 EXPANSION_NAME11 LuckysWardrobe SOURCES ScrollBoxConstants WardrobeCollectionFrame hooksecurefunc
 -- luacheck: ignore 121
 
 local devLogs = {}
@@ -60,12 +60,38 @@ C_TransmogSets = {
     end,
     GetVariantSets = function(setID)
         return ({
-            [4] = { { setID = 41, favorite = true } },
-            -- The client lists a set among its own variants, which is why the
-            -- base is counted alongside them rather than instead of them.
-            [70] = { { setID = 70 }, { setID = 71 } },
+            -- The client's answer leaves the base set out, the way the live
+            -- API does, so the base has to be fetched and counted beside these.
+            [4] = {
+                { setID = 41, favorite = true, name = "Kraken Heroic", uiOrder = 2 },
+                { setID = 42, name = "Kraken Mythic", uiOrder = 3,
+                    hiddenUntilCollected = true, collected = true },
+            },
+            -- A client that lists the base among its own variants anyway must
+            -- still count it once.
+            [70] = {
+                { setID = 70, description = "Normal", uiOrder = 1 },
+                { setID = 71, description = "Heroic", uiOrder = 2 },
+            },
+            [80] = { { setID = 81, hiddenUntilCollected = true } },
         })[setID] or {}
     end,
+    GetSetInfo = function(setID)
+        return ({
+            [4] = { setID = 4, name = "Vestments of the Kraken", uiOrder = 1 },
+            [70] = { setID = 70, description = "Normal", uiOrder = 1 },
+            [80] = { setID = 80, name = "Shrouded Vestments" },
+        })[setID]
+    end,
+}
+local tooltipLines = {}
+GameTooltip = {
+    IsShown = function() return true end,
+    GetOwner = function(self) return self.owner end,
+    AddLine = function(_, text, red, green, blue)
+        tooltipLines[#tooltipLines + 1] = { text = text, red = red, green = green, blue = blue }
+    end,
+    Show = function() end,
 }
 
 dofile("src/Strings.lua")
@@ -278,21 +304,39 @@ assert(setsFrame.selectedSetID == 5, "the selection stayed on a set the filters 
 -- which says nothing about how much of the set is left to collect.
 
 local counts = browser:VariantCounts(70)
-assert(counts.colourways == 2, "counted the colourways the client lists")
+assert(#counts.colourways == 2, "counted the base once beside the variant, not twice")
 assert(counts.total == 5, "counted five distinct looks, not the six the two colourways list between them")
 assert(counts.collected == 2, "and counted what is collected across all of them")
+assert(counts.colourways[1].name == "Normal" and counts.colourways[1].collected == 2
+    and counts.colourways[1].total == 3,
+    "each colourway keeps its own counts, named the way the picker names it")
+assert(counts.colourways[2].name == "Heroic" and counts.colourways[2].collected == 0,
+    "in the order the picker lists them")
 assert(browser:VariantCounts(1) == nil, "a set with no colourways has nothing to count")
-assert(browser:VariantCounts(4) == nil, "nor has one the client lists a single variant for")
+
+-- The client leaves the base set out of its variant list, so one listed variant
+-- is already two colourways side by side; the picker leads with a favourite and
+-- shows a kept-back colourway once it is collected, and this follows it on both.
+local kraken = browser:VariantCounts(4)
+assert(#kraken.colourways == 3, "the base joined the variants the client listed without it")
+assert(kraken.colourways[1].name == "Kraken Heroic", "a favourited colourway leads, as it does in the picker")
+assert(kraken.colourways[2].name == "Vestments of the Kraken", "the base follows in release order")
+assert(kraken.colourways[3].name == "Kraken Mythic", "and a kept-back colourway already collected still shows")
+assert(browser:VariantCounts(80) == nil,
+    "a colourway kept back until collected leaves its set reading as only itself")
 
 local function newRowButton(setID)
-    return {
+    local rowButton = {
         setID = setID,
         Name = {
             SetWidth = function(self, width) self.width = width end,
             SetTextColor = function(self, r, g, b) self.colour = { r, g, b } end,
         },
         Label = { SetText = function(self, text) self.text = text end },
-        IconFrame = { SetIconCoverShown = function(self, shown) self.cover = shown end },
+        IconFrame = {
+            SetIconCoverShown = function(self, shown) self.cover = shown end,
+            HookScript = function(self, _, handler) self.onEnter = handler end,
+        },
         ProgressBar = {
             SetShown = function(self, shown) self.shown = shown end,
             SetWidth = function(self, width) self.width = width end,
@@ -305,6 +349,8 @@ local function newRowButton(setID)
             }
         end,
     }
+    rowButton.IconFrame.GetParent = function() return rowButton end
+    return rowButton
 end
 
 local rows = { newRowButton(70), newRowButton(1) }
@@ -319,6 +365,23 @@ assert(rows[2].luckysVariantCount.text == "" and rows[2].Name.width == 190,
 assert(rows[2].Label.text == nil, "keeping the difficulty label the tab put there")
 assert(rows[2].ProgressBar.shown == nil and rows[2].Name.colour == nil,
     "and its progress untouched, being about the only colourway there is")
+
+-- Hovering a badged row's icon names the colourways behind the counts, painted
+-- how far through each is, so the badge explains itself where the player meets it.
+GameTooltip.owner = rows[1].IconFrame
+rows[1].IconFrame.onEnter(rows[1].IconFrame)
+assert(tooltipLines[1].text == "2 colours", "the tooltip says what the badge was counting")
+assert(tooltipLines[2].text == "Normal (2/3)", "then names each colourway with its own progress")
+assert(math.abs(tooltipLines[2].green - IN_PROGRESS_FONT_COLOR.g) < 0.001,
+    "a started colourway reading green, the way the list names do")
+assert(tooltipLines[3].text == "Heroic (0/3)", "in the picker's order")
+assert(math.abs(tooltipLines[3].red - GRAY_FONT_COLOR.r) < 0.001, "and an untouched one grey")
+
+-- The same hover on a plain row leaves Blizzard's tooltip alone.
+local linesBefore = #tooltipLines
+GameTooltip.owner = rows[2].IconFrame
+rows[2].IconFrame.onEnter(rows[2].IconFrame)
+assert(#tooltipLines == linesBefore, "a set that is only itself adds nothing")
 
 -- The bar is the same statement as the counts beside it. Blizzard fills it from
 -- the best single difficulty, which on this set would read as nearly half.
@@ -355,5 +418,10 @@ assert(finished.Label.text == "5/5 collected", "every look across every colourwa
 assert(finished.ProgressBar.shown == false and finished.Name.colour[1] == NORMAL_FONT_COLOR.r,
     "and only then does the row read as finished")
 assert(finished.IconFrame.cover == false, "the cover coming off the icon with it")
+
+GameTooltip.owner = finished.IconFrame
+finished.IconFrame.onEnter(finished.IconFrame)
+assert(math.abs(tooltipLines[#tooltipLines].green - NORMAL_FONT_COLOR.g) < 0.001,
+    "a finished colourway reads gold in the tooltip too")
 
 print("Lucky's Wardrobe sets browser test passed")

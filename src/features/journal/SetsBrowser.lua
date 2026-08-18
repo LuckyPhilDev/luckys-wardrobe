@@ -92,7 +92,8 @@ local function completionCounts(setID, counts)
 end
 
 -- Every look a base set and its difficulty variants hold between them, counted
--- once each, with how many colourways that is.
+-- once each, and the colourways themselves, each named beside its own counts in
+-- the order Blizzard's picker lists them.
 --
 -- Blizzard's own row counts the best single variant, which answers "how far
 -- through one difficulty am I" and never "how much of this set is left". The
@@ -104,16 +105,39 @@ end
 -- everywhere. That is why the total can come out below the sum of what the
 -- picker shows each colourway holding.
 --
--- The base set is asked about alongside its variants rather than instead of
--- them. GetVariantSets lists the set among its own variants, so this is usually
--- a repeat, and a repeated look is already counted once.
+-- GetVariantSets leaves the base set out, and Blizzard's picker inserts it
+-- before showing the list, so this does the same or the badge disagrees with
+-- the picker the player checks it against. A colourway the picker keeps back
+-- until it is collected stays out of the count for the same reason.
 function SetsBrowser:VariantCounts(baseSetID)
     local variants = C_TransmogSets.GetVariantSets(baseSetID) or {}
-    if #variants < 2 then return nil end
+    if #variants == 0 then return nil end
 
-    local seen, collected, total = {}, 0, 0
-    local function count(setID)
-        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(setID) or {}) do
+    local sets, listed = {}, {}
+    local function list(set)
+        if not set or listed[set.setID] or (set.hiddenUntilCollected and not set.collected) then return end
+        listed[set.setID] = true
+        sets[#sets + 1] = set
+    end
+    list(C_TransmogSets.GetSetInfo(baseSetID))
+    for _, variant in ipairs(variants) do list(variant) end
+    if #sets < 2 then return nil end
+
+    -- The picker's order: a favourited colourway first, then release order.
+    table.sort(sets, function(left, right)
+        local leftFavorite = left.favorite or false
+        if leftFavorite ~= (right.favorite or false) then return leftFavorite end
+        local leftOrder, rightOrder = left.uiOrder or 0, right.uiOrder or 0
+        if leftOrder ~= rightOrder then return leftOrder < rightOrder end
+        return left.setID < right.setID
+    end)
+
+    local seen, collected, total, colourways = {}, 0, 0, {}
+    for _, set in ipairs(sets) do
+        local own, ownTotal = 0, 0
+        for _, appearance in ipairs(C_TransmogSets.GetSetPrimaryAppearances(set.setID) or {}) do
+            ownTotal = ownTotal + 1
+            if appearance.collected then own = own + 1 end
             local appearanceID = appearance.appearanceID
             if appearanceID and not seen[appearanceID] then
                 seen[appearanceID] = true
@@ -121,11 +145,13 @@ function SetsBrowser:VariantCounts(baseSetID)
                 if appearance.collected then collected = collected + 1 end
             end
         end
+        colourways[#colourways + 1] = {
+            name = set.description or set.name,
+            collected = own,
+            total = ownTotal,
+        }
     end
-
-    count(baseSetID)
-    for _, variant in ipairs(variants) do count(variant.setID) end
-    return { colourways = #variants, collected = collected, total = total }
+    return { colourways = colourways, collected = collected, total = total }
 end
 
 -- Blizzard's own width for a full progress bar on one of these rows.
@@ -148,8 +174,9 @@ function SetsBrowser:MarkVariants(scrollBox)
     scrollBox:ForEachFrame(function(button)
         if not button.setID then return end
 
+        SetsBrowser:HookColourwayTooltip(button)
         local counts = SetsBrowser:VariantCounts(button.setID)
-        if not LuckysWardrobe.Utils.MarkVariantCount(button, counts and counts.colourways) then return end
+        if not LuckysWardrobe.Utils.MarkVariantCount(button, counts and #counts.colourways) then return end
         button.Label:SetText(LuckysWardrobe.Strings.setRow.counts:format(counts.collected, counts.total))
 
         -- The bar first, being the thing the row is worst at saying on its own.
@@ -162,6 +189,29 @@ function SetsBrowser:MarkVariants(scrollBox)
 
         LuckysWardrobe.Utils.ColourSetName(button, complete, counts.collected)
         button.IconFrame:SetIconCoverShown(not complete)
+    end)
+end
+
+-- The icon already carries Blizzard's tooltip, the set's name. A row standing
+-- for several colourways appends what they are and how each is coming along,
+-- which is what the badge in the corner was counting.
+--
+-- Hooked once per row and left in place: rows are recycled across sets as the
+-- list scrolls, so the tooltip asks about the set the row holds at the time,
+-- and says nothing extra when that set is only itself.
+function SetsBrowser:HookColourwayTooltip(button)
+    if button.luckysColourwayTooltip then return end
+    button.luckysColourwayTooltip = true
+    button.IconFrame:HookScript("OnEnter", function(iconFrame)
+        local setID = iconFrame:GetParent().setID
+        local counts = setID and SetsBrowser:VariantCounts(setID)
+        if not counts or not GameTooltip:IsShown() or GameTooltip:GetOwner() ~= iconFrame then return end
+        GameTooltip:AddLine(LuckysWardrobe.Strings.setRow.colours:format(#counts.colourways), 1, 1, 1)
+        for _, colourway in ipairs(counts.colourways) do
+            LuckysWardrobe.Utils.AddColourwayLine(GameTooltip,
+                colourway.name, colourway.collected, colourway.total)
+        end
+        GameTooltip:Show()
     end)
 end
 

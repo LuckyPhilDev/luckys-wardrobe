@@ -2475,6 +2475,13 @@ assert(groupButton.Label.text == "4/6 collected",
 assert(groupButton.luckysVariantCount.text == "x2",
     "with how many colourways it holds in the corner, where it costs the counts no room")
 
+-- Hovering the row's icon names the colourways the corner badge counted, each
+-- with its own progress, so the badge explains itself without opening the set.
+groupButton.IconFrame.scripts.OnEnter(groupButton.IconFrame)
+assert(tooltip.lines[2] == "2 colours", "the tooltip says what the badge was counting")
+assert(tooltip.lines[4] == "Heroic Recolor (3/3)" and tooltip.lines[5] == "Normal Recolor (1/3)",
+    "then names each colourway the way the pane's picker does")
+
 local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
 assert(variantDropdown, "built a colourway picker for the details pane")
 assert(variantDropdown.shown, "a set with several colourways offers it")
