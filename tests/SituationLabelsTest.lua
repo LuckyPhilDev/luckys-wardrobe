@@ -2,6 +2,7 @@
 
 LuckysWardrobe = {}
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 
 unpack = unpack or table.unpack -- luacheck: ignore 143

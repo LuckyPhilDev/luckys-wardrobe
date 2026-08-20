@@ -148,6 +148,7 @@ _G.TooltipUtil = {
     GetDisplayedItem = function() return "Item", displayedLink end,
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/features/tooltips/ItemTooltips.lua")
 

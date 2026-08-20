@@ -6,6 +6,7 @@
 
 LuckysWardrobe = {}
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 

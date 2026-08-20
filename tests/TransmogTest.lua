@@ -518,6 +518,7 @@ local function pickColour(key, unmatched)
     LuckysWardrobe.Randomiser:OnColourPicked()
 end
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/features/transmogrifier/Randomiser.lua")
 dofile("src/features/transmogrifier/Transmog.lua")

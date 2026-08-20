@@ -8,7 +8,7 @@ LuckysWardrobe = LuckysWardrobe or {}
 BINDING_HEADER_LUCKYSWARDROBE = "Lucky's Wardrobe"
 BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST = "Sets You Can Finish Here"
 
-LuckysWardrobe.Strings = {
+LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     addon = {
         title = "Lucky's Wardrobe",
         prefix = "|cffc8902aLucky's Wardrobe:|r",
@@ -490,4 +490,4 @@ LuckysWardrobe.Strings = {
         roll = "Roll a Random Piece",
         rollHint = "Click to put a random piece from this page on the slot, which keeps a roll to the colour you picked. Nothing is bought until you press Apply.",
     },
-}
+})

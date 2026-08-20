@@ -6,6 +6,7 @@ LuckysWardrobe = {}
 -- A localised difficulty global must classify alongside the English fallbacks.
 PLAYER_DIFFICULTY6 = "Mythisch"
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/domain/SetSources.lua")
 

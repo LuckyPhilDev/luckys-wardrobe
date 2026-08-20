@@ -109,6 +109,7 @@ local otherCard = card({ visualID = OTHER_VISUAL })
 local hideCard = card({ visualID = HIDE_VISUAL, isHideVisual = true })
 local illusionCard = card({ visualID = 1, sourceID = ILLUSION_SOURCE })
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/features/transmogrifier/UndoAppearance.lua")
 

@@ -73,6 +73,7 @@ _G.C_Container = { GetContainerNumSlots = function() return 0 end, GetContainerI
 _G.GetInventoryItemLink = function() return nil end
 _G.NUM_BAG_SLOTS, _G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED = 4, 1, 19
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 dofile("src/domain/Catalyst.lua")

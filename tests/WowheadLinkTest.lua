@@ -60,6 +60,7 @@ WardrobeCollectionFrame = {
     },
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/features/journal/WowheadLink.lua")
 

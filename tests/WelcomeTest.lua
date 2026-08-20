@@ -109,6 +109,7 @@ LuckysWardrobe.AddonConflicts = {
     Find = function() return conflicts end,
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 dofile("src/features/Welcome.lua")

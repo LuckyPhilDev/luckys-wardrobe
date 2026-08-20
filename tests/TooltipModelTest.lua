@@ -311,6 +311,7 @@ _G.TooltipUtil = {
 -- What the tuning command says back, which is the only way the framing numbers
 -- can be read out of a running client.
 local said = {}
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 LuckysWardrobe.Utils = { Say = function(line) said[#said + 1] = line end }
 

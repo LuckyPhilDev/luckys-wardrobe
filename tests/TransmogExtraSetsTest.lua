@@ -30,6 +30,7 @@ C_ClassColor = {
     GetClassColor = function() return { WrapTextInColorCode = function(_, text) return text end } end,
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 dofile("src/domain/SetSources.lua")

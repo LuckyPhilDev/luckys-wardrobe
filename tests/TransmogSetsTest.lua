@@ -49,6 +49,7 @@ EventUtil = {
     ContinueOnAddOnLoaded = function(addOn, callback) pendingAddOns[addOn] = callback end,
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 dofile("src/Utils.lua")
 dofile("src/domain/SetSources.lua")

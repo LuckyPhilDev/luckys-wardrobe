@@ -8,6 +8,7 @@ LuckysWardrobe.Utils = {
     ICON_OFF = { 0.35, 0.35, 0.35 },
 }
 
+LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
 
 function CreateFrame()
