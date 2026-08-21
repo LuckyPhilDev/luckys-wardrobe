@@ -43,6 +43,11 @@ end
 Utils.ICON_ON = { 1.0, 0.824, 0.392 }
 Utils.ICON_OFF = { 0.35, 0.35, 0.35 }
 
+-- The dice every roll button wears, drawn in the addon's own icon style rather
+-- than Blizzard's atlas art. Here rather than beside either button, both tabs
+-- wearing it and neither owning it.
+Utils.ROLL_ICON = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\roll"
+
 -- A square icon button stripped to its drawing: the plate is cleared away and
 -- the hover glow is the icon added over itself, the way the padlocks read.
 -- The template's tooltip, press nudge and click handling all stay.

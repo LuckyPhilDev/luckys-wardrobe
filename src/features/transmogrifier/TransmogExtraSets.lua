@@ -1017,7 +1017,7 @@ function TransmogExtraSets:Attach(transmogFrame)
 
     attachedWardrobe = wardrobe
     local page = self:CreatePage(wardrobe)
-    extraTabID = wardrobe:AddNamedTab(LuckysWardrobe.Strings.extraSets.tab, page)
+    extraTabID = wardrobe:AddNamedTab(LuckysWardrobe.Strings.extraSets.tabTitle, page)
 
     -- New tabs land at the end of the strip, after Situations, so this one has
     -- to take its seat beside Sets and then keep taking it: another addon can

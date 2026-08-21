@@ -92,7 +92,7 @@ local db = { situationPresets = {} }
 presets:Init(db)
 
 local loadEnabled
-presets.loadButton = {
+presets.loadPresetButton = {
     SetEnabled = function(_, enabled) loadEnabled = enabled end,
 }
 presets:UpdateLoadButton()

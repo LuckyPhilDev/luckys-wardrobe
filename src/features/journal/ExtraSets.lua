@@ -2686,7 +2686,7 @@ function ExtraSets:Attach(wardrobe)
     attachedWardrobe = wardrobe
     extraPage = self:CreatePage(wardrobe)
     ExtraSets.AddWardrobeTab(wardrobe, "LuckysWardrobeExtraSetsTab",
-        LuckysWardrobe.Strings.extraSets.tab, extraPage, function()
+        LuckysWardrobe.Strings.extraSets.tabTitle, extraPage, function()
             layOutClassDropdown(wardrobe.ClassDropdown)
             wardrobe.ClassDropdown:Show()
             -- The dropdown was last refreshed for the page being left, so it
