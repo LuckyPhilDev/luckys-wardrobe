@@ -65,8 +65,10 @@ local function addLine(frame, previous, size, color)
     return line
 end
 
+CreateFrame("Frame", "LuckysWardrobeAddonConflict", UIParent)
+
 local function build()
-    local frame = LuckyUI.CreatePanel("LuckysWardrobeAddonConflict", UIParent, PANEL_WIDTH, 200)
+    local frame = LuckyUI.CreatePanel(nil, UIParent, PANEL_WIDTH, 200)
     frame:SetPoint("CENTER", 0, 120)
     frame:SetFrameStrata("DIALOG")
     LuckyUI.CreateHeader(frame, S.title)
