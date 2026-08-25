@@ -12,11 +12,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: addon
+
+      # Some tests load the real library from the sibling folder, as in the
+      # local workspace, so it is checked out beside the addon.
+      - name: Checkout Luckys_Utils
+        uses: actions/checkout@v4
+        with:
+          repository: LuckyPhilDev/LuckyUtils
+          path: Luckys_Utils
 
       - name: Install Lua
         run: sudo apt-get update && sudo apt-get install -y lua5.4
 
       - name: Run the suite
+        working-directory: addon
         run: |
           failed=0
           for test in tests/*.lua; do
