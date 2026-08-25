@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.2] - 2026-08-25
+
+### Fixed
+- The preview screenshot in settings goes away when you move off its row, instead of staying on screen until you reach a setting that has none. (Thanks for the report Tuulani)
+- Set names on the Set Completion panel, and the labels at the transmogrifier, show on a Russian client instead of empty boxes. (Thanks for the report Grelle)
+
 ## [1.10.1] - 2026-08-20
 
 ### Improved
