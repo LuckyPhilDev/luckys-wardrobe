@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_UI EventUtil LuckyUI LuckysWardrobe UIParent
+-- luacheck: globals C_AddOns C_UI CreateFrame EventUtil LuckyUI LuckysWardrobe UIParent
 
 -- The dialog is the whole feature, so these go through it: what it says, and
 -- what its buttons actually do to the addon list.
@@ -22,6 +22,16 @@ EventUtil = {
 }
 
 UIParent = {}
+
+-- The only frame made this way is the empty one holding the global name the
+-- panel used to carry, so the stub keeps what was named to check it against the
+-- panel itself.
+local namedFrames = {}
+function CreateFrame(_, name)
+    local frame = {}
+    if name then namedFrames[name] = frame end
+    return frame
+end
 
 -- Text is measured to size the panel, so the stub answers in proportion to the
 -- text rather than with zero.
@@ -171,5 +181,12 @@ AddonConflicts:Init()
 assert(not panel:IsShown(), "held the warning back until the player is in")
 loginCallback()
 assert(panel:IsShown(), "warned once the player is in")
+
+-- The panel answers to no global name of its own. The name it used to carry is
+-- still claimed, by an empty frame, so a lookup of it finds something inert
+-- rather than the panel or a nil.
+local placeholder = namedFrames.LuckysWardrobeAddonConflict
+assert(placeholder, "claimed the name the panel used to carry")
+assert(placeholder ~= panel, "kept the panel itself out of reach of that name")
 
 print("Lucky's Wardrobe addon conflicts test passed")

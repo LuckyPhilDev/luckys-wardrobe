@@ -346,7 +346,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         miscellaneous = "Miscellaneous",
     },
     extraSets = {
-        tab = "Extra Sets",
+        tabTitle = "Extra Sets",
         building = "Reading the extra sets from this client...",
         empty = "No extra sets could be read from this client.",
         noResults = "No extra sets match the current search or filters.",

@@ -3,7 +3,7 @@
 Writes the PNG original next to this script and the TGA the addon loads into
 src/Images/icons/. Run from the repo root:
 
-    python images/make_dice_icon.py
+    python images/make_roll_icon.py
 
 The shape is Lucide's `dices`, traced from its path data: one die face on,
 one tilted behind it with two rounded corners in view, and four pips struck
@@ -130,8 +130,8 @@ def main():
     icons.mkdir(parents=True, exist_ok=True)
 
     rows = [[pixel(x, y) for x in range(SIZE)] for y in range(SIZE)]
-    write_png(root / "images" / "dice.png", rows)
-    tga = icons / "dice.tga"
+    write_png(root / "images" / "roll.png", rows)
+    tga = icons / "roll.tga"
     write_tga(tga, rows)
     print(f"wrote {tga}")
 

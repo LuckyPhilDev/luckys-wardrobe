@@ -158,9 +158,6 @@ end
 local LOCK_SHUT = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\lock"
 local LOCK_OPEN = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\lock-open"
 
--- The dice both roll buttons wear, drawn in the addon's own icon style and
--- tinted the lit gold the padlocks share, rather than Blizzard's atlas art.
-local DICE_ICON = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice"
 local LOCK_SIZE = 20
 local LOCK_GAP = 4
 local GLOW_ALPHA = 0.35
@@ -238,7 +235,7 @@ local function onLockLeave(lock)
 end
 
 local function attachLock(slotFrame)
-    if slotFrame.luckysWardrobeLock then return end
+    if slotFrame.luckysWardrobeSlotLock then return end
 
     local lock = CreateFrame("Button", nil, slotFrame)
     lock.slotFrame = slotFrame
@@ -257,7 +254,7 @@ local function attachLock(slotFrame)
     lock:SetScript("OnEnter", onLockEnter)
     lock:SetScript("OnLeave", onLockLeave)
 
-    slotFrame.luckysWardrobeLock = lock
+    slotFrame.luckysWardrobeSlotLock = lock
 end
 
 function paintLocks()
@@ -267,7 +264,7 @@ function paintLocks()
 
     for slotFrame in pool:EnumerateActive() do
         attachLock(slotFrame)
-        paintLock(slotFrame.luckysWardrobeLock)
+        paintLock(slotFrame.luckysWardrobeSlotLock)
     end
 end
 
@@ -645,7 +642,7 @@ local function createButton(preview)
     -- The preview's model scene covers the whole frame, so the button has to
     -- sit above it to take the mouse at all.
     button:SetFrameLevel((preview.ModelScene or preview):GetFrameLevel() + 10)
-    Utils.BareIcon(button, DICE_ICON, Utils.ICON_ON)
+    Utils.BareIcon(button, Utils.ROLL_ICON, Utils.ICON_ON)
 
     button.tooltipTitle = strings.tooltipTitle
     button.tooltipText = strings.tooltipText
@@ -674,7 +671,7 @@ end
 local SWATCH_SIZE = 10
 
 local function pickedTarget()
-    local _, target = LuckysWardrobe.TransmogItems.PickedColour()
+    local _, target = LuckysWardrobe.TransmogItems.PickedSwatch()
     return target
 end
 
@@ -682,7 +679,7 @@ local function createColourButton(preview)
     colourButton = CreateFrame("Button", nil, preview, "SquareIconButtonTemplate")
     colourButton:SetPoint("RIGHT", button, "LEFT", -4, 0)
     colourButton:SetFrameLevel(button:GetFrameLevel())
-    Utils.BareIcon(colourButton, DICE_ICON, Utils.ICON_ON)
+    Utils.BareIcon(colourButton, Utils.ROLL_ICON, Utils.ICON_ON)
     colourButton:Hide()
 
     -- Stamped over the dice rather than beside it, so the button reads as the
@@ -708,7 +705,7 @@ end
 function Randomiser:OnColourPicked()
     if not colourButton then return end
 
-    local key, _, preset = LuckysWardrobe.TransmogItems.PickedColour()
+    local key, _, preset = LuckysWardrobe.TransmogItems.PickedSwatch()
     colourButton:SetShown(key ~= nil)
     if not key then return end
 
@@ -781,7 +778,7 @@ function Randomiser:PrintPools(wantedCategory)
     if not targets then return Utils.Say(S.poolsClosed) end
 
     local wanted = tonumber(wantedCategory)
-    local _, target = LuckysWardrobe.TransmogItems.PickedColour()
+    local _, target = LuckysWardrobe.TransmogItems.PickedSwatch()
     Utils.Say(S.poolsHeader:format(#targets))
 
     for _, slotEntry in pairs(TRANSMOG_SLOTS) do

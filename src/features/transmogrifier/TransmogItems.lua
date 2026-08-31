@@ -66,7 +66,7 @@ local colourPreset
 -- answer to it. The dice on the character preview offers a roll in this colour
 -- while one is lit, and needs all three: the key to name it, the target to match
 -- a piece against, and the preset to paint its own swatch from.
-function TransmogItems.PickedColour()
+function TransmogItems.PickedSwatch()
     return colour, colourTarget, colourPreset
 end
 
@@ -423,10 +423,9 @@ local function buildRollButton(strip)
     rollButton = CreateFrame("Button", nil, strip, "SquareIconButtonTemplate")
     rollButton:SetSize(ROLL_SIZE, ROLL_SIZE)
     rollButton:SetPoint("RIGHT", strip, "LEFT", -6, 0)
-    -- The same dice the preview's roll buttons wear, in the addon's own icon
-    -- style and the lit gold the padlocks share.
-    Utils.BareIcon(rollButton, "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\dice",
-        Utils.ICON_ON)
+    -- The same dice the preview's roll buttons wear, in the lit gold the
+    -- padlocks share.
+    Utils.BareIcon(rollButton, Utils.ROLL_ICON, Utils.ICON_ON)
 
     rollButton.tooltipTitle = S.roll
     rollButton.tooltipText = S.rollHint
@@ -543,9 +542,9 @@ local function claimFilterButton()
     local button = frame and frame.FilterButton
     if not button then return end
 
-    if frame.PagedContent and not TransmogItems.vendorStrip then
-        TransmogItems.vendorStrip = buildStrip(frame, frame.PagedContent, "RIGHT", -4, 6)
-        buildRollButton(TransmogItems.vendorStrip)
+    if frame.PagedContent and not TransmogItems.vendorColourStrip then
+        TransmogItems.vendorColourStrip = buildStrip(frame, frame.PagedContent, "RIGHT", -4, 6)
+        buildRollButton(TransmogItems.vendorColourStrip)
         paintSwatches()
     end
 

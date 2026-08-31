@@ -8,6 +8,7 @@ local said = {}
 LuckysWardrobe.Utils = {
     ICON_ON = { 1.0, 0.824, 0.392 },
     ICON_OFF = { 0.35, 0.35, 0.35 },
+    ROLL_ICON = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icons\\roll",
     Say = function(line) said[#said + 1] = line end,
     -- The real one also hangs the hover glow off the icon; what the roll
     -- buttons are asserted on is the plate going and the drawing arriving.
@@ -396,7 +397,7 @@ end
 
 local function lockFor(slot)
     for _, frame in ipairs(slotFrames) do
-        if frame.slot == slot then return frame.luckysWardrobeLock end
+        if frame.slot == slot then return frame.luckysWardrobeSlotLock end
     end
 end
 
@@ -502,7 +503,7 @@ LuckysWardrobe.Colours = {
 
 LuckysWardrobe.TransmogItems = {
     CategoryAppearances = function(category) return categoryAppearances[category] end,
-    PickedColour = function() return picked.key, picked.target, picked.preset end,
+    PickedSwatch = function() return picked.key, picked.target, picked.preset end,
     PaintSwatch = function(texture, preset)
         local shade = preset.shades[1]
         texture:SetColorTexture(shade[1] / 255, shade[2] / 255, shade[3] / 255)

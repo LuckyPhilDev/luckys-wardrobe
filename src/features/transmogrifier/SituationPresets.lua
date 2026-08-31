@@ -145,8 +145,8 @@ function SituationPresets:UpdateLoadButton()
     -- Every path that changes which presets exist comes through here, so the
     -- matching is rebuilt from the same point.
     matches = nil
-    if self.loadButton then
-        self.loadButton:SetEnabled(#availablePresets() > 0)
+    if self.loadPresetButton then
+        self.loadPresetButton:SetEnabled(#availablePresets() > 0)
     end
 end
 
@@ -323,7 +323,7 @@ local function createIconButton(parent, icon, tooltipText)
 end
 
 local function installButtons()
-    if SituationPresets.loadButton then return end
+    if SituationPresets.loadPresetButton then return end
     local wardrobe = TransmogFrame and TransmogFrame.WardrobeCollection
     local situationsFrame = wardrobe and wardrobe.TabContent and wardrobe.TabContent.SituationsFrame
     if not situationsFrame or not situationsFrame.Situations then return end
@@ -374,7 +374,7 @@ local function installButtons()
         StaticPopup_Show("LUCKYS_WARDROBE_SAVE_SITUATION")
     end)
 
-    SituationPresets.loadButton = loadButton
+    SituationPresets.loadPresetButton = loadButton
 end
 
 function SituationPresets:Init(database)
