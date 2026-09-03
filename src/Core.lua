@@ -69,6 +69,8 @@ local function initialize()
     })
     LuckysWardrobe.DevLog(LuckysWardrobe.Strings.addon.initialized)
 
+    -- Bound here rather than looked up at the keypress, the same as the login call.
+    local warnOfConflicts = LuckysWardrobe.AddonConflicts.Warn
     SLASH_LUCKYSWARDROBE1 = "/wardrobe"
     SLASH_LUCKYSWARDROBE2 = "/lw"
     SlashCmdList.LUCKYSWARDROBE = function(message)
@@ -82,6 +84,10 @@ local function initialize()
                 LuckysWardrobe.Welcome:Reset()
             else
                 LuckysWardrobe.Welcome:Show()
+            end
+        elseif command == "conflicts" then
+            if not warnOfConflicts() then
+                say(LuckysWardrobe.Strings.addonConflicts.none)
             end
         elseif command == "preview" then
             local slot, facing, zoom, height, side =

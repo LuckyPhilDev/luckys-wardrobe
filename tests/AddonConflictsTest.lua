@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_UI CreateFrame EventUtil LuckyUI LuckysWardrobe UIParent
+-- luacheck: globals C_AddOns C_Timer C_UI CreateFrame EventUtil LuckyUI LuckysWardrobe UIParent
 
 -- The dialog is the whole feature, so these go through it: what it says, and
 -- what its buttons actually do to the addon list.
@@ -15,6 +15,14 @@ C_AddOns = {
 }
 
 C_UI = { Reload = function() reloads = reloads + 1 end }
+
+local timers = {}
+C_Timer = { After = function(_, callback) timers[#timers + 1] = callback end }
+local function settle()
+    local due = timers
+    timers = {}
+    for _, callback in ipairs(due) do callback() end
+end
 
 local loginCallback
 EventUtil = {
@@ -42,6 +50,7 @@ local function FontString()
     function fs:SetJustifyH() end
     function fs:SetWordWrap() end
     function fs:SetPoint() end
+    function fs:ClearAllPoints() end
     function fs:SetTextColor() end
     function fs:SetText(value) self.text = value or "" end
     function fs:GetText() return self.text end
@@ -62,18 +71,36 @@ LuckyUI = {
         textMuted = { 0.5, 0.5, 0.5 },
         goldAccent = { 0.8, 0.7, 0.3 },
         goldMuted = { 0.5, 0.4, 0.2 },
+        danger = { 1, 0.4, 0.4 },
     },
-    CreateHeader = function() end,
+    CreateHeader = function(frame)
+        local closeButton = { hooks = {} }
+        function closeButton:HookScript(_, handler) self.hooks[#self.hooks + 1] = handler end
+        function closeButton.click()
+            frame:Hide()
+            for _, handler in ipairs(closeButton.hooks) do handler() end
+        end
+        frame.header = { GetChildren = function() return closeButton end }
+        frame.closeButton = closeButton
+    end,
     CreatePanel = function()
         panels = panels + 1
-        panel = { shown = false, height = 0 }
-        function panel:SetPoint() end
-        function panel:SetFrameStrata() end
-        function panel:SetHeight(value) self.height = value end
-        function panel:GetHeight() return self.height end
-        function panel:Show() self.shown = true end
-        function panel:IsShown() return self.shown end
-        function panel:CreateFontString() return FontString() end
+        local methods = {}
+        function methods:SetPoint() end
+        function methods:SetFrameStrata() end
+        function methods:SetHeight(value) self.height = value end
+        function methods:GetHeight() return self.height end
+        function methods:Show() self.shown = true end
+        function methods:Hide() self.shown = false end
+        function methods:IsShown() return self.shown end
+        function methods:IsVisible() return self.shown end
+        function methods:GetEffectiveAlpha() return 1 end
+        function methods:GetParent() return UIParent end
+        function methods:GetNumPoints() return 1 end
+        function methods:CreateFontString() return FontString() end
+        -- Methods sit behind a metatable, as a frame's do, so one found on the
+        -- panel itself is a hook.
+        panel = setmetatable({ shown = false, height = 0 }, { __index = methods })
         return panel
     end,
     CreateButton = function(_, text, width, height)
@@ -91,6 +118,8 @@ LuckyUI = {
 
 LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
+local said = {}
+LuckysWardrobe.Utils = { Say = function(line) said[#said + 1] = line end }
 dofile("src/features/AddonConflicts.lua")
 
 local S = LuckysWardrobe.Strings.addonConflicts
@@ -132,9 +161,15 @@ assert(found() == "BetterWardrobe", "found a Better Wardrobe that is running")
 enable("LuckysBetterWardrobe")
 assert(found() == "BetterWardrobe,LuckysBetterWardrobe", "found both at once")
 
+-- The dialog is built at load and kept hidden, so it is already standing before
+-- anything that loads later has run.
+AddonConflicts:Init()
+assert(panels == 1, "built the dialog at load")
+assert(not panel:IsShown(), "kept it hidden until there was something to say")
+
 only(nil)
 assert(not AddonConflicts:Warn(), "said nothing with no conflict to report")
-assert(panels == 0, "built no dialog before there was anything to say")
+assert(not panel:IsShown() and panels == 1, "showed nothing with no conflict to report")
 
 -- One conflict: it is named in the headline and on the button that clears it.
 only("BetterWardrobe")
@@ -188,5 +223,53 @@ assert(panel:IsShown(), "warned once the player is in")
 local placeholder = namedFrames.LuckysWardrobeAddonConflict
 assert(placeholder, "claimed the name the panel used to carry")
 assert(placeholder ~= panel, "kept the panel itself out of reach of that name")
+
+-- Left alone, the dialog stands, carries no accusation, and chat hears nothing.
+settle()
+assert(#said == 0, "said nothing in chat while the dialog stood")
+assert(not panel.interfered:IsShown(), "carried no interference line unprovoked")
+
+-- The player closing it is not interference.
+loginCallback()
+panel.closeButton.click()
+settle()
+assert(#said == 0, "said nothing in chat when the player closed the dialog")
+
+-- Taken off screen by anything else within the settle time, the warning goes to
+-- chat as well, naming the interference and the command that brings it back.
+loginCallback()
+panel.shown = false
+settle()
+assert(said[1] == S.bothEnabled:format(S.betterWardrobe, S.luckysBetterWardrobe) .. " " .. S.explain,
+    "repeated the warning in chat once the dialog was hidden from under it")
+assert(said[2] == S.interfered .. " " .. S.chatHint, "said what happened and how to get it back")
+assert(AddonConflicts:Warn() and panel.interfered:IsShown(), "carried the line on every showing after")
+
+-- The line is sticky once seen, so each further kind of interference gets a
+-- module of its own.
+local function freshModule()
+    dofile("src/features/AddonConflicts.lua")
+    return LuckysWardrobe.AddonConflicts
+end
+
+-- Replacing the published entry points does not reach the login call, and is
+-- itself read as interference.
+AddonConflicts = freshModule()
+AddonConflicts:Init()
+AddonConflicts.Warn = function() return false end
+AddonConflicts.Find = function() return {} end
+said = {}
+loginCallback()
+assert(panel:IsShown(), "warned despite the published entry points being replaced")
+assert(panel.interfered:IsShown(), "named the interference on the dialog")
+settle()
+assert(said[2] == S.interfered .. " " .. S.chatHint, "and in chat")
+
+-- A hook on the dialog's own Show or Hide is read the same way.
+AddonConflicts = freshModule()
+AddonConflicts:Init()
+panel.Hide = function() end
+loginCallback()
+assert(panel.interfered:IsShown(), "read a method sitting on the frame itself as a hook")
 
 print("Lucky's Wardrobe addon conflicts test passed")

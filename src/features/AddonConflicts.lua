@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_UI EventUtil UIParent
+-- luacheck: globals C_AddOns C_Timer C_UI EventUtil UIParent
 
 -- Lucky's Wardrobe: Warns at login about the other wardrobe addons that change
 -- the same windows this one does, and offers to turn the loser off. Whichever
@@ -9,6 +9,7 @@ LuckysWardrobe.AddonConflicts = {}
 
 local AddonConflicts = LuckysWardrobe.AddonConflicts
 local S = LuckysWardrobe.Strings.addonConflicts
+local say = LuckysWardrobe.Utils.Say
 local ADDON_NAME = "Luckys_Wardrobe"
 
 -- A conflict is one that is running, not merely installed, since a copy already
@@ -35,9 +36,18 @@ local BUTTON_GAP = 8
 local HINT_HEIGHT = 14
 local BOTTOM_PADDING = 12
 
-local dialog
+-- Long enough after the dialog is shown for anything taking it off screen on a
+-- timer of its own to have run.
+local SETTLE_SECONDS = 1
 
-function AddonConflicts:Find()
+local dialog
+-- The methods as this file published them, filled in once they are defined.
+local published
+-- Sticky once seen, so every showing after carries the line, not only the one
+-- that caught it.
+local interference = false
+
+local function findConflicts()
     local found = {}
     for _, conflict in ipairs(CONFLICTS) do
         if C_AddOns.DoesAddOnExist(conflict.addon) and C_AddOns.IsAddOnLoaded(conflict.addon) then
@@ -45,6 +55,31 @@ function AddonConflicts:Find()
         end
     end
     return found
+end
+
+function AddonConflicts:Find()
+    return findConflicts()
+end
+
+local function entryPointsReplaced()
+    for name, method in pairs(published) do
+        if AddonConflicts[name] ~= method then return true end
+    end
+    return false
+end
+
+-- A frame's methods come from its metatable, so one sitting on the frame itself
+-- was put there by a hook.
+local function dialogHooked(frame)
+    return rawget(frame, "Show") ~= nil or rawget(frame, "Hide") ~= nil
+        or rawget(frame, "SetShown") ~= nil
+end
+
+-- Shown is not the same as on screen: a parent hidden, an alpha zeroed or an
+-- anchor cleared all leave IsShown true.
+local function offScreen(frame)
+    return not frame:IsVisible() or frame:GetEffectiveAlpha() == 0
+        or frame:GetParent() ~= UIParent or frame:GetNumPoints() == 0
 end
 
 -- Giving each line its own width rather than anchoring both sides lets the
@@ -71,11 +106,18 @@ local function build()
     local frame = LuckyUI.CreatePanel(nil, UIParent, PANEL_WIDTH, 200)
     frame:SetPoint("CENTER", 0, 120)
     frame:SetFrameStrata("DIALOG")
+    frame:Hide()
     LuckyUI.CreateHeader(frame, S.title)
+    -- The header's close button is the one way the player takes the dialog off
+    -- screen without reloading, so it is told apart from anything else that does.
+    local closeButton = frame.header:GetChildren()
+    closeButton:HookScript("OnClick", function() frame.dismissed = true end)
 
     frame.headline = addLine(frame, nil, 14, LuckyUI.C.textLight)
     frame.explain = addLine(frame, frame.headline, 11, LuckyUI.C.textMuted)
     frame.oldFolder = addLine(frame, frame.explain, 11, LuckyUI.C.goldAccent)
+    frame.interfered = addLine(frame, frame.oldFolder, 11, LuckyUI.C.danger)
+    frame.interfered:SetText(S.interfered)
 
     local hint = frame:CreateFontString(nil, "OVERLAY")
     hint:SetFont(LuckyUI.BODY_FONT, 10)
@@ -102,7 +144,7 @@ end
 
 local function layout(frame)
     local height = TEXT_TOP
-    for _, line in ipairs({ frame.headline, frame.explain, frame.oldFolder }) do
+    for _, line in ipairs({ frame.headline, frame.explain, frame.oldFolder, frame.interfered }) do
         if line:IsShown() then
             height = height + line:GetStringHeight() + LINE_GAP
         end
@@ -118,22 +160,29 @@ local function layout(frame)
     frame.disableSelf:SetPoint("LEFT", frame.disableThem, "RIGHT", BUTTON_GAP, 0)
 end
 
+local function headline(found)
+    if #found > 1 then
+        return S.bothEnabled:format(found[1].name, found[2].name)
+    end
+    return S.oneEnabled:format(found[1].name)
+end
+
 local function populate(frame, found)
     local oldFolder
     for _, conflict in ipairs(found) do
         oldFolder = oldFolder or conflict.note
     end
 
-    if #found > 1 then
-        frame.headline:SetText(S.bothEnabled:format(found[1].name, found[2].name))
-        frame.disableThem:SetText(S.disableBoth)
-    else
-        frame.headline:SetText(S.oneEnabled:format(found[1].name))
-        frame.disableThem:SetText(S.disableOne:format(found[1].name))
-    end
+    frame.headline:SetText(headline(found))
+    frame.disableThem:SetText(#found > 1 and S.disableBoth or S.disableOne:format(found[1].name))
     frame.explain:SetText(S.explain)
     frame.oldFolder:SetText(oldFolder or "")
     frame.oldFolder:SetShown(oldFolder ~= nil)
+    frame.interfered:SetShown(interference)
+    -- Hangs off whichever line above it is showing.
+    frame.interfered:ClearAllPoints()
+    frame.interfered:SetPoint("TOPLEFT", oldFolder and frame.oldFolder or frame.explain,
+        "BOTTOMLEFT", 0, -LINE_GAP)
 
     frame.disableThem:SetScript("OnClick", function()
         for _, conflict in ipairs(found) do
@@ -145,22 +194,44 @@ local function populate(frame, found)
     layout(frame)
 end
 
-function AddonConflicts:Warn()
-    local found = self:Find()
+local function warn()
+    local found = findConflicts()
     if #found == 0 then
         return false
     end
 
     dialog = dialog or build()
+    interference = interference or entryPointsReplaced() or dialogHooked(dialog)
     populate(dialog, found)
+    dialog.dismissed = false
     dialog:Show()
+
+    -- Chat is the one place the warning cannot be taken back from, so it goes
+    -- there too once anything has been seen in the way of the dialog.
+    C_Timer.After(SETTLE_SECONDS, function()
+        if not dialog.dismissed and offScreen(dialog) then
+            interference = true
+        end
+        if interference then
+            say(headline(found) .. " " .. S.explain)
+            say(S.interfered .. " " .. S.chatHint)
+        end
+    end)
     return true
 end
 
-function AddonConflicts:Init()
-    -- A conflicting addon has loaded or it has not by the time the player is in,
-    -- and waiting that long keeps the dialog off a half-built screen.
-    EventUtil.ContinueOnPlayerLogin(function()
-        self:Warn()
-    end)
+function AddonConflicts:Warn()
+    return warn()
 end
+
+function AddonConflicts:Init()
+    -- Built here, during this addon's own load, so the panel is standing before
+    -- anything that loads after it has run.
+    dialog = dialog or build()
+    -- A conflicting addon has loaded or it has not by the time the player is in,
+    -- and waiting that long keeps the dialog off a half-built screen. The call is
+    -- bound to the local now rather than looked up on the table then.
+    EventUtil.ContinueOnPlayerLogin(warn)
+end
+
+published = { Warn = AddonConflicts.Warn, Find = AddonConflicts.Find, Init = AddonConflicts.Init }

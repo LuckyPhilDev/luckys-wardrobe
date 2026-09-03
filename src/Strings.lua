@@ -32,6 +32,9 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         disableOne = "Disable %s",
         disableBoth = "Disable Both",
         disableSelf = "Disable Lucky's Wardrobe",
+        interfered = "Another addon is interfering with this warning.",
+        chatHint = "Type /lw conflicts to choose which to disable.",
+        none = "No conflicting addons are running.",
     },
     welcome = {
         title = "Welcome to Lucky's Wardrobe",
