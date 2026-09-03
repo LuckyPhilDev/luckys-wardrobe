@@ -37,7 +37,7 @@ local BOTTOM_PADDING = 12
 
 local dialog
 
-function AddonConflicts:Find()
+local function findConflicts()
     local found = {}
     for _, conflict in ipairs(CONFLICTS) do
         if C_AddOns.DoesAddOnExist(conflict.addon) and C_AddOns.IsAddOnLoaded(conflict.addon) then
@@ -45,6 +45,10 @@ function AddonConflicts:Find()
         end
     end
     return found
+end
+
+function AddonConflicts:Find()
+    return findConflicts()
 end
 
 -- Giving each line its own width rather than anchoring both sides lets the
@@ -71,6 +75,7 @@ local function build()
     local frame = LuckyUI.CreatePanel(nil, UIParent, PANEL_WIDTH, 200)
     frame:SetPoint("CENTER", 0, 120)
     frame:SetFrameStrata("DIALOG")
+    frame:Hide()
     LuckyUI.CreateHeader(frame, S.title)
 
     frame.headline = addLine(frame, nil, 14, LuckyUI.C.textLight)
@@ -145,8 +150,8 @@ local function populate(frame, found)
     layout(frame)
 end
 
-function AddonConflicts:Warn()
-    local found = self:Find()
+local function warn()
+    local found = findConflicts()
     if #found == 0 then
         return false
     end
@@ -157,10 +162,16 @@ function AddonConflicts:Warn()
     return true
 end
 
+function AddonConflicts:Warn()
+    return warn()
+end
+
 function AddonConflicts:Init()
+    -- Built here, during this addon's own load, so the panel is standing before
+    -- anything that loads after it has run.
+    dialog = dialog or build()
     -- A conflicting addon has loaded or it has not by the time the player is in,
-    -- and waiting that long keeps the dialog off a half-built screen.
-    EventUtil.ContinueOnPlayerLogin(function()
-        self:Warn()
-    end)
+    -- and waiting that long keeps the dialog off a half-built screen. The call is
+    -- bound to the local now rather than looked up on the table then.
+    EventUtil.ContinueOnPlayerLogin(warn)
 end

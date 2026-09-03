@@ -72,6 +72,7 @@ LuckyUI = {
         function panel:SetHeight(value) self.height = value end
         function panel:GetHeight() return self.height end
         function panel:Show() self.shown = true end
+        function panel:Hide() self.shown = false end
         function panel:IsShown() return self.shown end
         function panel:CreateFontString() return FontString() end
         return panel
@@ -132,9 +133,15 @@ assert(found() == "BetterWardrobe", "found a Better Wardrobe that is running")
 enable("LuckysBetterWardrobe")
 assert(found() == "BetterWardrobe,LuckysBetterWardrobe", "found both at once")
 
+-- The dialog is built at load and kept hidden, so it is already standing before
+-- anything that loads later has run.
+AddonConflicts:Init()
+assert(panels == 1, "built the dialog at load")
+assert(not panel:IsShown(), "kept it hidden until there was something to say")
+
 only(nil)
 assert(not AddonConflicts:Warn(), "said nothing with no conflict to report")
-assert(panels == 0, "built no dialog before there was anything to say")
+assert(not panel:IsShown() and panels == 1, "showed nothing with no conflict to report")
 
 -- One conflict: it is named in the headline and on the button that clears it.
 only("BetterWardrobe")
@@ -188,5 +195,14 @@ assert(panel:IsShown(), "warned once the player is in")
 local placeholder = namedFrames.LuckysWardrobeAddonConflict
 assert(placeholder, "claimed the name the panel used to carry")
 assert(placeholder ~= panel, "kept the panel itself out of reach of that name")
+
+-- The login call is bound at load, so what the published entry points hold by
+-- then makes no difference to it.
+panel.shown = false
+AddonConflicts.Warn = function() return false end
+AddonConflicts.Find = function() return {} end
+AddonConflicts:Init()
+loginCallback()
+assert(panel:IsShown(), "warned despite the published entry points being replaced")
 
 print("Lucky's Wardrobe addon conflicts test passed")
