@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.4] - 2026-09-03
+
+### Improved
+- **Addon conflict warning** If another addon hides the warning about a conflicting wardrobe addon, the warning repeats in chat, and `/lw conflicts` brings the dialog back so you can choose which to disable.
+
 ## [1.10.3] - 2026-09-01
 
 ### Improved

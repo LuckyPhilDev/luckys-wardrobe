@@ -82,6 +82,7 @@ Lucky's Utils ships inside the addon, so there is nothing else to install.
 | `/lw` | Short form of `/wardrobe` |
 | `/lw sets` | Show the sets you can finish where you are standing |
 | `/lw welcome` | Bring back the welcome note |
+| `/lw conflicts` | Bring back the addon conflict warning |
 
 The set list also has a keybinding, under **Sets You Can Finish Here** in the game's Key Bindings screen.
 
