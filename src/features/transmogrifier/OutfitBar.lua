@@ -137,7 +137,11 @@ end
 
 local function buildPanel()
     panel = LuckyUI.CreatePanel("LuckysWardrobeOutfitBar", UIParent, 100, 100)
-    panel:SetFrameStrata("DIALOG")
+    -- MEDIUM, matching the Loot Wishlist browser, rather than the DIALOG the style
+    -- guide gives a popup. The cursor ring draws between MEDIUM and HIGH, so anything
+    -- above MEDIUM cuts through it, and this is a window you leave open, not a modal.
+    panel:SetFrameStrata("MEDIUM")
+    panel:SetFrameLevel(20)
     panel:Hide()
     LuckyUI.CreateHeader(panel, strings.title)
     LuckyUI.EnableDrag(panel, { db = db, key = "outfitBarPosition" })
