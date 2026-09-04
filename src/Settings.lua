@@ -148,6 +148,7 @@ function LuckysWardrobe.Settings:Init(db)
     transmog:Toggle({
         label = S.settings.useOutfitBar.label,
         desc = S.settings.useOutfitBar.desc,
+        since = "1.11.0",
         checked = db.useOutfitBar,
         onToggle = function(checked)
             db.useOutfitBar = checked
