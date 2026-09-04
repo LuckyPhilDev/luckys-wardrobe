@@ -16,6 +16,9 @@ local HEADER = 32
 
 local CLEAR_ICON = 7539422 -- Ui_transmog_showequippedgear
 
+-- The header's title inset, its close button, and a gap between the two.
+local HEADER_CHROME = 46
+
 local panel
 local tiles = {}
 
@@ -130,8 +133,11 @@ local function refresh()
 
     local columns = math.min(used, PER_ROW)
     local rows = math.ceil(used / PER_ROW)
+    -- A handful of outfits makes a grid narrower than the title, and the title's
+    -- width moves with the locale, so it is measured rather than assumed to fit.
+    local gridWidth = PADDING * 2 + columns * TILE + (columns - 1) * GAP
     panel:SetSize(
-        PADDING * 2 + columns * TILE + (columns - 1) * GAP,
+        math.max(gridWidth, panel.titleText:GetStringWidth() + HEADER_CHROME),
         HEADER + PADDING * 2 + rows * TILE + (rows - 1) * GAP + (panel.empty:IsShown() and 20 or 0))
 end
 

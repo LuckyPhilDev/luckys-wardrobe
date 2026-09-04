@@ -228,7 +228,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         inCombat = "The wardrobe cannot be opened in combat.",
     },
     outfitBar = {
-        title = "Quick-switch",
+        title = "Transmog Outfits",
         wearHint = "Left-click to wear, click again to take it off.",
         clear = "Clear Transmogrification",
         clearHint = "Puts every slot back to the gear you are wearing.",
