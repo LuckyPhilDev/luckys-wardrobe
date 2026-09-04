@@ -18,6 +18,7 @@ local alertsDB
 local catalystStarted
 local setListToggled
 local outfitsToggled
+local outfitBarDB
 local diagnosed
 local replayed
 
@@ -252,7 +253,16 @@ LuckysWardrobe.SetCompletion = {
 
 LuckysWardrobe.OpenAnywhere = {
     Toggle = function()
-        outfitsToggled = true
+        outfitsToggled = "list"
+    end,
+}
+
+LuckysWardrobe.OutfitBar = {
+    Init = function(_, db)
+        outfitBarDB = db
+    end,
+    Toggle = function()
+        outfitsToggled = "bar"
     end,
 }
 
@@ -301,6 +311,8 @@ assert(setNamesDB == LuckysWardrobeDB, "initialized the set card names with save
 assert(transmogDB == LuckysWardrobeDB, "initialized transmog tab memory with saved variables")
 assert(presetsDB == LuckysWardrobeDB, "initialized situation presets with saved variables")
 assert(type(LuckysWardrobeDB.situationPresets) == "table", "applied the situation presets default")
+assert(outfitBarDB == LuckysWardrobeDB, "initialized the outfit bar with saved variables")
+assert(LuckysWardrobeDB.useOutfitBar == false, "opened the game's own outfit list by default")
 assert(labelsDB == LuckysWardrobeDB, "initialized situation labels with saved variables")
 assert(completionDB == LuckysWardrobeDB, "initialized the set tracker with saved variables")
 assert(alertsDB == LuckysWardrobeDB, "initialized loot alerts with saved variables")
@@ -333,7 +345,7 @@ assert(minimapOptions, "created minimap button")
 
 minimapOptions.onClick(nil, "LeftButton")
 assert(not opened, "left-click did not open settings")
-assert(outfitsToggled, "left-click opened the outfit list")
+assert(outfitsToggled == "list", "left-click opened the outfit list")
 minimapOptions.onClick(nil, "RightButton")
 assert(opened, "right-click opened settings")
 
@@ -369,7 +381,17 @@ assert(setListToggled and not opened, "/wardrobe sets opened the set list rather
 outfitsToggled = false
 opened = false
 SlashCmdList.LUCKYSWARDROBE("outfits")
-assert(outfitsToggled and not opened, "/wardrobe outfits opened the outfit list rather than settings")
+assert(outfitsToggled == "list" and not opened, "/wardrobe outfits opened the outfit list rather than settings")
+
+-- One click serves both, so the setting is the only thing deciding which opens.
+LuckysWardrobeDB.useOutfitBar = true
+outfitsToggled = false
+SlashCmdList.LUCKYSWARDROBE("outfits")
+assert(outfitsToggled == "bar", "/wardrobe outfits opened the bar once the setting was on")
+outfitsToggled = false
+minimapOptions.onClick(nil, "LeftButton")
+assert(outfitsToggled == "bar", "left-click opened the bar once the setting was on")
+LuckysWardrobeDB.useOutfitBar = false
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("welcome")

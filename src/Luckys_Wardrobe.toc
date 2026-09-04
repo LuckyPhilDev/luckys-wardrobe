@@ -51,6 +51,7 @@ features\transmogrifier\Transmog.lua
 features\transmogrifier\SituationLabels.lua
 features\transmogrifier\SituationPresets.lua
 features\transmogrifier\OpenAnywhere.lua
+features\transmogrifier\OutfitBar.lua
 features\AddonConflicts.lua
 features\Welcome.lua
 Settings.lua

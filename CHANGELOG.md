@@ -4,6 +4,7 @@
 
 ### Added
 - **Your outfits anywhere** Left-click the minimap button, or type `/lw outfits`, to open your outfit list without walking to a transmog NPC. The parts that need an NPC are left off, so what opens is the list itself.
+- **Open Outfits as a Bar** A setting swaps that list for a grid of outfit icons you can drag anywhere and click to wear, with a button on it to clear your transmog.
 
 ## [1.10.4] - 2026-09-03
 

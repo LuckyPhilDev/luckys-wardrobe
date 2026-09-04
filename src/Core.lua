@@ -36,6 +36,16 @@ local function initialize()
     LuckysWardrobe.Transmog:Init(LuckysWardrobeDB)
     LuckysWardrobe.SituationLabels:Init(LuckysWardrobeDB)
     LuckysWardrobe.SituationPresets:Init(LuckysWardrobeDB)
+    LuckysWardrobe.OutfitBar:Init(LuckysWardrobeDB)
+
+    local function openOutfits()
+        if LuckysWardrobeDB.useOutfitBar then
+            LuckysWardrobe.OutfitBar:Toggle()
+        else
+            LuckysWardrobe.OpenAnywhere:Toggle()
+        end
+    end
+
     LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
         tocname = ADDON_NAME,
@@ -56,7 +66,7 @@ local function initialize()
             elseif IsShiftKeyDown() then
                 LuckysWardrobe.SetCompletion:Toggle()
             else
-                LuckysWardrobe.OpenAnywhere:Toggle()
+                openOutfits()
             end
         end,
         tooltip = function(tooltip)
@@ -83,7 +93,7 @@ local function initialize()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
         elseif command == "outfits" then
-            LuckysWardrobe.OpenAnywhere:Toggle()
+            openOutfits()
         elseif command == "welcome" then
             if argument:lower() == "reset" then
                 LuckysWardrobe.Welcome:Reset()

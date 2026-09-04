@@ -10,6 +10,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     devMode = false,
     welcomeShown = false,
     keepTransmogTab = false,
+    useOutfitBar = false,
     undoOnSecondClick = true,
     undoHidesSlot = false,
     hideUnwearableSets = true,

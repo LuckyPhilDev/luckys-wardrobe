@@ -145,6 +145,10 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
             label = "Include Worn and in Bags",
             desc = "Previews gear you already have as well, hovered on your character or in your bags and bank. Left off, the preview is kept for pieces you have yet to get: a drop, a quest reward, a vendor's stock, an auction, a link in chat.",
         },
+        useOutfitBar = {
+            label = "Open Outfits as a Bar",
+            desc = "Opens your outfits as a small grid of icons you can click to wear, movable anywhere on screen. Left off, the same click opens the game's own outfit list instead, which is the one to keep if you want to lock an outfit or edit it. The bar can only wear and clear.",
+        },
         keepTransmogTab = {
             label = "Keep Your Tab Between Outfits",
             desc = "Switching outfits at the transmog NPC keeps you on whichever tab you are on, instead of jumping back to Items. Clicking a slot still opens Items.",
@@ -222,6 +226,12 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     },
     openAnywhere = {
         inCombat = "The wardrobe cannot be opened in combat.",
+    },
+    outfitBar = {
+        title = "Outfits",
+        clear = "Clear Transmogrification",
+        clearHint = "Puts every slot back to the gear you are wearing.",
+        empty = "No outfits saved yet.",
     },
     situationLabels = {
         scanTitle = "Reading Outfit Situations",
