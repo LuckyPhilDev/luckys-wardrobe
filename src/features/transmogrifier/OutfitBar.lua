@@ -60,8 +60,11 @@ local function createTile(index)
 
     tile:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        -- Not GameTooltip:SetOutfit, whose text describes the transmog window's own
+        -- right-click actions. Nothing here answers a right-click.
         if self.outfitID then
-            GameTooltip:SetOutfit(self.outfitID)
+            GameTooltip:SetText(self.outfitName, 1, 1, 1)
+            GameTooltip:AddLine(strings.wearHint, 0.54, 0.49, 0.42, true)
         else
             GameTooltip:SetText(strings.clear, 1, 1, 1)
             GameTooltip:AddLine(strings.clearHint, nil, nil, nil, true)
@@ -76,6 +79,7 @@ end
 
 local function setClearTile(tile)
     tile.outfitID = nil
+    tile.outfitName = nil
     tile.icon:SetTexture(CLEAR_ICON)
     tile.icon:SetDesaturated(false)
     tile.icon:SetVertexColor(1, 0.75, 0.75)
@@ -89,6 +93,7 @@ end
 
 local function setOutfitTile(tile, outfit, activeOutfitID)
     tile.outfitID = outfit.outfitID
+    tile.outfitName = outfit.name
     tile.icon:SetTexture(outfit.icon)
     tile.icon:SetDesaturated(outfit.isDisabled)
     tile.icon:SetVertexColor(1, 1, 1)
@@ -132,7 +137,7 @@ end
 
 local function buildPanel()
     panel = LuckyUI.CreatePanel("LuckysWardrobeOutfitBar", UIParent, 100, 100)
-    panel:SetFrameStrata("HIGH")
+    panel:SetFrameStrata("DIALOG")
     panel:Hide()
     LuckyUI.CreateHeader(panel, strings.title)
     LuckyUI.EnableDrag(panel, { db = db, key = "outfitBarPosition" })
