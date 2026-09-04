@@ -248,6 +248,8 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         deleteDialog = "Delete saved situation \"%s\"? This cannot be undone.",
         renameTooltip = "Rename Saved Situation",
         renameDialog = "Rename saved situation \"%s\"",
+        overwriteTooltip = "Overwrite Saved Situation",
+        overwriteDialog = "Replace saved situation \"%s\" with the situations selected now? This cannot be undone.",
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",

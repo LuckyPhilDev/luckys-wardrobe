@@ -188,6 +188,26 @@ function SituationPresets:Rename(key, name, overwrite)
     return true
 end
 
+-- Saving over a preset re-derives its class scope from what is selected now, so the
+-- key moves with it rather than stranding the preset under its old scope.
+function SituationPresets:Overwrite(key, overwrite)
+    local preset = db.situationPresets[key]
+    if not preset then return end
+
+    local selections, classID = captureSelections()
+    local newKey = presetKey(preset.name, classID)
+    if newKey ~= key and not overwrite and db.situationPresets[newKey] then
+        StaticPopup_Show("LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION", preset.name, nil,
+            { key = key, name = preset.name })
+        return false
+    end
+
+    db.situationPresets[key] = nil
+    db.situationPresets[newKey] = { name = preset.name, classID = classID, selections = selections }
+    self:UpdateLoadButton()
+    return true
+end
+
 function SituationPresets:Delete(key)
     db.situationPresets[key] = nil
     self:UpdateLoadButton()
@@ -305,6 +325,32 @@ StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_SITUATION"] = {
     end,
 }
 
+StaticPopupDialogs["LUCKYS_WARDROBE_OVERWRITE_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.overwriteDialog,
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    OnAccept = function(_dialog, key)
+        SituationPresets:Overwrite(key)
+    end,
+}
+
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.replaceDialog,
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    OnAccept = function(_dialog, data)
+        SituationPresets:Overwrite(data.key, true)
+    end,
+}
+
 StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.deleteDialog,
@@ -362,6 +408,20 @@ local function installButtons()
                     end)
                     MenuUtil.HookTooltipScripts(renameButton, function(tooltip)
                         tooltip:SetText(strings.renameTooltip)
+                    end)
+
+                    local overwriteButton = MenuTemplates.AttachBasicButton(menuButton)
+                    overwriteButton:SetPoint("RIGHT", renameButton, "LEFT", -2, 0)
+                    local overwriteIcon = overwriteButton:AttachTexture()
+                    overwriteIcon:SetAllPoints()
+                    overwriteIcon:SetTexture(ICONS_PATH .. "save-situation")
+                    overwriteIcon:SetVertexColor(unpack(LuckyUI.C.goldIcon))
+                    overwriteButton:SetScript("OnClick", function()
+                        StaticPopup_Show("LUCKYS_WARDROBE_OVERWRITE_SITUATION", entry.name, nil, entry.key)
+                        menu:Close()
+                    end)
+                    MenuUtil.HookTooltipScripts(overwriteButton, function(tooltip)
+                        tooltip:SetText(strings.overwriteTooltip)
                     end)
                 end)
             end
