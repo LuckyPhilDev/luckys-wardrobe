@@ -1,4 +1,4 @@
--- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame GameTooltip GameTooltip_Hide MenuTemplates MenuUtil MenuVariants NO SAVE StaticPopupDialogs StaticPopup_OnClick StaticPopup_Show TransmogFrame UnitClass YES strtrim
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CANCEL CreateFrame GameTooltip GameTooltip_Hide MenuTemplates MenuUtil NO SAVE StaticPopupDialogs StaticPopup_OnClick StaticPopup_Show TransmogFrame UnitClass YES strtrim
 
 -- Lucky's Wardrobe: Save and load Situation selections at the transmog window.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -188,6 +188,26 @@ function SituationPresets:Rename(key, name, overwrite)
     return true
 end
 
+-- Saving over a preset re-derives its class scope from what is selected now, so the
+-- key moves with it rather than stranding the preset under its old scope.
+function SituationPresets:Overwrite(key, overwrite)
+    local preset = db.situationPresets[key]
+    if not preset then return end
+
+    local selections, classID = captureSelections()
+    local newKey = presetKey(preset.name, classID)
+    if newKey ~= key and not overwrite and db.situationPresets[newKey] then
+        StaticPopup_Show("LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION", preset.name, nil,
+            { key = key, name = preset.name })
+        return false
+    end
+
+    db.situationPresets[key] = nil
+    db.situationPresets[newKey] = { name = preset.name, classID = classID, selections = selections }
+    self:UpdateLoadButton()
+    return true
+end
+
 function SituationPresets:Delete(key)
     db.situationPresets[key] = nil
     self:UpdateLoadButton()
@@ -305,6 +325,32 @@ StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_SITUATION"] = {
     end,
 }
 
+StaticPopupDialogs["LUCKYS_WARDROBE_OVERWRITE_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.overwriteDialog,
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    OnAccept = function(_dialog, key)
+        SituationPresets:Overwrite(key)
+    end,
+}
+
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION"] = {
+    preferredIndex = 3,
+    text = strings.replaceDialog,
+    button1 = YES,
+    button2 = NO,
+    timeout = 0,
+    whileDead = 1,
+    hideOnEscape = 1,
+    OnAccept = function(_dialog, data)
+        SituationPresets:Overwrite(data.key, true)
+    end,
+}
+
 StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"] = {
     preferredIndex = 3,
     text = strings.deleteDialog,
@@ -322,6 +368,19 @@ local function createIconButton(parent, icon, tooltipText)
     return LuckyUI.CreateIconButton(parent, { icon = ICONS_PATH .. icon, tooltip = tooltipText })
 end
 
+local function attachMenuButton(menuButton, icon, colour, tooltipText, onClick)
+    local button = MenuTemplates.AttachBasicButton(menuButton)
+    local texture = button:AttachTexture()
+    texture:SetAllPoints()
+    texture:SetTexture(ICONS_PATH .. icon)
+    texture:SetVertexColor(unpack(colour))
+    button:SetScript("OnClick", onClick)
+    MenuUtil.HookTooltipScripts(button, function(tooltip)
+        tooltip:SetText(tooltipText)
+    end)
+    return button
+end
+
 local function installButtons()
     if SituationPresets.loadPresetButton then return end
     local wardrobe = TransmogFrame and TransmogFrame.WardrobeCollection
@@ -337,32 +396,27 @@ local function installButtons()
                     SituationPresets:Apply(entry.preset, situationsFrame)
                 end)
                 presetButton:AddInitializer(function(menuButton, _description, menu)
-                    local deleteButton = MenuTemplates.AttachBasicButton(menuButton)
+                    local deleteButton = attachMenuButton(menuButton, "delete", LuckyUI.C.danger,
+                        strings.deleteTooltip, function()
+                            StaticPopup_Show("LUCKYS_WARDROBE_DELETE_SITUATION", entry.name, nil, entry.key)
+                            menu:Close()
+                        end)
                     deleteButton:SetPoint("RIGHT", menuButton, "RIGHT", -3, 0)
-                    local deleteIcon = deleteButton:AttachTexture()
-                    deleteIcon:SetAllPoints()
-                    deleteIcon:SetTexture(MenuVariants.CancelButtonTexture)
-                    deleteButton:SetScript("OnClick", function()
-                        StaticPopup_Show("LUCKYS_WARDROBE_DELETE_SITUATION", entry.name, nil, entry.key)
-                        menu:Close()
-                    end)
-                    MenuUtil.HookTooltipScripts(deleteButton, function(tooltip)
-                        tooltip:SetText(strings.deleteTooltip)
-                    end)
 
-                    local renameButton = MenuTemplates.AttachBasicButton(menuButton)
+                    local renameButton = attachMenuButton(menuButton, "edit", LuckyUI.C.goldIcon,
+                        strings.renameTooltip, function()
+                            StaticPopup_Show("LUCKYS_WARDROBE_RENAME_SITUATION", entry.name, nil,
+                                { key = entry.key, name = entry.name })
+                            menu:Close()
+                        end)
                     renameButton:SetPoint("RIGHT", deleteButton, "LEFT", -2, 0)
-                    local renameIcon = renameButton:AttachTexture()
-                    renameIcon:SetAllPoints()
-                    renameIcon:SetAtlas("Pencil-Icon")
-                    renameButton:SetScript("OnClick", function()
-                        StaticPopup_Show("LUCKYS_WARDROBE_RENAME_SITUATION", entry.name, nil,
-                            { key = entry.key, name = entry.name })
-                        menu:Close()
-                    end)
-                    MenuUtil.HookTooltipScripts(renameButton, function(tooltip)
-                        tooltip:SetText(strings.renameTooltip)
-                    end)
+
+                    local overwriteButton = attachMenuButton(menuButton, "save-situation", LuckyUI.C.goldIcon,
+                        strings.overwriteTooltip, function()
+                            StaticPopup_Show("LUCKYS_WARDROBE_OVERWRITE_SITUATION", entry.name, nil, entry.key)
+                            menu:Close()
+                        end)
+                    overwriteButton:SetPoint("RIGHT", renameButton, "LEFT", -2, 0)
                 end)
             end
         end)

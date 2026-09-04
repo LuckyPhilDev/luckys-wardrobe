@@ -197,6 +197,41 @@ StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "class5:Any
 StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Anywhere")
 selected["0:62:0:0"] = false
 
+-- Saving over a preset takes the situations selected now and keeps its name.
+assert(presets:Save("Commute"), "saved a preset to overwrite")
+selected["4:0:0:0"] = false
+selected["3:0:0:0"] = true
+StaticPopupDialogs["LUCKYS_WARDROBE_OVERWRITE_SITUATION"].OnAccept(nil, "Commute")
+local overwritten = db.situationPresets["Commute"]
+assert(overwritten.selections["3:0:0:0"], "took the selections showing now")
+assert(not overwritten.selections["4:0:0:0"], "dropped the selections it had")
+assert(overwritten.name == "Commute", "kept the name")
+assert(not presets:Overwrite("no such preset"), "ignored an overwrite of a missing preset")
+
+-- Selecting a specialisation moves a shared preset under the class that saved it.
+selected["0:62:0:0"] = true
+assert(presets:Overwrite("Commute"), "overwrote the shared preset")
+assert(not db.situationPresets["Commute"], "dropped the shared key")
+assert(db.situationPresets["class5:Commute"].classID == 5, "scoped the preset to its class")
+
+-- Landing on a name already taken at the other scope asks before replacing it.
+selected["0:62:0:0"] = false
+assert(presets:Save("Commute"), "saved a shared preset to collide with")
+local collided = db.situationPresets["Commute"]
+shownPopup = nil
+assert(presets:Overwrite("class5:Commute") == false, "refused to replace without confirmation")
+assert(shownPopup.name == "LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION", "asked before replacing on overwrite")
+assert(shownPopup.textArg == "Commute", "named the preset in the replace prompt")
+assert(db.situationPresets["class5:Commute"], "kept the preset until confirmed")
+assert(db.situationPresets["Commute"] == collided, "left the preset it would land on until confirmed")
+
+StaticPopupDialogs["LUCKYS_WARDROBE_REPLACE_OVERWRITTEN_SITUATION"].OnAccept(nil, shownPopup.data)
+assert(not db.situationPresets["class5:Commute"], "moved the preset on confirmation")
+assert(db.situationPresets["Commute"] ~= collided, "replaced the preset it landed on")
+
+StaticPopupDialogs["LUCKYS_WARDROBE_DELETE_SITUATION"].OnAccept(nil, "Commute")
+selected["3:0:0:0"], selected["4:0:0:0"] = false, true
+
 -- An outfit is named after a preset by comparing the values the two would show, so
 -- the outfit list can match what it has cached without storing option keys.
 assert(presets:Save("Everywhere"), "saved a preset to match against")
