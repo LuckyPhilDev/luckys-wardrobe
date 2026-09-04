@@ -58,6 +58,8 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
             setTracker = "Set Tracker",
         },
         sections = {
+            qualityOfLife = "Quality of Life",
+            situations = "Situations",
             whatToTrack = "What Counts as Close",
             inInstances = "The List in Dungeons and Raids",
             whenYouLoot = "When You Loot",

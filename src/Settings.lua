@@ -114,6 +114,8 @@ function LuckysWardrobe.Settings:Init(db)
     })
 
     local transmog = panel:Group(S.settings.groups.transmog)
+
+    transmog:Section(S.settings.sections.qualityOfLife)
     transmog:Toggle({
         label = S.settings.undoOnSecondClick.label,
         desc = S.settings.undoOnSecondClick.desc,
@@ -172,6 +174,8 @@ function LuckysWardrobe.Settings:Init(db)
             LuckysWardrobe.TransmogSetNames:Refresh()
         end,
     })
+
+    transmog:Section(S.settings.sections.situations)
     transmog:Toggle({
         label = S.settings.showSituationValues.label,
         desc = S.settings.showSituationValues.desc,
@@ -180,6 +184,17 @@ function LuckysWardrobe.Settings:Init(db)
         checked = db.showSituationValues,
         onToggle = function(checked)
             db.showSituationValues = checked
+            LuckysWardrobe.SituationLabels:Refresh()
+        end,
+    })
+    transmog:Toggle({
+        label = S.settings.showSituationTooltips.label,
+        desc = S.settings.showSituationTooltips.desc,
+        image = "transmog/show-situation-tooltips",
+        imageSize = { 558, 140 },
+        checked = db.showSituationTooltips,
+        onToggle = function(checked)
+            db.showSituationTooltips = checked
             LuckysWardrobe.SituationLabels:Refresh()
         end,
     })
@@ -215,17 +230,6 @@ function LuckysWardrobe.Settings:Init(db)
         value = db.situationPresetExtraLimit,
         onChanged = function(value)
             db.situationPresetExtraLimit = value
-            LuckysWardrobe.SituationLabels:Refresh()
-        end,
-    })
-    transmog:Toggle({
-        label = S.settings.showSituationTooltips.label,
-        desc = S.settings.showSituationTooltips.desc,
-        image = "transmog/show-situation-tooltips",
-        imageSize = { 558, 140 },
-        checked = db.showSituationTooltips,
-        onToggle = function(checked)
-            db.showSituationTooltips = checked
             LuckysWardrobe.SituationLabels:Refresh()
         end,
     })
