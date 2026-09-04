@@ -47,17 +47,19 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 - **Random outfit** Hold the dice button to spin every armour slot through appearances you own, then let go and watch it settle. Weapons are left alone and nothing is bought until you press Apply.
   - A padlock shuts on any slot you set yourself, so that slot sits out every later spin. Click a padlock to lock or unlock it by hand.
   - Light a colour swatch and a second dice appears wearing it, spinning the same slots through only the pieces you own in that colour.
-- **Situation presets** Save the situations you picked for an outfit under a name, then apply the whole lot to another outfit in one click.
+- **Situation presets** Save the situations you picked for an outfit under a name, then apply the whole lot to another outfit in one click. Each saved situation can be renamed, deleted, or written over with whatever you have ticked now.
 - **Situation detail on outfits** Show the values you chose on each outfit in the list, and hover one for the full breakdown. An outfit matching a saved preset is named after it.
 - **Click an appearance again to undo** Clicking an appearance the slot already wears puts it back to what you had on, so a piece can be clicked on and off to judge it.
 - **Keep your active tab** Switching outfits at the transmog NPC no longer throws you back to Items.
 
 ### Everywhere Else
 
+- **Your outfits anywhere** Left-click the minimap button, or type `/lw outfits`, to open the outfits you saved at the transmogrifier without standing at one. The parts that need an NPC are left off.
+- **Outfits as a bar** A setting opens those outfits as a grid of icons instead, movable anywhere on screen. Click one to wear it, click it again to take it off, and a button on the bar clears your transmog.
 - **Item tooltips** Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along you are, as in "From set: Glyphed Garb 7/8".
 - **Preview models on tooltips** Hover a piece of gear and the piece itself appears beside the tooltip, close up and framed on the slot it sits in, so you can see it without the dressing room.
 - **Wowhead addresses** Alt-click any item in your appearance collection to bring up its Wowhead address in a box ready to copy.
-- **Minimap button** Shift-click for the sets you can finish where you are standing, right-click for settings, drag to reposition. It also lists itself in panel addons such as Titan Panel.
+- **Minimap button** Left-click for your saved outfits, shift-click for the sets you can finish where you are standing, right-click for settings, drag to reposition. It also lists itself in panel addons such as Titan Panel.
 - **A welcome note** A hello at your first login with the Discord address. `/wardrobe welcome` brings it back any time.
 
 ## Installation
@@ -81,6 +83,7 @@ Lucky's Utils ships inside the addon, so there is nothing else to install.
 | `/wardrobe` | Open settings |
 | `/lw` | Short form of `/wardrobe` |
 | `/lw sets` | Show the sets you can finish where you are standing |
+| `/lw outfits` | Open your saved outfits away from a transmog NPC |
 | `/lw welcome` | Bring back the welcome note |
 | `/lw conflicts` | Bring back the addon conflict warning |
 
@@ -98,7 +101,7 @@ Open with `/lw` or **Options > AddOns > Lucky's Wardrobe**.
 - **What's New** The settings added in recent releases, each one clicking through to where it lives.
 - **Appearances** Shift-click tracking, whether tracked pieces carry a crosshair, and alt-click Wowhead addresses.
 - **Tooltips** Whether a tooltip names the set and your progress, whether a preview model appears beside it, and whether that preview covers gear you already have.
-- **Transmog** Hiding sets your character cannot wear, keeping your active tab, whether set cards carry names, and how much situation detail shows on saved outfits.
+- **Transmog** Split into Quality of Life and Situations. Hiding sets your character cannot wear, keeping your active tab, whether set cards carry names, whether outfits open as a bar, and how much situation detail shows on saved outfits.
 - **Set Tracker** How many pieces a set can be missing and still count, whether to include your current tier and other classes' sets, catalyst marks, whether the list opens by itself, and how loot alerts sound.
 
 </details>
