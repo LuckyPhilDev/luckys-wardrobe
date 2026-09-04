@@ -7,6 +7,9 @@
 - **Open Outfits as a Bar** A setting swaps that list for a grid of outfit icons you can drag anywhere and click to wear, with a button on it to clear your transmog.
 - **Overwrite a saved situation** The Load Situation menu gives each saved situation a save button beside its rename and delete buttons, replacing what it stores with the situations ticked now.
 
+### Improved
+- **New icons in the Load Situation menu** The rename and delete buttons beside each saved situation take clearer icons, delete in red.
+
 ## [1.10.4] - 2026-09-03
 
 ### Improved
