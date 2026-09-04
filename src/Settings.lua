@@ -22,7 +22,6 @@ function LuckysWardrobe.Settings:Init(db)
     local panel = LuckySettings:NewRichPanel(S.addon.title, {
         addonFolder = "Luckys_Wardrobe",
         imagesRoot = "Images",
-        minVersion = LuckysWardrobe.WHATS_NEW_MIN_VERSION,
         devMode = {
             label = S.settings.devMode.label,
             desc = S.settings.devMode.desc,
