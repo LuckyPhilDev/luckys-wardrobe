@@ -17,6 +17,7 @@ local completionDB
 local alertsDB
 local catalystStarted
 local setListToggled
+local outfitsToggled
 local diagnosed
 local replayed
 
@@ -249,6 +250,12 @@ LuckysWardrobe.SetCompletion = {
     end,
 }
 
+LuckysWardrobe.OpenAnywhere = {
+    Toggle = function()
+        outfitsToggled = true
+    end,
+}
+
 LuckysWardrobe.LootAlerts = {
     Init = function(_, db)
         alertsDB = db
@@ -326,6 +333,7 @@ assert(minimapOptions, "created minimap button")
 
 minimapOptions.onClick(nil, "LeftButton")
 assert(not opened, "left-click did not open settings")
+assert(outfitsToggled, "left-click opened the outfit list")
 minimapOptions.onClick(nil, "RightButton")
 assert(opened, "right-click opened settings")
 
@@ -337,8 +345,10 @@ assert(not LuckysWardrobeDB.devMode, "middle-click turned dev mode back off")
 -- Hiding the minimap button is a supported setting, so the list has a slash command
 -- and a keybinding as well. All three reach the same toggle.
 shiftDown = true
+outfitsToggled = false
 minimapOptions.onClick(nil, "LeftButton")
 assert(setListToggled, "shift-click opened the set list")
+assert(not outfitsToggled, "shift-click left the outfit list alone")
 
 -- Shift is held for the set list, so the dev-mode toggle has to answer to the
 -- middle button alone rather than falling through to it.
@@ -355,6 +365,11 @@ setListToggled = false
 opened = false
 SlashCmdList.LUCKYSWARDROBE("sets")
 assert(setListToggled and not opened, "/wardrobe sets opened the set list rather than settings")
+
+outfitsToggled = false
+opened = false
+SlashCmdList.LUCKYSWARDROBE("outfits")
+assert(outfitsToggled and not opened, "/wardrobe outfits opened the outfit list rather than settings")
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("welcome")

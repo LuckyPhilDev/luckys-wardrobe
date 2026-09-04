@@ -15,6 +15,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         initialized = "Initialized.",
     },
     minimap = {
+        leftClick = "Left-click: Open your outfits",
         shiftClick = "Shift-click: Sets you can finish here",
         rightClick = "Right-click: Open settings",
         middleClick = "Middle-click: Toggle dev mode",
@@ -218,6 +219,9 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         lockHint = "Click to leave this slot as it is when you roll a random outfit.",
         unlockTitle = "Unlock This Slot",
         unlockHint = "Click to let a random outfit roll this slot again.",
+    },
+    openAnywhere = {
+        inCombat = "The wardrobe cannot be opened in combat.",
     },
     situationLabels = {
         scanTitle = "Reading Outfit Situations",

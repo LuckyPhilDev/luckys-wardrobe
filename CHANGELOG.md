@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Your outfits anywhere** Left-click the minimap button, or type `/lw outfits`, to open your outfit list without walking to a transmog NPC. The parts that need an NPC are left off, so what opens is the list itself.
+
 ## [1.10.4] - 2026-09-03
 
 ### Improved

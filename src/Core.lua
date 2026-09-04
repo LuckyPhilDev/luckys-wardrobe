@@ -55,12 +55,15 @@ local function initialize()
                 LuckysWardrobe.TransmogItems:Refresh()
             elseif IsShiftKeyDown() then
                 LuckysWardrobe.SetCompletion:Toggle()
+            else
+                LuckysWardrobe.OpenAnywhere:Toggle()
             end
         end,
         tooltip = function(tooltip)
             local S = LuckysWardrobe.Strings.minimap
             tooltip:AddLine(LuckysWardrobe.Strings.addon.title)
             tooltip:AddLine(" ")
+            tooltip:AddLine(S.leftClick, 0.91, 0.86, 0.78)
             tooltip:AddLine(S.shiftClick, 0.91, 0.86, 0.78)
             tooltip:AddLine(S.rightClick, 0.91, 0.86, 0.78)
             tooltip:AddLine(S.middleClick, 0.91, 0.86, 0.78)
@@ -79,6 +82,8 @@ local function initialize()
         command = command:lower()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
+        elseif command == "outfits" then
+            LuckysWardrobe.OpenAnywhere:Toggle()
         elseif command == "welcome" then
             if argument:lower() == "reset" then
                 LuckysWardrobe.Welcome:Reset()
