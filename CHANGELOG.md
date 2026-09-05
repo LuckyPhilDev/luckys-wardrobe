@@ -1,9 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.1] - 2026-09-05
 
 ### Added
-- **Transmog Quick-switcher** A keybinding of your own in the Key Bindings screen opens your outfits, the bar or the game's own list depending on your setting.
+- **Transmog Quick-switcher** A keybinding of your own in the Key Bindings screen opens your outfits, the bar or the game's own list depending on your setting. (Thanks for the suggestion Tuulani)
 
 ### Improved
 - **Locking from the Transmog Outfits bar** Right-click a tile to lock it, so no situation swaps it out, whether the tile is an outfit or the gear you are wearing. (Thanks for the suggestion Tuulani)
