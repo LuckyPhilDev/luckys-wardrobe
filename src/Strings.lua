@@ -149,7 +149,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         },
         useOutfitBar = {
             label = "Open Outfits as a Bar",
-            desc = "Opens your outfits as a small grid of icons you can click to wear, movable anywhere on screen. Left off, the same click opens the game's own outfit list instead, which is the one to keep if you want to lock an outfit or edit it. The bar can only wear and clear.",
+            desc = "Opens your outfits as a small grid of icons you can click to wear, movable anywhere on screen. Left off, the same click opens the game's own outfit list instead, which is the one to keep if you want to edit an outfit or save a new one. The bar wears, clears and locks.",
         },
         keepTransmogTab = {
             label = "Keep Your Tab Between Outfits",
@@ -232,6 +232,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     outfitBar = {
         title = "Transmog Outfits",
         wearHint = "Left-click to wear, click again to take it off.",
+        lockHint = "Right-click to lock, so a situation cannot swap it out.",
         clear = "Clear Transmogrification",
         clearHint = "Puts every slot back to the gear you are wearing.",
         empty = "No outfits saved yet.",

@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide LuckyUI UIParent UISpecialFrames tinsert unpack
+-- luacheck: globals C_AddOns C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyUI TransmogFrame TransmogOutfitEntryMixin UIParent UISpecialFrames hooksecurefunc tinsert unpack
 
 -- Lucky's Wardrobe: A movable grid of your outfits, worn with one click.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -21,6 +21,8 @@ local HEADER_CHROME = 46
 
 local panel
 local tiles = {}
+local hookedOutfitRows = false
+local borrowedOutfitRows = false
 
 local function tileAnchor(index)
     local row = math.floor((index - 1) / PER_ROW)
@@ -28,16 +30,101 @@ local function tileAnchor(index)
     return PADDING + column * (TILE + GAP), -(HEADER + PADDING + row * (TILE + GAP))
 end
 
--- InsecureActionButtonTemplate runs the same secure action as an action bar
--- button but is an ordinary frame, so the grid can be rebuilt and re-pointed at
--- any time. The trade is that a click in combat does nothing, which is the right
--- way round for a wardrobe.
+local function outfitCollection()
+    if not TransmogFrame and not C_AddOns.IsAddOnLoaded("Blizzard_Transmog") then
+        C_AddOns.LoadAddOn("Blizzard_Transmog")
+    end
+    return TransmogFrame and TransmogFrame.OutfitCollection
+end
+
+-- Locking is protected, so nothing but Blizzard's own row in the transmog window
+-- can do it, and a tile reaches the lock only by clicking that row. The row has to
+-- exist to be clicked, not to be visible. The list renders about fourteen at a time,
+-- so an outfit far enough down one that is scrolled away has none.
+local function lockTargetForOutfit(outfitID)
+    local collection = outfitCollection()
+    local list = collection and collection.OutfitList
+    local scrollBox = list and list.ScrollBox
+    if not scrollBox then return nil end
+
+    local target
+    scrollBox:ForEachFrame(function(row)
+        local elementData = row:GetElementData()
+        if elementData and elementData.outfitID == outfitID then
+            target = row.OutfitIcon
+        end
+    end)
+    return target
+end
+
+-- The button for the gear you are wearing belongs to the window rather than the
+-- list, so it is there from the moment the window loads and never scrolls away.
+local function lockTargetForClear()
+    local collection = outfitCollection()
+    local spellFrame = collection and collection.ShowEquippedGearSpellFrame
+    return spellFrame and spellFrame.Button
+end
+
+-- Right-click clicks Blizzard's button where there is one to click. Where there is
+-- not, the unqualified type attribute still answers it and the outfit is worn, so a
+-- tile out of the list's reach is never a tile that ignores you.
+local function setLockTarget(tile, target)
+    tile.lockTarget = target
+    tile:SetAttribute("type2", target and "click" or nil)
+    tile:SetAttribute("clickbutton2", target)
+end
+
+-- A row is reused for whichever outfit scrolls into it, so a tile pointed at one
+-- has to let go the moment that row is dealt to another outfit. Left alone, its
+-- right-click would lock a stranger.
+local function aimTilesAtRow(row, outfitID)
+    for _, tile in ipairs(tiles) do
+        if tile.outfitID and tile.outfitID == outfitID then
+            setLockTarget(tile, row)
+        elseif tile.lockTarget == row then
+            setLockTarget(tile, nil)
+        end
+    end
+end
+
+local function hookOutfitRows()
+    if hookedOutfitRows then return end
+    if not outfitCollection() or not TransmogOutfitEntryMixin then return end
+
+    hookedOutfitRows = true
+    hooksecurefunc(TransmogOutfitEntryMixin, "Init", function(entry, elementData)
+        if elementData and not InCombatLockdown() then
+            aimTilesAtRow(entry.OutfitIcon, elementData.outfitID)
+        end
+    end)
+end
+
+-- A row exists only once the window's OnShow has built it, and OnShow has to be the
+-- one that does: calling the window's own refresh from here would build the rows on
+-- this addon's call chain, and a row built that way cannot run the protected call
+-- behind a lock. Showing and hiding it in the same breath leaves that to the game and
+-- is over before anything draws, at the cost of the window's open and close sounds.
+-- Never while it stands open, and never at a transmogrifier, where closing it would
+-- end the visit.
+local function borrowOutfitRows()
+    if borrowedOutfitRows or not outfitCollection() then return end
+    if TransmogFrame:IsShown() or C_Transmog.IsAtTransmogNPC() then return end
+
+    borrowedOutfitRows = true
+    TransmogFrame:Show()
+    TransmogFrame:Hide()
+end
+
+-- A real secure button, not the insecure one: clicking Blizzard's row runs a
+-- protected action, and only a click arriving through a secure button carries the
+-- trust to do it. The cost is a tile that cannot be built or re-pointed in combat,
+-- which is what holds a refresh until the fight is over.
 local function createTile(index)
-    local tile = CreateFrame("Button", "LuckysWardrobeOutfitTile" .. index, panel, "InsecureActionButtonTemplate")
+    local tile = CreateFrame("Button", "LuckysWardrobeOutfitTile" .. index, panel, "SecureActionButtonTemplate")
     tile:SetSize(TILE, TILE)
-    -- Both buttons wear the outfit. The type attribute is unqualified, so every
-    -- registered button reaches the same action, and there is nothing else for a
-    -- right-click to do: locking is protected and only Blizzard's own list can offer it.
+    -- Both halves of every click, and useOnKeyDown off. Without the attribute the
+    -- button falls back to the ActionButtonUseKeyDown CVar, which is on, and then it
+    -- acts on the press it was never registered for and every click does nothing.
     tile:RegisterForClicks("LeftButtonDown", "LeftButtonUp", "RightButtonDown", "RightButtonUp")
     tile:SetAttribute("useOnKeyDown", false)
     tile:SetPoint("TOPLEFT", tileAnchor(index))
@@ -63,14 +150,18 @@ local function createTile(index)
 
     tile:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        -- Not GameTooltip:SetOutfit, whose text describes the transmog window's own
-        -- right-click actions. Nothing here answers a right-click.
+        -- Not GameTooltip:SetOutfit, whose text names actions the bar has no answer
+        -- for, dragging an outfit onto an action bar among them.
         if self.outfitID then
             GameTooltip:SetText(self.outfitName, 1, 1, 1)
             GameTooltip:AddLine(strings.wearHint, 0.54, 0.49, 0.42, true)
         else
             GameTooltip:SetText(strings.clear, 1, 1, 1)
             GameTooltip:AddLine(strings.clearHint, nil, nil, nil, true)
+        end
+        -- Promised only where a right-click can keep the promise.
+        if self.lockTarget then
+            GameTooltip:AddLine(strings.lockHint, 0.54, 0.49, 0.42, true)
         end
         GameTooltip:Show()
     end)
@@ -80,17 +171,23 @@ local function createTile(index)
     return tile
 end
 
+local function setLocked(tile, locked)
+    tile.locked:SetShown(locked)
+    tile.locked:ShowAutoCastEnabled(locked)
+end
+
 local function setClearTile(tile)
     tile.outfitID = nil
     tile.outfitName = nil
     tile.icon:SetTexture(CLEAR_ICON)
     tile.icon:SetDesaturated(false)
     tile.icon:SetVertexColor(1, 0.75, 0.75)
-    tile.active:Hide()
-    tile.locked:Hide()
+    tile.active:SetShown(C_TransmogOutfitInfo.IsEquippedGearOutfitDisplayed())
+    setLocked(tile, C_TransmogOutfitInfo.IsEquippedGearOutfitLocked())
     tile:SetAttribute("type", "outfit")
     tile:SetAttribute("action", "clear")
     tile:SetAttribute("outfit-index", nil)
+    setLockTarget(tile, lockTargetForClear())
     tile:Show()
 end
 
@@ -101,20 +198,29 @@ local function setOutfitTile(tile, outfit, activeOutfitID)
     tile.icon:SetDesaturated(outfit.isDisabled)
     tile.icon:SetVertexColor(1, 1, 1)
     tile.active:SetShown(outfit.outfitID == activeOutfitID)
-
-    local locked = C_TransmogOutfitInfo.IsLockedOutfit(outfit.outfitID)
-    tile.locked:SetShown(locked)
-    tile.locked:ShowAutoCastEnabled(locked)
+    setLocked(tile, C_TransmogOutfitInfo.IsLockedOutfit(outfit.outfitID))
     tile:SetAttribute("type", "outfit")
     tile:SetAttribute("action", "toggle")
     -- The secure action takes the player-facing index, which skips the gaps that
     -- outfit IDs leave behind, so the two are never interchangeable.
     tile:SetAttribute("outfit-index", outfit.playerFacingOutfitIndex)
+    setLockTarget(tile, lockTargetForOutfit(outfit.outfitID))
     tile:Show()
 end
 
+local function retireTile(tile)
+    tile.outfitID = nil
+    setLockTarget(tile, nil)
+    tile:Hide()
+end
+
 local function refresh()
-    if not panel then return end
+    -- Every tile is a secure frame, so none of what follows is allowed mid-fight.
+    -- PLAYER_REGEN_ENABLED brings the bar up to date the moment the fight ends.
+    if not panel or InCombatLockdown() then return end
+
+    hookOutfitRows()
+    borrowOutfitRows()
 
     local outfits = C_TransmogOutfitInfo.GetOutfitsInfo() or {}
     local activeOutfitID = C_TransmogOutfitInfo.GetActiveOutfitID()
@@ -126,7 +232,7 @@ local function refresh()
         setOutfitTile(tiles[index] or createTile(index), outfit, activeOutfitID)
     end
     for index = used + 1, #tiles do
-        tiles[index]:Hide()
+        retireTile(tiles[index])
     end
 
     panel.empty:SetShown(#outfits == 0)
@@ -162,6 +268,7 @@ local function buildPanel()
 
     panel:RegisterEvent("TRANSMOG_OUTFITS_CHANGED")
     panel:RegisterEvent("TRANSMOG_DISPLAYED_OUTFIT_CHANGED")
+    panel:RegisterEvent("PLAYER_REGEN_ENABLED")
     panel:SetScript("OnEvent", refresh)
     panel:SetScript("OnShow", refresh)
 
