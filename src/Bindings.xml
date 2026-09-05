@@ -5,4 +5,7 @@
 	<Binding name="LUCKYSWARDROBE_TOGGLE_SET_LIST" category="BINDING_HEADER_LUCKYSWARDROBE">
 		LuckysWardrobe.SetCompletion:Toggle()
 	</Binding>
+	<Binding name="LUCKYSWARDROBE_TOGGLE_OUTFITS" category="BINDING_HEADER_LUCKYSWARDROBE">
+		LuckysWardrobe.OpenOutfits()
+	</Binding>
 </Bindings>

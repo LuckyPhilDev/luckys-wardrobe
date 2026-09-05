@@ -1,4 +1,4 @@
--- luacheck: globals BINDING_HEADER_LUCKYSWARDROBE BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST
+-- luacheck: globals BINDING_HEADER_LUCKYSWARDROBE BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST BINDING_NAME_LUCKYSWARDROBE_TOGGLE_OUTFITS
 
 -- Lucky's Wardrobe: User-facing strings.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -7,6 +7,7 @@ LuckysWardrobe = LuckysWardrobe or {}
 -- to be globals rather than entries in the table below.
 BINDING_HEADER_LUCKYSWARDROBE = "Lucky's Wardrobe"
 BINDING_NAME_LUCKYSWARDROBE_TOGGLE_SET_LIST = "Sets You Can Finish Here"
+BINDING_NAME_LUCKYSWARDROBE_TOGGLE_OUTFITS = "Transmog Quick-switcher"
 
 LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     addon = {

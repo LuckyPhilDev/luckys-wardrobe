@@ -3,6 +3,16 @@ LuckysWardrobe = LuckysWardrobe or {}
 
 local ADDON_NAME = "Luckys_Wardrobe"
 
+-- The minimap button, the slash command and the keybinding all open the outfits the
+-- same way, and the keybinding reaches it by name out of the global namespace.
+function LuckysWardrobe.OpenOutfits()
+    if LuckysWardrobeDB.useOutfitBar then
+        LuckysWardrobe.OutfitBar:Toggle()
+    else
+        LuckysWardrobe.OpenAnywhere:Toggle()
+    end
+end
+
 local function initialize()
     LuckysWardrobeDB = LuckysWardrobeDB or {}
     LuckyUtils.ApplyDefaults(LuckysWardrobeDB, LuckysWardrobe.DB_DEFAULTS)
@@ -38,14 +48,6 @@ local function initialize()
     LuckysWardrobe.SituationPresets:Init(LuckysWardrobeDB)
     LuckysWardrobe.OutfitBar:Init(LuckysWardrobeDB)
 
-    local function openOutfits()
-        if LuckysWardrobeDB.useOutfitBar then
-            LuckysWardrobe.OutfitBar:Toggle()
-        else
-            LuckysWardrobe.OpenAnywhere:Toggle()
-        end
-    end
-
     LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
         tocname = ADDON_NAME,
@@ -66,7 +68,7 @@ local function initialize()
             elseif IsShiftKeyDown() then
                 LuckysWardrobe.SetCompletion:Toggle()
             else
-                openOutfits()
+                LuckysWardrobe.OpenOutfits()
             end
         end,
         tooltip = function(tooltip)
@@ -93,7 +95,7 @@ local function initialize()
         if command == "sets" then
             LuckysWardrobe.SetCompletion:Toggle()
         elseif command == "outfits" then
-            openOutfits()
+            LuckysWardrobe.OpenOutfits()
         elseif command == "welcome" then
             if argument:lower() == "reset" then
                 LuckysWardrobe.Welcome:Reset()
