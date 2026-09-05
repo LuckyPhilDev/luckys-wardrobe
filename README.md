@@ -87,7 +87,7 @@ Lucky's Utils ships inside the addon, so there is nothing else to install.
 | `/lw welcome` | Bring back the welcome note |
 | `/lw conflicts` | Bring back the addon conflict warning |
 
-The set list also has a keybinding, under **Sets You Can Finish Here** in the game's Key Bindings screen.
+The set list and your outfits also have keybindings, under **Sets You Can Finish Here** and **Transmog Quick-switcher** in the game's Key Bindings screen.
 
 Diagnostic commands are in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 

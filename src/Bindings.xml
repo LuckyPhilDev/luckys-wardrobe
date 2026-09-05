@@ -1,5 +1,11 @@
 <Bindings>
-	<Binding name="LUCKYSWARDROBE_TOGGLE_SET_LIST" header="LUCKYSWARDROBE">
+	<!-- The settings panel groups by category, not by header, and reads the section
+	     title out of the global the category names. Without one a binding is filed
+	     under Other. -->
+	<Binding name="LUCKYSWARDROBE_TOGGLE_SET_LIST" category="BINDING_HEADER_LUCKYSWARDROBE">
 		LuckysWardrobe.SetCompletion:Toggle()
+	</Binding>
+	<Binding name="LUCKYSWARDROBE_TOGGLE_OUTFITS" category="BINDING_HEADER_LUCKYSWARDROBE">
+		LuckysWardrobe.OpenOutfits()
 	</Binding>
 </Bindings>

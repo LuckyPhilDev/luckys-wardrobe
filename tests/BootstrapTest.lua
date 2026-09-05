@@ -391,7 +391,13 @@ assert(outfitsToggled == "bar", "/wardrobe outfits opened the bar once the setti
 outfitsToggled = false
 minimapOptions.onClick(nil, "LeftButton")
 assert(outfitsToggled == "bar", "left-click opened the bar once the setting was on")
+outfitsToggled = false
+LuckysWardrobe.OpenOutfits()
+assert(outfitsToggled == "bar", "the keybinding opened the bar once the setting was on")
 LuckysWardrobeDB.useOutfitBar = false
+outfitsToggled = false
+LuckysWardrobe.OpenOutfits()
+assert(outfitsToggled == "list", "the keybinding opened the outfit list with the setting off")
 
 opened = false
 SlashCmdList.LUCKYSWARDROBE("welcome")
