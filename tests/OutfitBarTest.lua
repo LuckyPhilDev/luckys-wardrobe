@@ -16,13 +16,14 @@ local NOOP_METHODS = {
     "SetSize", "SetPoint", "SetAllPoints", "SetFrameStrata", "SetFrameLevel",
     "RegisterEvent", "SetHighlightTexture", "SetPushedTexture",
     "SetTexture", "SetDesaturated", "SetVertexColor", "SetAtlas",
-    "SetFont", "SetTextColor", "SetText",
+    "SetFont", "SetTextColor", "SetJustifyH", "SetWordWrap",
 }
 
 local function makeFrame(name)
     local frame = { name = name, scripts = {}, attributes = {} }
     for _, method in ipairs(NOOP_METHODS) do frame[method] = function() end end
 
+    frame.SetText = function(self, text) self.text = text end
     frame.SetScript = function(self, script, handler) self.scripts[script] = handler end
     frame.RegisterForClicks = function(self, ...) self.clicks = table.concat({ ... }, " ") end
     frame.SetAttribute = function(self, key, value) self.attributes[key] = value end
@@ -63,7 +64,10 @@ LuckyUI = {
         panel = makeFrame(name)
         return panel
     end,
-    CreateHeader = function(frame) frame.titleText = makeFrame() end,
+    CreateHeader = function(frame)
+        frame.header = makeFrame()
+        frame.titleText = makeFrame()
+    end,
     EnableDrag = function() end,
 }
 
@@ -230,6 +234,8 @@ assert(tile(SECOND).locked.shown == true and tile(SECOND).locked.autoCast == tru
     "a locked outfit shimmers")
 assert(tile(CLEAR).locked.shown == false, "the clear tile carries no shimmer until it is locked")
 
+assert(panel.activeName.text == "Raid", "the header names the outfit you are wearing")
+
 gearDisplayed, gearLocked = true, true
 refresh()
 assert(tile(CLEAR).active.shown == true, "the clear tile is marked while your own gear is on")
@@ -240,8 +246,11 @@ assert(tile(CLEAR).locked.shown == true and tile(CLEAR).locked.autoCast == true,
 -- when the fight ends.
 inCombat = true
 lockedOutfits[RAID] = nil
+activeOutfitID = CASUAL
 refresh()
 assert(tile(SECOND).locked.shown == true, "combat leaves the tiles as they were")
+assert(panel.activeName.text == "Casual",
+    "while a situation swapping outfits as the fight starts still renames the header")
 
 inCombat = false
 refresh()
@@ -265,5 +274,9 @@ assert(not windowShown, "and it does not stay open")
 
 refresh()
 assert(windowShows == 1, "the rows are borrowed once, not on every refresh")
+
+activeOutfitID = 0
+refresh()
+assert(panel.activeName.text == strings.noOutfit, "the header says so when no outfit is in use")
 
 print("OutfitBar tests passed")
