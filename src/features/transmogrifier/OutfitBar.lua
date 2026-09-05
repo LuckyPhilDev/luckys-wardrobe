@@ -18,6 +18,8 @@ local CLEAR_ICON = 7539422 -- Ui_transmog_showequippedgear
 
 -- The header's title inset, its close button, and a gap between the two.
 local HEADER_CHROME = 46
+local NAME_GAP = 10
+local NAME_MAX_WIDTH = 140
 
 local panel
 local tiles = {}
@@ -214,16 +216,33 @@ local function retireTile(tile)
     tile:Hide()
 end
 
+-- Nothing matches while your own gear is on show, and nothing matches either in the
+-- moment between an outfit being deleted and another taking over.
+local function showActiveOutfitName(outfits, activeOutfitID)
+    local name
+    for _, outfit in ipairs(outfits) do
+        if outfit.outfitID == activeOutfitID then name = outfit.name end
+    end
+    panel.activeName:SetText(name or strings.noOutfit)
+    panel.activeName:SetTextColor(unpack(name and LuckyUI.C.goldAccent or LuckyUI.C.textMuted))
+end
+
 local function refresh()
+    if not panel then return end
+
+    local outfits = C_TransmogOutfitInfo.GetOutfitsInfo() or {}
+    local activeOutfitID = C_TransmogOutfitInfo.GetActiveOutfitID()
+    -- Ahead of the combat check, because a situation swapping outfits as a fight
+    -- starts is the swap you are least likely to have made yourself.
+    showActiveOutfitName(outfits, activeOutfitID)
+
     -- Every tile is a secure frame, so none of what follows is allowed mid-fight.
     -- PLAYER_REGEN_ENABLED brings the bar up to date the moment the fight ends.
-    if not panel or InCombatLockdown() then return end
+    if InCombatLockdown() then return end
 
     hookOutfitRows()
     borrowOutfitRows()
 
-    local outfits = C_TransmogOutfitInfo.GetOutfitsInfo() or {}
-    local activeOutfitID = C_TransmogOutfitInfo.GetActiveOutfitID()
     local used = #outfits + 1
 
     setClearTile(tiles[1] or createTile(1))
@@ -239,11 +258,14 @@ local function refresh()
 
     local columns = math.min(used, PER_ROW)
     local rows = math.ceil(used / PER_ROW)
-    -- A handful of outfits makes a grid narrower than the title, and the title's
-    -- width moves with the locale, so it is measured rather than assumed to fit.
+    -- A handful of outfits makes a grid narrower than the header, and both the title
+    -- and the outfit's name move with the locale, so they are measured rather than
+    -- assumed to fit. A long name stops widening the window and truncates instead.
     local gridWidth = PADDING * 2 + columns * TILE + (columns - 1) * GAP
+    local headerWidth = panel.titleText:GetStringWidth() + HEADER_CHROME + NAME_GAP
+        + math.min(panel.activeName:GetStringWidth(), NAME_MAX_WIDTH)
     panel:SetSize(
-        math.max(gridWidth, panel.titleText:GetStringWidth() + HEADER_CHROME),
+        math.max(gridWidth, headerWidth),
         HEADER + PADDING * 2 + rows * TILE + (rows - 1) * GAP + (panel.empty:IsShown() and 20 or 0))
 end
 
@@ -257,6 +279,14 @@ local function buildPanel()
     panel:Hide()
     LuckyUI.CreateHeader(panel, strings.title)
     LuckyUI.EnableDrag(panel, { db = db, key = "outfitBarPosition" })
+
+    panel.activeName = panel.header:CreateFontString(nil, "OVERLAY")
+    panel.activeName:SetFont(LuckyUI.BODY_FONT, 12)
+    panel.activeName:SetPoint("LEFT", panel.titleText, "RIGHT", NAME_GAP, 0)
+    -- Clear of the close button, which the header hangs 8 in from its right edge.
+    panel.activeName:SetPoint("RIGHT", -34, 0)
+    panel.activeName:SetJustifyH("RIGHT")
+    panel.activeName:SetWordWrap(false)
 
     panel.empty = panel:CreateFontString(nil, "OVERLAY")
     panel.empty:SetFont(LuckyUI.BODY_FONT, 12)

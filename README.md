@@ -55,7 +55,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 ### Everywhere Else
 
 - **Your outfits anywhere** Left-click the minimap button, or type `/lw outfits`, to open the outfits you saved at the transmogrifier without standing at one. The parts that need an NPC are left off.
-- **Outfits as a bar** A setting opens those outfits as a grid of icons instead, movable anywhere on screen. Click one to wear it, click it again to take it off, right-click to lock it, and a button on the bar clears your transmog.
+- **Outfits as a bar** A setting opens those outfits as a grid of icons instead, movable anywhere on screen. Click one to wear it, click it again to take it off, right-click to lock it, and a button on the bar clears your transmog. The header names whichever outfit you are wearing.
 - **Item tooltips** Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along you are, as in "From set: Glyphed Garb 7/8".
 - **Preview models on tooltips** Hover a piece of gear and the piece itself appears beside the tooltip, close up and framed on the slot it sits in, so you can see it without the dressing room.
 - **Wowhead addresses** Alt-click any item in your appearance collection to bring up its Wowhead address in a box ready to copy.

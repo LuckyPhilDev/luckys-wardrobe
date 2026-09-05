@@ -236,6 +236,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         clear = "Clear Transmogrification",
         clearHint = "Puts every slot back to the gear you are wearing.",
         empty = "No outfits saved yet.",
+        noOutfit = "No outfit",
     },
     situationLabels = {
         scanTitle = "Reading Outfit Situations",

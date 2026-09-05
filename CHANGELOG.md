@@ -4,6 +4,7 @@
 
 ### Improved
 - **Locking from the Transmog Outfits bar** Right-click a tile to lock it, so no situation swaps it out, whether the tile is an outfit or the gear you are wearing. (Thanks for the suggestion Tuulani)
+- **The outfit you are wearing, named** The Transmog Outfits bar puts its name in the header beside the title, and says No outfit while your own gear is on show. (Thanks for the suggestion Tuulani)
 
 ## [1.11.0] - 2026-09-04
 
