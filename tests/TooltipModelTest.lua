@@ -194,6 +194,12 @@ end
 local screenWidth = 1000
 _G.GetScreenWidth = function() return screenWidth end
 
+-- A frame the client keeps anything secret about answers for its own edges with
+-- a value an addon may test and nothing more. A table stands in for one here,
+-- since arithmetic on a table is the error the client raises on the real thing.
+local SECRET = {}
+_G.issecretvalue = function(value) return value == SECRET end
+
 local modelReady = true
 _G.IsUnitModelReadyForUI = function() return modelReady end
 
@@ -635,6 +641,20 @@ assert(panel.points[1][1] == "TOPRIGHT" and panel.points[1][3] == "TOPLEFT",
 assert(panel.points[1][2] == ShoppingTooltip, "the preview opened underneath the comparison tooltip")
 screenWidth = 1000
 GameTooltip.shoppingTooltips = {}
+
+-- A tooltip on something the client keeps secret will not say where it is, and
+-- the preview opens beside it anyway rather than taking the answer apart.
+local secretTooltip = GameTooltip.ItemTooltip.Tooltip
+local plainLeft, plainRight = secretTooltip.GetLeft, secretTooltip.GetRight
+function secretTooltip:GetLeft() return SECRET end
+function secretTooltip:GetRight() return SECRET end
+onItemTooltip(secretTooltip)
+assert(panel.shown, "a tooltip that keeps its position secret lost its preview")
+assert(panel.points[1][1] == "TOPLEFT" and panel.points[1][3] == "TOPRIGHT",
+    "the preview off a secret tooltip opened somewhere other than the open side")
+assert(panel.points[1][2] == secretTooltip, "the preview hung off something else")
+secretTooltip.GetLeft, secretTooltip.GetRight = plainLeft, plainRight
+secretTooltip:Hide()
 
 -- An item nobody can dress in takes the preview away rather than leaving the
 -- last piece hanging beside a potion.

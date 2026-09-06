@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Show a Preview Model no longer throws Lua errors on tooltips the game will not give a position for, which is what filled the screen while looting. (Thanks for the report Bersky)
+
 ## [1.11.1] - 2026-09-05
 
 ### Added

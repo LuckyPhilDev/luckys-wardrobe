@@ -350,15 +350,25 @@ local function isFurther(edge, than, towardLeft)
     return edge > than
 end
 
+-- A frame the client has put anything secret on keeps its position secret with
+-- it, and the numbers those edges come back as are an error to do arithmetic on
+-- rather than a wrong answer. A tooltip catches that from whatever it was told
+-- to show, so an edge read off one is a number that may not come.
+local function edgeOf(region, towardLeft)
+    local edge
+    if towardLeft then edge = region:GetLeft() else edge = region:GetRight() end
+    if issecretvalue(edge) then return nil end
+    return edge
+end
+
 -- Comparison tooltips open beside the tooltip they belong to, so the preview
 -- hangs off whichever of them reaches furthest in the direction it is opening,
 -- rather than off the tooltip itself, which they would then cover.
 local function outermostShown(tooltip, towardLeft)
     local furthest = tooltip
     for _, comparison in ipairs(tooltip.shoppingTooltips or {}) do
-        local edge = comparison:IsShown()
-            and (towardLeft and comparison:GetLeft() or comparison:GetRight())
-        local furthestEdge = towardLeft and furthest:GetLeft() or furthest:GetRight()
+        local edge = comparison:IsShown() and edgeOf(comparison, towardLeft)
+        local furthestEdge = edgeOf(furthest, towardLeft)
         if edge and furthestEdge and isFurther(edge, furthestEdge, towardLeft) then
             furthest = comparison
         end
@@ -368,9 +378,11 @@ end
 
 --- Which side of a tooltip the preview opens on, and what it hangs off.
 -- Whichever side of the tooltip has more screen left on it, so a tooltip against
--- the right edge, which is where the bags are, opens its preview to the left.
+-- the right edge, which is where the bags are, opens its preview to the left. A
+-- tooltip that will not say where it is opens the way one in open screen does.
 function TooltipModel.Anchor(tooltip)
-    local towardLeft = (GetScreenWidth() - (tooltip:GetRight() or 0)) < (tooltip:GetLeft() or 0)
+    local left, right = edgeOf(tooltip, true), edgeOf(tooltip, false)
+    local towardLeft = (GetScreenWidth() - (right or 0)) < (left or 0)
     local against = outermostShown(tooltip, towardLeft)
     if towardLeft then return "TOPRIGHT", against, "TOPLEFT" end
     return "TOPLEFT", against, "TOPRIGHT"
