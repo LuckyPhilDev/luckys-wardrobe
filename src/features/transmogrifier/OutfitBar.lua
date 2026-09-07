@@ -16,6 +16,10 @@ local HEADER = 32
 
 local CLEAR_ICON = 7539422 -- Ui_transmog_showequippedgear
 
+-- Long enough to read the grid and pick, short enough that wearing an outfit takes
+-- the window away with it.
+local HIDE_AFTER = 5
+
 -- The header's title inset, its close button, and a gap between the two.
 local HEADER_CHROME = 46
 local NAME_GAP = 10
@@ -300,15 +304,30 @@ local function buildPanel()
     panel:RegisterEvent("TRANSMOG_DISPLAYED_OUTFIT_CHANGED")
     panel:RegisterEvent("PLAYER_REGEN_ENABLED")
     panel:SetScript("OnEvent", refresh)
-    panel:SetScript("OnShow", refresh)
+    -- Clicking an outfit is the whole reason the window is open, so it sees itself
+    -- out rather than waiting to be closed.
+    LuckyUI.EnableAutoHide(panel, HIDE_AFTER)
+    panel:SetScript("OnShow", function(self)
+        refresh()
+        self:StartAutoHide()
+    end)
 
     tinsert(UISpecialFrames, panel:GetName())
     return panel
 end
 
 function OutfitBar:Toggle()
-    local frame = panel or buildPanel()
-    frame:SetShown(not frame:IsShown())
+    if panel and panel:IsShown() then
+        panel:Hide()
+        return
+    end
+    -- Every tile is a secure frame, so a fight is not somewhere the grid can be laid
+    -- out at all. Opening then would open it empty or a fight out of date.
+    if InCombatLockdown() then
+        LuckysWardrobe.Utils.Say(strings.inCombat)
+        return
+    end
+    (panel or buildPanel()):Show()
 end
 
 function OutfitBar:Init(database)

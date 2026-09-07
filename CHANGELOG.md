@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Improved
+- **A countdown on the Transmog Outfits bar** The bar drains a gold line along its foot and fades away five seconds after your cursor leaves it, so wearing an outfit takes the window with it. Putting the cursor back on the bar gives the whole five seconds again. (Thanks for the suggestion Tuulani)
+
+### Fixed
+- The Transmog Outfits bar no longer opens in combat, where the game will not let it lay out its tiles, and says so instead.
+
 ## [1.11.2] - 2026-09-06
 
 ### Fixed

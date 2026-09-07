@@ -69,6 +69,11 @@ LuckyUI = {
         frame.titleText = makeFrame()
     end,
     EnableDrag = function() end,
+    EnableAutoHide = function(frame, seconds)
+        frame.autoHideSeconds = seconds
+        frame.StartAutoHide = function(self) self.autoHiding = true end
+        frame.StopAutoHide = function(self) self.autoHiding = false end
+    end,
 }
 
 local tooltipLines = {}
@@ -179,6 +184,9 @@ local function refresh()
     panel.scripts.OnEvent()
 end
 
+local said
+LuckysWardrobe.Utils = { Say = function(line) said = line end }
+
 OutfitBar:Init({})
 OutfitBar:Toggle()
 
@@ -186,6 +194,8 @@ OutfitBar:Toggle()
 local CLEAR, FIRST, SECOND, THIRD = 1, 2, 3, 4
 
 assert(panel:IsShown(), "opening the bar shows the panel")
+assert(panel.autoHiding, "and starts counting it down to closing itself again")
+assert(panel.autoHideSeconds == 5, "over five seconds")
 
 -- The press half of the click has to be registered even though the action runs on
 -- the release, or the CVar default acts on a press the button never hears about.
@@ -278,5 +288,17 @@ assert(windowShows == 1, "the rows are borrowed once, not on every refresh")
 activeOutfitID = 0
 refresh()
 assert(panel.activeName.text == strings.noOutfit, "the header says so when no outfit is in use")
+
+-- The grid cannot be laid out mid-fight, so the bar declines to open rather than
+-- opening empty.
+panel:Hide()
+inCombat = true
+OutfitBar:Toggle()
+assert(not panel:IsShown(), "the bar does not open in combat")
+assert(said == strings.inCombat, "and says why")
+
+inCombat = false
+OutfitBar:Toggle()
+assert(panel:IsShown(), "and opens again once the fight is over")
 
 print("OutfitBar tests passed")
