@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.3] - 2026-09-07
 
 ### Improved
 - **A countdown on the Transmog Outfits bar** The bar drains a gold line along its foot and fades away five seconds after your cursor leaves it, so wearing an outfit takes the window with it. Putting the cursor back on the bar gives the whole five seconds again. (Thanks for the suggestion Tuulani)
