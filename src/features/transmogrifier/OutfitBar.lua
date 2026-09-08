@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyUI TransmogFrame TransmogOutfitEntryMixin UIParent UISpecialFrames hooksecurefunc tinsert unpack
+-- luacheck: globals C_AddOns C_Spell Constants CooldownFrame_Clear CooldownFrame_Set C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyUI ScrollBoxListMixin TransmogFrame UIParent UISpecialFrames tinsert unpack
 
 -- Lucky's Wardrobe: A movable grid of your outfits, worn with one click.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -73,11 +73,13 @@ end
 
 -- Right-click clicks Blizzard's button where there is one to click. Where there is
 -- not, the unqualified type attribute still answers it and the outfit is worn, so a
--- tile out of the list's reach is never a tile that ignores you.
+-- tile out of the list's reach is never a tile that ignores you. Use change so a
+-- second click before its row arrives cannot take the outfit off again.
 local function setLockTarget(tile, target)
     tile.lockTarget = target
     tile:SetAttribute("type2", target and "click" or nil)
     tile:SetAttribute("clickbutton2", target)
+    tile:SetAttribute("action2", not target and tile.outfitID and "change" or nil)
 end
 
 -- A row is reused for whichever outfit scrolls into it, so a tile pointed at one
@@ -95,14 +97,21 @@ end
 
 local function hookOutfitRows()
     if hookedOutfitRows then return end
-    if not outfitCollection() or not TransmogOutfitEntryMixin then return end
+    local collection = outfitCollection()
+    local list = collection and collection.OutfitList
+    local scrollBox = list and list.ScrollBox
+    if not scrollBox then return end
 
     hookedOutfitRows = true
-    hooksecurefunc(TransmogOutfitEntryMixin, "Init", function(entry, elementData)
+    -- Existing rows already copied their Init method, so a mixin hook misses them.
+    scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnInitializedFrame, function(_, entry, elementData)
         if elementData and not InCombatLockdown() then
             aimTilesAtRow(entry.OutfitIcon, elementData.outfitID)
         end
-    end)
+    end, OutfitBar)
+    scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnReleasedFrame, function(_, entry)
+        if not InCombatLockdown() then aimTilesAtRow(entry.OutfitIcon, nil) end
+    end, OutfitBar)
 end
 
 -- A row exists only once the window's OnShow has built it, and OnShow has to be the
@@ -112,8 +121,8 @@ end
 -- is over before anything draws, at the cost of the window's open and close sounds.
 -- Never while it stands open, and never at a transmogrifier, where closing it would
 -- end the visit.
-local function borrowOutfitRows()
-    if borrowedOutfitRows or not outfitCollection() then return end
+local function borrowOutfitRows(retry)
+    if (borrowedOutfitRows and not retry) or not outfitCollection() then return end
     if TransmogFrame:IsShown() or C_Transmog.IsAtTransmogNPC() then return end
 
     borrowedOutfitRows = true
@@ -137,6 +146,11 @@ local function createTile(index)
 
     tile.icon = tile:CreateTexture(nil, "ARTWORK")
     tile.icon:SetAllPoints()
+
+    tile.cooldown = CreateFrame("Cooldown", nil, tile, "CooldownFrameTemplate")
+    tile.cooldown:SetAllPoints()
+    tile.cooldown:SetDrawBling(false)
+    tile.cooldown:SetHideCountdownNumbers(false)
 
     tile:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
     tile:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
@@ -165,16 +179,36 @@ local function createTile(index)
             GameTooltip:SetText(strings.clear, 1, 1, 1)
             GameTooltip:AddLine(strings.clearHint, nil, nil, nil, true)
         end
-        -- Promised only where a right-click can keep the promise.
         if self.lockTarget then
             GameTooltip:AddLine(strings.lockHint, 0.54, 0.49, 0.42, true)
+        elseif self.outfitID then
+            GameTooltip:AddLine(strings.lockPrepareHint, 0.54, 0.49, 0.42, true)
         end
         GameTooltip:Show()
     end)
     tile:SetScript("OnLeave", GameTooltip_Hide)
+    tile:SetScript("PostClick", function(self, _, down)
+        if down or InCombatLockdown() or not self.outfitID then return end
+        if C_TransmogOutfitInfo.GetActiveOutfitID() ~= self.outfitID then return end
+        if lockTargetForOutfit(self.outfitID) then return end
+
+        -- ponytail: two clicks for an offscreen outfit; OnShow selects it without rebuilding its handler in addon code.
+        borrowOutfitRows(true)
+    end)
 
     tiles[index] = tile
     return tile
+end
+
+local function refreshCooldowns()
+    local cooldown = C_Spell.GetSpellCooldown(Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
+    for _, tile in ipairs(tiles) do
+        if cooldown then
+            CooldownFrame_Set(tile.cooldown, cooldown.startTime, cooldown.duration, cooldown.isEnabled)
+        else
+            CooldownFrame_Clear(tile.cooldown)
+        end
+    end
 end
 
 local function setLocked(tile, locked)
@@ -245,7 +279,9 @@ local function refresh()
     if InCombatLockdown() then return end
 
     hookOutfitRows()
-    borrowOutfitRows()
+    -- The equip can finish after PostClick; its event must prepare the next lock click too.
+    borrowOutfitRows(panel:IsShown() and activeOutfitID and activeOutfitID ~= 0
+        and not lockTargetForOutfit(activeOutfitID))
 
     local used = #outfits + 1
 
@@ -258,6 +294,7 @@ local function refresh()
         retireTile(tiles[index])
     end
 
+    refreshCooldowns()
     panel.empty:SetShown(#outfits == 0)
 
     local columns = math.min(used, PER_ROW)
@@ -303,7 +340,14 @@ local function buildPanel()
     panel:RegisterEvent("TRANSMOG_OUTFITS_CHANGED")
     panel:RegisterEvent("TRANSMOG_DISPLAYED_OUTFIT_CHANGED")
     panel:RegisterEvent("PLAYER_REGEN_ENABLED")
-    panel:SetScript("OnEvent", refresh)
+    panel:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+    panel:SetScript("OnEvent", function(_, event)
+        if event == "SPELL_UPDATE_COOLDOWN" then
+            refreshCooldowns()
+        else
+            refresh()
+        end
+    end)
     -- Clicking an outfit is the whole reason the window is open, so it sees itself
     -- out rather than waiting to be closed.
     LuckyUI.EnableAutoHide(panel, HIDE_AFTER)
