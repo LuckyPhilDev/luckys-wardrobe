@@ -234,6 +234,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         title = "Transmog Outfits",
         wearHint = "Left-click to wear, click again to take it off.",
         lockHint = "Right-click to lock, so a situation cannot swap it out.",
+        lockPrepareHint = "Will require 2 right clicks due to Blizzard UI restrictions.",
         clear = "Clear Transmogrification",
         clearHint = "Puts every slot back to the gear you are wearing.",
         empty = "No outfits saved yet.",

@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyStrings LuckyUI LuckysWardrobe TransmogFrame TransmogOutfitEntryMixin UIParent UISpecialFrames hooksecurefunc tinsert unpack
+-- luacheck: globals C_AddOns C_Spell Constants CooldownFrame_Clear CooldownFrame_Set C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyStrings LuckyUI LuckysWardrobe ScrollBoxListMixin TransmogFrame TransmogOutfitEntryMixin UIParent UISpecialFrames tinsert unpack
 
 -- Covers where a tile's right-click is pointed: at Blizzard's own row while the
 -- list holds one for that outfit, and at nothing once that row is dealt elsewhere.
@@ -16,13 +16,14 @@ local NOOP_METHODS = {
     "SetSize", "SetPoint", "SetAllPoints", "SetFrameStrata", "SetFrameLevel",
     "RegisterEvent", "SetHighlightTexture", "SetPushedTexture",
     "SetTexture", "SetDesaturated", "SetVertexColor", "SetAtlas",
-    "SetFont", "SetTextColor", "SetJustifyH", "SetWordWrap",
+    "SetFont", "SetTextColor", "SetJustifyH", "SetWordWrap", "SetDrawBling", "SetHideCountdownNumbers",
 }
 
 local function makeFrame(name)
-    local frame = { name = name, scripts = {}, attributes = {} }
+    local frame = { name = name, scripts = {}, attributes = {}, events = {} }
     for _, method in ipairs(NOOP_METHODS) do frame[method] = function() end end
 
+    frame.RegisterEvent = function(self, event) self.events[event] = true end
     frame.SetText = function(self, text) self.text = text end
     frame.SetScript = function(self, script, handler) self.scripts[script] = handler end
     frame.RegisterForClicks = function(self, ...) self.clicks = table.concat({ ... }, " ") end
@@ -85,18 +86,22 @@ GameTooltip = {
 }
 function GameTooltip_Hide() end
 
-function hooksecurefunc(owner, name, post)
-    local original = owner[name]
-    owner[name] = function(...)
-        original(...)
-        post(...)
-    end
-end
-
 local inCombat = false
 function InCombatLockdown() return inCombat end
 
 C_AddOns = { IsAddOnLoaded = function() return true end, LoadAddOn = function() end }
+
+local cooldownInfo = { startTime = 0, duration = 0, isEnabled = true }
+Constants = { TransmogOutfitDataConsts = { EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID = 9876 } }
+C_Spell = { GetSpellCooldown = function(spellID)
+    assert(spellID == Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
+    return cooldownInfo
+end }
+function CooldownFrame_Set(frame, startTime, duration, enabled)
+    frame.startTime, frame.duration, frame.enabled = startTime, duration, enabled
+end
+function CooldownFrame_Clear(frame) frame.startTime, frame.duration = 0, 0 end
+
 
 local CASUAL, RAID, HIDDEN = 7, 12, 30
 local outfits = {
@@ -107,8 +112,11 @@ local outfits = {
 
 -- The outfit list virtualises, so only the rows it has rendered exist as frames.
 -- The third outfit is scrolled out of the list and has none.
+TransmogOutfitEntryMixin = { Init = function() end }
+
 local function makeRow(outfitID)
     local row = { OutfitIcon = makeFrame("BlizzardOutfitIcon" .. outfitID) }
+    row.Init = TransmogOutfitEntryMixin.Init
     row.elementData = { outfitID = outfitID }
     row.GetElementData = function(self) return self.elementData end
     return row
@@ -117,11 +125,26 @@ end
 local renderedRows = { makeRow(CASUAL), makeRow(RAID) }
 local clearTarget = makeFrame("BlizzardShowEquippedGear")
 local windowShown, atNPC, windowShows = true, false, 0
+local activeOutfitID = RAID
+ScrollBoxListMixin = { Event = { OnInitializedFrame = "OnInitializedFrame", OnReleasedFrame = "OnReleasedFrame" } }
+local rowCallbacks = {}
+local function rowEvent(event, row)
+    local callback = rowCallbacks[event]
+    if callback then callback.func(callback.owner, row, row.elementData) end
+end
+local function initializeRow(row)
+    row:Init(row.elementData)
+    rowEvent(ScrollBoxListMixin.Event.OnInitializedFrame, row)
+end
 
 TransmogFrame = {
     OutfitCollection = {
         OutfitList = {
             ScrollBox = {
+                RegisterCallback = function(_, event, func, owner)
+                    assert(not rowCallbacks[event], "row callbacks are registered only once")
+                    rowCallbacks[event] = { func = func, owner = owner }
+                end,
                 ForEachFrame = function(_, callback)
                     for _, row in ipairs(renderedRows) do callback(row) end
                 end,
@@ -135,28 +158,28 @@ TransmogFrame = {
 
 C_Transmog = { IsAtTransmogNPC = function() return atNPC end }
 
--- Showing the window is what builds its rows, and the list virtualises, so it
--- renders the ones that fit and no more. Two here, leaving the third outfit with
--- no row of its own.
+-- Blizzard selects and scrolls to the active outfit when the window opens.
 local RENDERED = 2
 function TransmogFrame:Show()
     windowShown, windowShows = true, windowShows + 1
     renderedRows = {}
-    for index = 1, RENDERED do
+    local first = 1
+    for index, outfit in ipairs(outfits) do
+        if outfit.outfitID == activeOutfitID then first = math.max(1, index - RENDERED + 1) end
+    end
+    for index = first, math.min(#outfits, first + RENDERED - 1) do
         local row = makeRow(outfits[index].outfitID)
-        renderedRows[index] = row
-        TransmogOutfitEntryMixin.Init(row, row.elementData)
+        renderedRows[#renderedRows + 1] = row
+        initializeRow(row)
     end
 end
 
-TransmogOutfitEntryMixin = { Init = function() end }
-
-local activeOutfitID = RAID
 local lockedOutfits = { [RAID] = true }
 local gearDisplayed, gearLocked = false, false
 
+local outfitReads = 0
 C_TransmogOutfitInfo = {
-    GetOutfitsInfo = function() return outfits end,
+    GetOutfitsInfo = function() outfitReads = outfitReads + 1; return outfits end,
     GetActiveOutfitID = function() return activeOutfitID end,
     IsLockedOutfit = function(outfitID) return lockedOutfits[outfitID] == true end,
     IsEquippedGearOutfitDisplayed = function() return gearDisplayed end,
@@ -217,6 +240,8 @@ assert(tile(THIRD):GetAttribute("type2") == nil, "an outfit the list has not ren
 assert(tile(THIRD):GetAttribute("clickbutton2") == nil, "so no button is left pointed at")
 assert(tile(THIRD):GetAttribute("type") == "outfit",
     "and its right-click falls through to wearing the outfit")
+assert(tile(THIRD):GetAttribute("action2") == "change",
+    "repeated right-clicks cannot remove the outfit while its lock target is missing")
 
 assert(tile(CLEAR):GetAttribute("clickbutton2") == clearTarget,
     "the clear tile clicks the button for the gear you are wearing")
@@ -226,7 +251,7 @@ assert(tile(CLEAR):GetAttribute("action") == "clear", "while a left-click still 
 -- still pointed at it would lock a stranger.
 local recycled = renderedRows[1]
 recycled.elementData = { outfitID = HIDDEN }
-TransmogOutfitEntryMixin.Init(recycled, recycled.elementData)
+initializeRow(recycled)
 
 assert(tile(FIRST):GetAttribute("clickbutton2") == nil, "the outfit that lost its row lets go of it")
 assert(tile(FIRST):GetAttribute("type2") == nil, "and stops claiming a right-click")
@@ -236,7 +261,9 @@ assert(tile(SECOND):GetAttribute("clickbutton2") == renderedRows[2].OutfitIcon,
     "a tile whose row did not move is left alone")
 
 assert(hover(THIRD):find(strings.lockHint, 1, true), "a tile that can lock says so")
-assert(not hover(FIRST):find(strings.lockHint, 1, true), "a tile that cannot stays quiet about it")
+assert(hover(FIRST):find(strings.lockPrepareHint, 1, true), "an offscreen outfit explains the two right-clicks")
+assert(not hover(THIRD):find(strings.lockPrepareHint, 1, true), "a ready lock target needs no two-click warning")
+assert(not hover(CLEAR):find(strings.lockPrepareHint, 1, true), "Clear needs no two-click warning")
 
 assert(tile(SECOND).active.shown == true, "the outfit you are wearing is marked")
 assert(tile(FIRST).locked.shown == false, "an unlocked outfit shows no shimmer")
@@ -285,6 +312,67 @@ assert(not windowShown, "and it does not stay open")
 refresh()
 assert(windowShows == 1, "the rows are borrowed once, not on every refresh")
 
+local function postClick(index, down, button)
+    local frame = tile(index)
+    if frame.scripts.PostClick then frame.scripts.PostClick(frame, button or "LeftButton", down) end
+end
+
+postClick(THIRD, true)
+assert(windowShows == 1, "the press does not prepare an outfit before its secure action")
+postClick(THIRD, false)
+assert(windowShows == 1, "the old active outfit is not borrowed before the equip completes")
+activeOutfitID = HIDDEN
+refresh()
+assert(tile(THIRD):GetAttribute("clickbutton2") ~= nil,
+    "a delayed outfit change prepares the lock target without another click")
+assert(windowShows == 2 and not windowShown, "the missing target gets another native show/hide")
+assert(tile(THIRD):GetAttribute("clickbutton2") == renderedRows[2].OutfitIcon,
+    "the prepared target belongs to the selected outfit")
+postClick(THIRD, false)
+assert(windowShows == 2, "an available lock target needs no further show/hide")
+assert(tile(THIRD):GetAttribute("action2") == nil, "a ready lock target drops the fallback action")
+
+renderedRows = { makeRow(CASUAL), makeRow(RAID) }
+refresh()
+postClick(THIRD, false, "RightButton")
+assert(windowShows == 3 and tile(THIRD):GetAttribute("clickbutton2") ~= nil,
+    "a right-click that equips an offscreen outfit also prepares its next lock click")
+
+activeOutfitID = CASUAL
+inCombat = true
+postClick(FIRST, false)
+assert(windowShows == 3, "combat cannot prepare secure targets")
+inCombat = false
+atNPC = true
+postClick(FIRST, false)
+assert(windowShows == 3, "preparing a target cannot close a transmogrifier visit")
+atNPC = false
+windowShown = true
+postClick(FIRST, false)
+assert(windowShows == 3 and windowShown, "preparing a target leaves an open window alone")
+windowShown = false
+postClick(THIRD, false)
+assert(windowShows == 3, "a click that did not equip its outfit does not reopen the window")
+postClick(CLEAR, false)
+assert(windowShows == 3, "clearing does not borrow an outfit row")
+
+-- The list finishes scrolling after the equip event, reusing a pre-existing row.
+activeOutfitID = HIDDEN
+renderedRows = { recycled, makeRow(RAID) }
+recycled.elementData = { outfitID = CASUAL }
+windowShown = true
+refresh()
+windowShown = false
+recycled.elementData = { outfitID = HIDDEN }
+initializeRow(recycled)
+assert(tile(THIRD):GetAttribute("clickbutton2") == recycled.OutfitIcon,
+    "a row initialized after refresh is ready before the second click")
+assert(tile(FIRST):GetAttribute("clickbutton2") == nil,
+    "the previous outfit cannot click the recycled row")
+rowEvent(ScrollBoxListMixin.Event.OnReleasedFrame, recycled)
+assert(tile(THIRD):GetAttribute("clickbutton2") == nil,
+    "releasing a row clears its lock target before another outfit reuses it")
+
 activeOutfitID = 0
 refresh()
 assert(panel.activeName.text == strings.noOutfit, "the header says so when no outfit is in use")
@@ -300,5 +388,24 @@ assert(said == strings.inCombat, "and says why")
 inCombat = false
 OutfitBar:Toggle()
 assert(panel:IsShown(), "and opens again once the fight is over")
+
+assert(panel.events.SPELL_UPDATE_COOLDOWN, "the bar listens for the shared outfit cooldown")
+assert(tile(FIRST).cooldown and tile(FIRST).cooldown.duration == 0,
+    "opening the bar initializes its cooldown display")
+local previousOutfitReads = outfitReads
+cooldownInfo = { startTime = 10, duration = 1.5, isEnabled = true }
+inCombat = true
+panel.scripts.OnEvent(panel, "SPELL_UPDATE_COOLDOWN")
+assert(outfitReads == previousOutfitReads, "cooldown events do not rebuild the secure outfit grid")
+for index = CLEAR, THIRD do
+    assert(tile(index).cooldown.startTime == 10 and tile(index).cooldown.duration == 1.5,
+        "every tile shows the shared outfit cooldown, including Clear")
+end
+cooldownInfo = nil
+panel.scripts.OnEvent(panel, "SPELL_UPDATE_COOLDOWN")
+for index = CLEAR, THIRD do
+    assert(tile(index).cooldown.duration == 0, "missing cooldown information clears stale timers")
+end
+inCombat = false
 
 print("OutfitBar tests passed")
