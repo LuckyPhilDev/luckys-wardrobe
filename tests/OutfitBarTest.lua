@@ -36,6 +36,8 @@ local function makeFrame(name)
     frame.IsShown = function(self) return self.shown == true end
     frame.Hide = function(self) self.shown = false end
     frame.ShowAutoCastEnabled = function(self, enabled) self.autoCast = enabled end
+    frame.SetCooldownFromDurationObject = function(self, duration) self.durationObject = duration end
+    frame.Clear = function(self) self.durationObject = nil end
 
     frame.SetShown = function(self, shown)
         self.shown = shown and true or false
@@ -91,16 +93,15 @@ function InCombatLockdown() return inCombat end
 
 C_AddOns = { IsAddOnLoaded = function() return true end, LoadAddOn = function() end }
 
-local cooldownInfo = { startTime = 0, duration = 0, isEnabled = true }
+local cooldownDuration = {}
 Constants = { TransmogOutfitDataConsts = { EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID = 9876 } }
-C_Spell = { GetSpellCooldown = function(spellID)
-    assert(spellID == Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
-    return cooldownInfo
-end }
-function CooldownFrame_Set(frame, startTime, duration, enabled)
-    frame.startTime, frame.duration, frame.enabled = startTime, duration, enabled
-end
-function CooldownFrame_Clear(frame) frame.startTime, frame.duration = 0, 0 end
+C_Spell = {
+    GetSpellCooldownDuration = function(spellID, ignoreGCD)
+        assert(spellID == Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
+        assert(not ignoreGCD, "the display includes shared recovery time")
+        return cooldownDuration
+    end,
+}
 
 
 local CASUAL, RAID, HIDDEN = 7, 12, 30
@@ -390,21 +391,24 @@ OutfitBar:Toggle()
 assert(panel:IsShown(), "and opens again once the fight is over")
 
 assert(panel.events.SPELL_UPDATE_COOLDOWN, "the bar listens for the shared outfit cooldown")
-assert(tile(FIRST).cooldown and tile(FIRST).cooldown.duration == 0,
+assert(tile(FIRST).cooldown and tile(FIRST).cooldown.durationObject == cooldownDuration,
     "opening the bar initializes its cooldown display")
 local previousOutfitReads = outfitReads
-cooldownInfo = { startTime = 10, duration = 1.5, isEnabled = true }
+cooldownDuration = setmetatable({}, {
+    __index = function() error("duration objects must stay opaque to addon code") end,
+})
 inCombat = true
 panel.scripts.OnEvent(panel, "SPELL_UPDATE_COOLDOWN")
 assert(outfitReads == previousOutfitReads, "cooldown events do not rebuild the secure outfit grid")
 for index = CLEAR, THIRD do
-    assert(tile(index).cooldown.startTime == 10 and tile(index).cooldown.duration == 1.5,
-        "every tile shows the shared outfit cooldown, including Clear")
+    assert(tile(index).cooldown.durationObject == cooldownDuration,
+        "every tile hands the shared cooldown to the widget without reading its timing, including Clear")
 end
-cooldownInfo = nil
+
+cooldownDuration = nil
 panel.scripts.OnEvent(panel, "SPELL_UPDATE_COOLDOWN")
 for index = CLEAR, THIRD do
-    assert(tile(index).cooldown.duration == 0, "missing cooldown information clears stale timers")
+    assert(tile(index).cooldown.durationObject == nil, "missing cooldown information clears stale timers")
 end
 inCombat = false
 
