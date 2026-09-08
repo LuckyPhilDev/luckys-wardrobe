@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.11.5] - 2026-09-08
+
+### Fixed
+- The Transmog Outfits bar no longer throws Lua errors when its tiles update the outfit cooldown, which filled the screen as soon as you entered combat. (Thanks for the report Tuulani)
+
 ## [1.11.4] - 2026-09-08
 
 ### Improved
