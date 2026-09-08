@@ -1,4 +1,4 @@
--- luacheck: globals C_AddOns C_Spell Constants CooldownFrame_Clear CooldownFrame_Set C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyUI ScrollBoxListMixin TransmogFrame UIParent UISpecialFrames tinsert unpack
+-- luacheck: globals C_AddOns C_Spell Constants C_Transmog C_TransmogOutfitInfo CreateFrame GameTooltip GameTooltip_Hide InCombatLockdown LuckyUI ScrollBoxListMixin TransmogFrame UIParent UISpecialFrames tinsert unpack
 
 -- Lucky's Wardrobe: A movable grid of your outfits, worn with one click.
 LuckysWardrobe = LuckysWardrobe or {}
@@ -201,12 +201,13 @@ local function createTile(index)
 end
 
 local function refreshCooldowns()
-    local cooldown = C_Spell.GetSpellCooldown(Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
+    -- Duration objects keep secret timing values out of addon-side comparisons.
+    local cooldown = C_Spell.GetSpellCooldownDuration(Constants.TransmogOutfitDataConsts.EQUIP_TRANSMOG_OUTFIT_MANUAL_SPELL_ID)
     for _, tile in ipairs(tiles) do
         if cooldown then
-            CooldownFrame_Set(tile.cooldown, cooldown.startTime, cooldown.duration, cooldown.isEnabled)
+            tile.cooldown:SetCooldownFromDurationObject(cooldown)
         else
-            CooldownFrame_Clear(tile.cooldown)
+            tile.cooldown:Clear()
         end
     end
 end
