@@ -1,12 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.4] - 2026-09-08
 
 ### Improved
 - **Cooldown on the Transmog Outfits bar** Every tile sweeps with the game's own outfit cooldown, so you can see when the next swap is ready instead of clicking a tile that will not take.
 
 ### Fixed
-- Right-clicking a Transmog Outfits bar tile to lock it now works for outfits far enough down your list that the game has not drawn a row for them. The first right-click wears the outfit and the second locks it, and the tooltip says so. (Thanks for the suggestion Tuulani)
+- Right-clicking a Transmog Outfits bar tile to lock it now works for outfits far enough down your list that the game has not drawn a row for them. The first right-click wears the outfit and the second locks it, and the tooltip says so. (Thanks for the report Tuulani)
 
 ## [1.11.3] - 2026-09-07
 
