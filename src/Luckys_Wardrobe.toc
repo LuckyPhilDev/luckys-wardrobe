@@ -4,7 +4,7 @@
 ## Version: 1.11.5
 ## Author: Lucky Phil
 ## SavedVariables: LuckysWardrobeDB, LuckySettingsDB, LuckyRosterDB
-## OptionalDeps: Luckys_Utils, TransmogUpgradeMaster
+## OptionalDeps: Luckys_Utils, TransmogUpgradeMaster, EllesmereUI
 ## IconTexture: Interface\GossipFrame\transmogrifyGossipIcon.blp
 ## X-Curse-Project-ID: 1631480
 
@@ -35,6 +35,7 @@ features\journal\SetsBrowser.lua
 features\journal\SetTracking.lua
 features\journal\TrackedAppearances.lua
 features\journal\WowheadLink.lua
+features\journal\EllesmereSkin.lua
 features\journal\ExtraSets.lua
 features\journal\CustomSets.lua
 features\tooltips\ItemTooltips.lua
