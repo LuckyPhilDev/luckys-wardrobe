@@ -20,6 +20,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
   - The sets an ensemble teaches are listed too, close to two thousand of them. Search "ensemble" to see the lot.
   - Sort by name, completion, piece count or number of colours, and narrow by expansion or by what you have collected.
 - **Custom Sets tab** A fourth tab listing the outfits you saved at the transmogrifier, so you can look through them without standing at one.
+- **EllesmereUI skin** When EllesmereUI restyles the Collections window, the Extra Sets and Custom tabs and their pages take the same look. Requires EllesmereUI.
 - **Colourways counted on the Sets tab** A tier's count, name colour and progress bar now cover every colourway it comes in, not just the difficulty you are furthest through.
 - **Sort by completion** Order the Sets list by how close each one is, either direction. Favourites stay at the top.
 - **Filter by expansion and source** Narrow to the expansions you are working through, or to Raid, PvP, Covenants, Heritage, Cosmetic, Trading Post and Miscellaneous.

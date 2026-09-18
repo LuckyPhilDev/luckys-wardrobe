@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.6] - 2026-09-18
 
 ### Improved
 - **EllesmereUI - Matching Extra Sets and Custom tabs** The Extra Sets and Custom tabs in the Appearances window, and the pages behind them, take EllesmereUI's skin like the rest of the window. (Thanks for the suggestion Rubyurek)
