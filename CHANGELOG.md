@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.7] - 2026-09-18
 
 ### Added
 - **Hide My Gear** A checkbox in the dressing room takes off your own gear and leaves only the items you have previewed, so your shoulders, helm or tabard no longer cover a set that leaves those slots empty. (Thanks for the suggestion Erika)
