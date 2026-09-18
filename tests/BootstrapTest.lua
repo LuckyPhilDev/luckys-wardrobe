@@ -115,6 +115,13 @@ LuckysWardrobe.WowheadLink = {
     end,
 }
 
+local dressingRoomDB
+LuckysWardrobe.DressingRoom = {
+    Init = function(_, db)
+        dressingRoomDB = db
+    end,
+}
+
 local itemTooltipsDB
 LuckysWardrobe.ItemTooltips = {
     Init = function(_, db)
@@ -295,6 +302,7 @@ assert(initializedDB == LuckysWardrobeDB, "initialized settings with saved varia
 assert(trackingDB == LuckysWardrobeDB, "initialized set tracking with saved variables")
 assert(trackedAppearancesDB == LuckysWardrobeDB, "initialized the tracked appearance marks with saved variables")
 assert(wowheadDB == LuckysWardrobeDB, "initialized Wowhead links with saved variables")
+assert(dressingRoomDB == LuckysWardrobeDB, "initialized the dressing room with saved variables")
 assert(itemTooltipsDB == LuckysWardrobeDB, "initialized item tooltips with saved variables")
 assert(tooltipModelDB == LuckysWardrobeDB, "initialized the tooltip preview model with saved variables")
 assert(catalogueStarted, "set the Extra Sets catalogue building without waiting for Collections")
