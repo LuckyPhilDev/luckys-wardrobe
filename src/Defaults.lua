@@ -13,6 +13,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     trackSetsOnShiftClick = true,
     markTrackedAppearances = true,
     wowheadLinkOnAltClick = true,
+    dressingRoomHideGear = false,
     tooltipSetProgress = true,
     tooltipModel = true,
     tooltipModelWornAndBags = false,

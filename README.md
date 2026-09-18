@@ -59,6 +59,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 - **Outfits as a bar** A setting opens those outfits as a grid of icons instead, movable anywhere on screen. Click one to wear it, click it again to take it off, right-click to lock it, and a button on the bar clears your transmog. The header names whichever outfit you are wearing, and the bar counts itself down and closes five seconds after your cursor leaves it.
 - **Item tooltips** Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along you are, as in "From set: Glyphed Garb 7/8".
 - **Preview models on tooltips** Hover a piece of gear and the piece itself appears beside the tooltip, close up and framed on the slot it sits in, so you can see it without the dressing room.
+- **Hide My Gear** A checkbox in the dressing room takes off your own gear and leaves only the items you have previewed, so a set that leaves slots empty is not hidden behind what you are wearing.
 - **Wowhead addresses** Alt-click any item in your appearance collection to bring up its Wowhead address in a box ready to copy.
 - **Minimap button** Left-click for your saved outfits, shift-click for the sets you can finish where you are standing, right-click for settings, drag to reposition. It also lists itself in panel addons such as Titan Panel.
 - **A welcome note** A hello at your first login with the Discord address. `/wardrobe welcome` brings it back any time.

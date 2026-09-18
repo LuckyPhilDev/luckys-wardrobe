@@ -258,6 +258,10 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         overwriteTooltip = "Overwrite Saved Situation",
         overwriteDialog = "Replace saved situation \"%s\" with the situations selected now? This cannot be undone.",
     },
+    dressingRoom = {
+        hideGear = "Hide My Gear",
+        hideGearTooltip = "Shows only the items you have previewed, with your own gear taken off, so your helm, shoulders or tabard never cover a set that leaves those slots empty. Reset clears the preview.",
+    },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
     },
