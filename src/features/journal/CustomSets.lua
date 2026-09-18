@@ -553,6 +553,14 @@ function CustomSets:CreatePage(wardrobe)
         displayEntry(selectedEntry)
         return true
     end
+
+    LuckysWardrobe.EllesmereSkin.Apply(function(skin)
+        skin.Inset(leftInset)
+        skin.Inset(rightInset)
+        skin.EditBox(searchBox)
+        skin.ScrollBar(scrollBar)
+    end)
+
     page:Hide()
     return page
 end

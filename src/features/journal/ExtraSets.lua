@@ -14,6 +14,7 @@ local Utils = LuckysWardrobe.Utils
 local SetRow = LuckysWardrobe.Strings.setRow
 
 local TAB_FIT_WIDTH = 275
+local TAB_GAP = 3
 
 -- The smallest the Sets tab lets a set name shrink to before it gives up and
 -- wraps it instead.
@@ -2306,6 +2307,17 @@ function ExtraSets:CreatePage(wardrobe)
         displayEntry(selectedEntry)
         return true
     end
+
+    LuckysWardrobe.EllesmereSkin.Apply(function(skin)
+        skin.Inset(leftInset)
+        skin.Inset(rightInset)
+        skin.EditBox(searchBox)
+        skin.Dropdown(filterButton)
+        skin.Dropdown(variantDropdown)
+        skin.ScrollBar(scrollBar)
+        LuckysWardrobe.EllesmereSkin.ProgressBar(skin, progressBar)
+    end)
+
     page:Hide()
     LuckysWardrobe.DevLog("Extra Sets page built; model level=" .. model:GetFrameLevel()
         .. " details level=" .. detailsFrame:GetFrameLevel())
@@ -2586,6 +2598,13 @@ local function layOutProgressBars()
     layOutProgressBar(extraPage.progressBar)
 end
 
+local function stripTabs(wardrobe)
+    local tabs = {}
+    for index = 1, wardrobe.numTabs do tabs[#tabs + 1] = nativeTab(wardrobe, index) end
+    for _, entry in ipairs(addonTabs) do tabs[#tabs + 1] = entry.tab end
+    return tabs
+end
+
 -- Every SetTab call means a native tab: ours never go through it. Blizzard
 -- redraws its own tab visuals securely, so this only has to take our pages off
 -- the screen and put back the chrome selecting one of ours hid.
@@ -2594,6 +2613,7 @@ local function showNativeChrome(wardrobe)
         entry.page:Hide()
         PanelTemplates_DeselectTab(entry.tab)
     end
+    LuckysWardrobe.EllesmereSkin.ShowSelectedTab(stripTabs(wardrobe), nil)
     wardrobe.SearchBox:Show()
     wardrobe.FilterButton:Show()
     wardrobe.ClassDropdown:Show()
@@ -2623,6 +2643,7 @@ local function selectAddonTab(wardrobe, chosen)
             PanelTemplates_DeselectTab(entry.tab)
         end
     end
+    LuckysWardrobe.EllesmereSkin.ShowSelectedTab(stripTabs(wardrobe), chosen)
 
     if extraPage then layOutProgressBars() end
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
@@ -2633,10 +2654,7 @@ end
 -- which is the field this addon must not write, so the squeeze runs here over
 -- the native tabs and ours together.
 local function resizeTabStrip(wardrobe)
-    local tabs = {}
-    for index = 1, wardrobe.numTabs do tabs[#tabs + 1] = nativeTab(wardrobe, index) end
-    for _, entry in ipairs(addonTabs) do tabs[#tabs + 1] = entry.tab end
-
+    local tabs = stripTabs(wardrobe)
     local width = 0
     for _, tab in ipairs(tabs) do width = width + tab:GetWidth() end
     if width <= TAB_FIT_WIDTH then return end
@@ -2644,6 +2662,18 @@ local function resizeTabStrip(wardrobe)
     local widthPerTab = TAB_FIT_WIDTH / #tabs
     for _, tab in ipairs(tabs) do
         PanelTemplates_TabResize(tab, 0, nil, tab.minWidth, widthPerTab)
+    end
+end
+
+-- Held top and bottom to the tab before, so a skin that reshapes the native
+-- tabs reshapes these with them.
+local function seatAddonTabs(wardrobe, gap)
+    local previous = nativeTab(wardrobe, wardrobe.numTabs)
+    for _, entry in ipairs(addonTabs) do
+        entry.tab:ClearAllPoints()
+        entry.tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", gap, 0)
+        entry.tab:SetPoint("BOTTOMLEFT", previous, "BOTTOMRIGHT", gap, 0)
+        previous = entry.tab
     end
 end
 
@@ -2665,12 +2695,8 @@ function ExtraSets.AddWardrobeTab(wardrobe, name, label, page, onSelected, order
 
     addonTabs[#addonTabs + 1] = { tab = tab, page = page, onSelected = onSelected, order = order }
     table.sort(addonTabs, function(a, b) return a.order < b.order end)
-    local previous = nativeTab(wardrobe, wardrobe.numTabs)
-    for _, entry in ipairs(addonTabs) do
-        entry.tab:ClearAllPoints()
-        entry.tab:SetPoint("TOPLEFT", previous, "TOPRIGHT", 3, 0)
-        previous = entry.tab
-    end
+    seatAddonTabs(wardrobe, TAB_GAP)
+    LuckysWardrobe.EllesmereSkin.Tab(tab, function(gap) seatAddonTabs(wardrobe, gap) end)
 
     if #addonTabs == 1 then
         hooksecurefunc(wardrobe, "SetTab", showNativeChrome)

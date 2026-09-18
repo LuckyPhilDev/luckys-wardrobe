@@ -44,6 +44,7 @@ LuckysWardrobe.Perf.Clock = function()
     clock = clock + 1
     return clock
 end
+dofile("src/features/journal/EllesmereSkin.lua")
 dofile("src/features/journal/ExtraSets.lua")
 -- The preview-slots choice is real here, so hiding a slot drives the same
 -- module the page leans on. Its own Sets tab wiring waits on a collections
