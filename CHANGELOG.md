@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.8] - 2026-09-28
 
 ### Fixed
 - Choosing a class on the Extra Sets tab after visiting the Items tab no longer throws a Lua error, and now changes the class the sets are listed for.
