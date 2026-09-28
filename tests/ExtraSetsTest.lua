@@ -1299,6 +1299,7 @@ function CreateFrame(frameType, name, parent, template)
     function frame:SetValue(value) self.value = value end
     function frame:SetupMenu(builder) self.menuBuilder = builder end
     function frame:SetSelectionTranslator(translator) self.selectionTranslator = translator end
+    function frame:GenerateMenu() end
     function frame:SetIsDefaultCallback(callback) self.isDefaultCheck = callback end
     function frame:SetDefaultCallback(callback) self.defaultReset = callback end
     function frame:SetDataProvider(provider) self.dataProvider = provider end
@@ -1768,7 +1769,7 @@ assert(wardrobe.selectedCollectionTab == 1, "left the native selection state alo
 assert(not wardrobe.ItemsCollectionFrame.shown and not wardrobe.SetsCollectionFrame.shown, "hid native pages")
 assert(not wardrobe.SearchBox.shown and not wardrobe.FilterButton.shown, "hid native-only controls")
 assert(not wardrobe.progressBar.shown, "hid the rest of the native controls")
-assert(wardrobe.ClassDropdown.shown, "kept the native class dropdown, which this page shares")
+assert(not wardrobe.ClassDropdown.shown, "hid the native class dropdown, which would write the Items filter from here")
 assert(wardrobe.activeFrame == nil, "never wrote the active frame")
 assert(extraTab.selected and not wardrobe.Tabs[1].selected and not wardrobe.Tabs[2].selected,
     "drew the strip with this tab selected")
@@ -2414,16 +2415,16 @@ assert(scrollBox.dataProvider[1].key == 20, "name sort puts Live Name before Loa
 radioSetters["Sort By"][DEFAULT]()
 
 -- The class dropdown, which is what keeps this page down to a list a character
--- has some use for. It is Blizzard's own control, shared with the Sets tab, so
--- the two pages can never disagree about which class they are showing.
+-- has some use for. It reads and writes the Sets tab's class filter, so the two
+-- pages can never disagree about which class they are showing.
 
-local classDropdown = wardrobe.ClassDropdown
 -- The colourway picker inside the details pane is a dropdown too, so this asks
--- specifically that no second class dropdown was hung on the page itself.
-assert(not findFrame(function(frame)
+-- for the one hung on the page itself.
+local classDropdown = findFrame(function(frame)
     return frame.template == "WowStyle1DropdownTemplate" and frame.parent == page
-end), "built no class dropdown of its own")
-assert(classDropdown.shown, "kept the native dropdown on screen for this page")
+end)
+assert(classDropdown, "built a class dropdown on the page")
+assert(not wardrobe.ClassDropdown.shown, "kept the native dropdown off this page")
 assert(#classDropdown.points == 1, "gave the dropdown a single anchor")
 local classAnchor = classDropdown.points[1]
 assert(classAnchor[1] == "BOTTOMRIGHT" and classAnchor[2] == page and classAnchor[3] == "TOPRIGHT",
@@ -2453,7 +2454,7 @@ assert(#scrollBox.dataProvider == 0, "a class that wears neither armour type see
 
 -- A class chosen on the Sets tab is the class this page opens on.
 wardrobe:SetTab(2)
-classDropdown:SetClassFilter(CLOTH_CLASS)
+wardrobe.ClassDropdown:SetClassFilter(CLOTH_CLASS)
 extraTab.scripts.OnClick()
 page.scripts.OnShow(page)
 assert(#scrollBox.dataProvider == 2, "opened on the class the Sets tab was left showing")
@@ -2499,7 +2500,9 @@ assert(tooltip.lines[1] == "2 Colourways", "opening on what the badge counts")
 assert(tooltip.lines[2] == "Heroic Recolor (3/3)" and tooltip.lines[3] == "Normal Recolor (1/3)",
     "then naming the colourways the way the icon's tooltip does")
 
-local variantDropdown = findFrame(function(frame) return frame.template == "WowStyle1DropdownTemplate" end)
+local variantDropdown = findFrame(function(frame)
+    return frame.template == "WowStyle1DropdownTemplate" and frame.parent ~= page
+end)
 assert(variantDropdown, "built a colourway picker for the details pane")
 assert(variantDropdown.shown, "a set with several colourways offers it")
 assert(variantDropdown.text == "Heroic Recolor (3/3)", "opening on the first, named for what tells it apart")
