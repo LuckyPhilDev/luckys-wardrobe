@@ -1,4 +1,4 @@
--- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual EventUtil GetUICameraInfo InCombatLockdown IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_DeselectTab PanelTemplates_SelectTab PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON ResetCursor SOUNDKIT ScrollBoxConstants ScrollUtil ShowInspectCursor UNCHECK_ALL UnitClass WARDROBE_CYCLE_KEY WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc
+-- luacheck: globals AutoScalingFontStringMixin CHECK_ALL COLLECTED CollectionWardrobeUtil CreateDataProvider CreateScrollBoxListLinearView DEFAULT DressUpVisual EventUtil GetUICameraInfo InCombatLockdown IsModifiedClick IsShiftKeyDown IsUnitModelReadyForUI MenuResponse Mixin Model_ApplyUICamera NOT_COLLECTED PanelTemplates_DeselectTab PanelTemplates_SelectTab PanelTemplates_TabResize PlaySound QUESTION_MARK_ICON ResetCursor SOUNDKIT ScrollBoxConstants ScrollUtil ShowInspectCursor UNCHECK_ALL UnitClass WARDROBE_CYCLE_KEY WardrobeCollectionFrame WardrobeSetsDetailsModelMixin hooksecurefunc C_CreatureInfo GetNumClasses
 
 -- Lucky's Wardrobe: Extra Sets, a third Appearances subtab listing the armour
 -- sets Blizzard defines, most of which its own Sets tab never shows. Records
@@ -35,6 +35,7 @@ local MAX_PIECE_ROWS = 4
 -- The offsets Blizzard gives the class dropdown above the Sets page.
 local CLASS_DROPDOWN_X = -9
 local CLASS_DROPDOWN_Y = 4
+local CLASS_DROPDOWN_WIDTH = 150
 
 -- Blizzard places the collected-sets bar for a two-tab strip, so the tabs this
 -- addon adds run underneath it. It moves into the gap past the end of the strip,
@@ -2531,13 +2532,30 @@ function ExtraSets:TrackMissing(entry)
     LuckysWardrobe.SetTracking:ToggleSources(ExtraSets.MissingSources(entry), entry.name)
 end
 
--- Blizzard hangs the class dropdown above the Sets page rather than inside it,
--- and SetTab re-anchors it to whichever native page it just chose. This page
--- occupies the same corner, so the same offsets leave the dropdown exactly
--- where the Sets tab has it.
-local function layOutClassDropdown(dropdown)
-    dropdown:ClearAllPoints()
-    dropdown:SetPoint("BOTTOMRIGHT", extraPage, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
+-- Blizzard's class dropdown can't be shared: it routes through whichever native
+-- tab was last active, so after the Items tab it writes the item class filter and
+-- errors on the Items page's category, cleared when that page hid. This one
+-- writes the sets filter the Sets tab reads, sitting where the Sets tab has its own.
+local function createClassDropdown(page)
+    local dropdown = CreateFrame("DropdownButton", nil, page, "WowStyle1DropdownTemplate")
+    dropdown:SetWidth(CLASS_DROPDOWN_WIDTH)
+    dropdown:SetPoint("BOTTOMRIGHT", page, "TOPRIGHT", CLASS_DROPDOWN_X, CLASS_DROPDOWN_Y)
+    dropdown:SetSelectionTranslator(function(selection)
+        return LuckysWardrobe.Classes:Colour(selection.data, selection.data.name)
+    end)
+    dropdown:SetupMenu(function(_, root)
+        for classID = 1, GetNumClasses() do
+            local info = C_CreatureInfo.GetClassInfo(classID)
+            root:CreateRadio(info.className,
+                function(class) return C_TransmogSets.GetTransmogSetsClassFilter() == class.classID end,
+                function(class)
+                    C_TransmogSets.SetTransmogSetsClassFilter(class.classID)
+                    if ExtraSets.SyncClassFilter() then page.Refresh() end
+                end,
+                { classID = classID, file = info.classFile, name = info.className })
+        end
+    end)
+    return dropdown
 end
 
 -- The tabs this addon hangs past the end of the journal's own strip, in the
@@ -2680,7 +2698,7 @@ end
 --- Adds a tab to the journal for the given page, kept outside Blizzard's tab
 --- state entirely; see addonTabs for why. The Custom tab attaches through here
 --- too, so both stay outside it the same way. onSelected is the page's own
---- chrome: what it wants done with the class dropdown the pages share.
+--- chrome: what it wants done with Blizzard's class dropdown.
 ---
 --- order fixes where the tab sits in the strip. The pages attach from
 --- load-order callbacks that arrive in no promised order, so the strip is
@@ -2711,21 +2729,13 @@ function ExtraSets:Attach(wardrobe)
 
     attachedWardrobe = wardrobe
     extraPage = self:CreatePage(wardrobe)
+    local classDropdown = createClassDropdown(extraPage)
     ExtraSets.AddWardrobeTab(wardrobe, "LuckysWardrobeExtraSetsTab",
         LuckysWardrobe.Strings.extraSets.tabTitle, extraPage, function()
-            layOutClassDropdown(wardrobe.ClassDropdown)
-            wardrobe.ClassDropdown:Show()
-            -- The dropdown was last refreshed for the page being left, so it
-            -- reads the name on the button again now that this page is the one
-            -- on screen.
-            wardrobe.ClassDropdown:Refresh()
+            wardrobe.ClassDropdown:Hide()
+            -- The class may have changed on the Sets tab since this was last on screen.
+            classDropdown:GenerateMenu()
         end, 1)
-
-    -- One class for both pages: the Sets tab's dropdown is the only class
-    -- control there is, so a choice made in it is a choice made here.
-    hooksecurefunc(wardrobe.ClassDropdown, "SetClassFilter", function()
-        if ExtraSets.SyncClassFilter() and extraPage:IsShown() then extraPage.Refresh() end
-    end)
 
     -- The catalogue may still be building when the page first shows; repaint the
     -- moment it lands.
