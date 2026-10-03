@@ -273,6 +273,8 @@ LuckysWardrobe.OutfitBar = {
     end,
 }
 
+LuckysWardrobe.OutfitAnnounce = { Init = function() end }
+
 LuckysWardrobe.LootAlerts = {
     Init = function(_, db)
         alertsDB = db
