@@ -156,6 +156,15 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     transmog:Toggle({
+        label = S.settings.muteOutfitAnnouncements.label,
+        desc = S.settings.muteOutfitAnnouncements.desc,
+        since = "1.12.0",
+        checked = db.muteOutfitAnnouncements,
+        onToggle = function(checked)
+            db.muteOutfitAnnouncements = checked
+        end,
+    })
+    transmog:Toggle({
         label = S.settings.keepTransmogTab.label,
         desc = S.settings.keepTransmogTab.desc,
         checked = db.keepTransmogTab,

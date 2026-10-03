@@ -48,6 +48,7 @@ local function initialize()
     LuckysWardrobe.SituationLabels:Init(LuckysWardrobeDB)
     LuckysWardrobe.SituationPresets:Init(LuckysWardrobeDB)
     LuckysWardrobe.OutfitBar:Init(LuckysWardrobeDB)
+    LuckysWardrobe.OutfitAnnounce:Init(LuckysWardrobeDB)
 
     LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
