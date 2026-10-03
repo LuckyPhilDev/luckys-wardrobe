@@ -152,9 +152,9 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
             label = "Open Outfits as a Bar",
             desc = "Opens your outfits as a small grid of icons you can click to wear, movable anywhere on screen. Left off, the same click opens the game's own outfit list instead, which is the one to keep if you want to edit an outfit or save a new one. The bar wears, clears and locks.",
         },
-        announceOutfitChanges = {
-            label = "Announce Outfit Changes",
-            desc = "Says in chat which outfit you are now wearing whenever it changes, along with the situations it is set for, so a swap a situation made for you is never a mystery.",
+        muteOutfitAnnouncements = {
+            label = "Mute Outfit Announcements",
+            desc = "Whenever your outfit changes, a line in chat names the one you are now wearing and the situations it is set for, such as your specialization, so a swap a situation made for you is never a mystery. Turn this on to keep chat quiet.",
         },
         keepTransmogTab = {
             label = "Keep Your Tab Between Outfits",

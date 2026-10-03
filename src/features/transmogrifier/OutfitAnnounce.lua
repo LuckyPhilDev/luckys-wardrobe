@@ -14,15 +14,26 @@ local function outfitByID(outfitID)
     end
 end
 
+-- Selected values are only readable at the transmogrifier, so this uses what SituationLabels cached there.
+local function situationText(outfit)
+    local cached = LuckysWardrobe.SituationLabels:ValuesFor(outfit.outfitID) or {}
+    local parts = {}
+    for _, categoryName in ipairs(outfit.situationCategories or {}) do
+        local selected = cached[categoryName]
+        parts[#parts + 1] = (selected and selected ~= "") and selected or categoryName
+    end
+    return (table.concat(parts, ", "):gsub("%+", ", "))
+end
+
 local function announce(outfitID)
     local outfit = outfitByID(outfitID)
     if not outfit then
         LuckysWardrobe.Utils.Say(strings.cleared)
         return
     end
-    local situations = outfit.situationCategories
-    if situations and #situations > 0 then
-        LuckysWardrobe.Utils.Say(strings.wearingFor:format(outfit.name, table.concat(situations, ", ")))
+    local situations = situationText(outfit)
+    if situations ~= "" then
+        LuckysWardrobe.Utils.Say(strings.wearingFor:format(outfit.name, situations))
     else
         LuckysWardrobe.Utils.Say(strings.wearing:format(outfit.name))
     end
@@ -34,7 +45,7 @@ local function onOutfitChanged()
     if outfitID == lastOutfitID then return end
     local isFirstReading = lastOutfitID == nil
     lastOutfitID = outfitID
-    if db.announceOutfitChanges and not isFirstReading then announce(outfitID) end
+    if not db.muteOutfitAnnouncements and not isFirstReading then announce(outfitID) end
 end
 
 function LuckysWardrobe.OutfitAnnounce:Init(database)

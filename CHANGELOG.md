@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- **Announce Outfit Changes** A chat line names the outfit you are now wearing whenever it changes, with the situations it is set for, so a swap a situation made for you is never a mystery.
+- **Outfit Announcements** Whenever your outfit changes, a chat line names the one you are now wearing and the situations it is set for, such as Frost, so a swap a situation made for you is never a mystery.
 
 ## [1.11.8] - 2026-09-28
 

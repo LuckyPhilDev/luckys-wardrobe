@@ -322,6 +322,11 @@ local function abortScan()
     saveValues()
 end
 
+function SituationLabels:ValuesFor(outfitID)
+    values = values or storedValues()
+    return values[outfitID]
+end
+
 function SituationLabels:Refresh()
     if not TransmogFrame or not TransmogFrame:IsShown() then return end
     applyValues()
