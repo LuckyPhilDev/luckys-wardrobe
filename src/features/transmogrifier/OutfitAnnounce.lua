@@ -1,12 +1,17 @@
--- luacheck: globals C_TransmogOutfitInfo CreateFrame
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CreateFrame
 
 -- Lucky's Wardrobe: Say which outfit you are now wearing whenever it changes.
 LuckysWardrobe = LuckysWardrobe or {}
 LuckysWardrobe.OutfitAnnounce = {}
 
 local strings = LuckysWardrobe.Strings.outfitAnnounce
+-- A situation can swap outfits several times in a row; only the one it settles on is announced.
+local SETTLE_SECONDS = 0.3
+
 local db
 local lastOutfitID
+local hasReading = false
+local settleTimer
 
 local function outfitByID(outfitID)
     for _, outfit in ipairs(C_TransmogOutfitInfo.GetOutfitsInfo() or {}) do
@@ -39,13 +44,20 @@ local function announce(outfitID)
     end
 end
 
-local function onOutfitChanged()
+local function onOutfitSettled()
+    settleTimer = nil
     local outfitID = C_TransmogOutfitInfo.GetActiveOutfitID()
     -- The event repeats for one swap, and fires at login for the outfit you logged out in.
-    if outfitID == lastOutfitID then return end
-    local isFirstReading = lastOutfitID == nil
+    if outfitID == lastOutfitID and hasReading then return end
+    local isFirstReading = not hasReading
+    hasReading = true
     lastOutfitID = outfitID
     if not db.muteOutfitAnnouncements and not isFirstReading then announce(outfitID) end
+end
+
+local function onOutfitChanged()
+    if settleTimer then settleTimer:Cancel() end
+    settleTimer = C_Timer.NewTimer(SETTLE_SECONDS, onOutfitSettled)
 end
 
 function LuckysWardrobe.OutfitAnnounce:Init(database)

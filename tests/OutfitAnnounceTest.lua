@@ -1,4 +1,4 @@
--- luacheck: globals C_TransmogOutfitInfo CreateFrame LuckyStrings LuckysWardrobe
+-- luacheck: globals C_Timer C_TransmogOutfitInfo CreateFrame LuckyStrings LuckysWardrobe
 
 LuckysWardrobe = {}
 
@@ -25,6 +25,23 @@ C_TransmogOutfitInfo = {
     end,
 }
 
+local pending
+C_Timer = {
+    NewTimer = function(seconds, callback)
+        assert(seconds == 0.3, "announcements wait for the outfit to settle")
+        local timer = { callback = callback }
+        function timer:Cancel() self.cancelled = true end
+        pending = timer
+        return timer
+    end,
+}
+
+local function settle()
+    local timer = pending
+    pending = nil
+    if timer and not timer.cancelled then timer.callback() end
+end
+
 local onEvent
 function CreateFrame()
     return {
@@ -41,6 +58,7 @@ local function wear(outfitID)
     said = nil
     activeOutfitID = outfitID
     onEvent()
+    settle()
     return said
 end
 
@@ -51,6 +69,25 @@ assert(wear(2) == "Now wearing Uncached, set for Specializations.",
     "an outfit with nothing cached falls back to its category names")
 assert(wear(3) == "Now wearing Plain.", "an outfit with no situations names only itself")
 assert(wear(nil) == "Now wearing your own gear.", "clearing the outfit says so")
+
+said = nil
+activeOutfitID = 2
+onEvent()
+activeOutfitID = 3
+onEvent()
+activeOutfitID = 1
+onEvent()
+settle()
+assert(said == "Now wearing Frosticles, set for Frost, Unholy, Locations.",
+    "a burst of swaps announces only the outfit it settles on")
+
+said = nil
+activeOutfitID = 2
+onEvent()
+activeOutfitID = 1
+onEvent()
+settle()
+assert(said == nil, "swapping away and straight back announces nothing")
 
 db.muteOutfitAnnouncements = true
 assert(wear(1) == nil, "muted announcements stay quiet")
