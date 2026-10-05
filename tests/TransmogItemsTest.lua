@@ -170,7 +170,7 @@ C_TransmogCollection = {
 
 LuckyStrings = { New = function(_, tbl) return tbl end }
 dofile("src/Strings.lua")
-dofile("../Luckys_Utils/LuckyUtils.lua")  -- Utils.Debounced delegates to it
+dofile("../LuckyUtils/LuckyUtils.lua")  -- Utils.Debounced delegates to it
 dofile("src/Utils.lua")
 dofile("src/Data/ExtraSetsData.lua")
 dofile("src/domain/Classes.lua")
