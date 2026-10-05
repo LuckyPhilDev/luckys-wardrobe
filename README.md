@@ -50,6 +50,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
   - Light a colour swatch and a second dice appears wearing it, spinning the same slots through only the pieces you own in that colour.
 - **Situation presets** Save the situations you picked for an outfit under a name, then apply the whole lot to another outfit in one click. Each saved situation can be renamed, deleted, or written over with whatever you have ticked now.
 - **Situation detail on outfits** Show the values you chose on each outfit in the list, and hover one for the full breakdown. An outfit matching a saved preset is named after it.
+- **Outfit announcements** Whenever your outfit changes, a chat line names the one you are now wearing and the situations it is set for.
 - **Click an appearance again to undo** Clicking an appearance the slot already wears puts it back to what you had on, so a piece can be clicked on and off to judge it.
 - **Keep your active tab** Switching outfits at the transmog NPC no longer throws you back to Items.
 

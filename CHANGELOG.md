@@ -1,9 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [1.12.0] - 2026-10-05
 
 ### Added
 - **Outfit Announcements** Whenever your outfit changes, a chat line names the one you are now wearing and the situations it is set for, such as Frost, so a swap a situation made for you is never a mystery.
+
+### Fixed
+- Fixed an error with the settings panel.
 
 ## [1.11.8] - 2026-09-28
 
