@@ -53,7 +53,7 @@ local function initialize()
     LuckysWardrobe.minimapButton = LuckyMinimap:Create({
         name = "LuckysWardrobeMinimapButton",
         tocname = ADDON_NAME,
-        icon = LuckyMedia("promo-wardrobe.tga"),
+        icon = "Interface\\AddOns\\Luckys_Wardrobe\\Images\\icon",
         dbKey = "minimap",
         db = LuckysWardrobeDB,
         defaultAngle = 160,
