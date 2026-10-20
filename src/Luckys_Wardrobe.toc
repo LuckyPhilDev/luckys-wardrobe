@@ -29,6 +29,7 @@ domain\SetSearch.lua
 domain\Catalyst.lua
 domain\ExtraSetsCatalog.lua
 domain\RecolorGroups.lua
+domain\RaidSets.lua
 features\journal\PreviewSlots.lua
 features\journal\WardrobeKeys.lua
 features\journal\SetsBrowser.lua
@@ -38,6 +39,7 @@ features\journal\WowheadLink.lua
 features\journal\EllesmereSkin.lua
 features\journal\ExtraSets.lua
 features\journal\CustomSets.lua
+features\journal\RaidSetGrid.lua
 features\tooltips\ItemTooltips.lua
 features\tooltips\TooltipModel.lua
 features\completion\SetCompletion.lua

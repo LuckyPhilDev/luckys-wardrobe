@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Class Sets in the Adventure Guide** A new button on a raid's page in the Adventure Guide opens every class's set from that raid side by side, each on a model with the pieces you have ticked off and your alts of that class named, so you can see at a glance which alt to send a tier token to. Pick a difficulty from the dropdown, click a set to try it on in the dressing room, or shift-click a piece to link it. (Thanks for the suggestion 2B, or not 2B)
+
 ## [1.12.2] - 2026-10-13
 
 ### Improved

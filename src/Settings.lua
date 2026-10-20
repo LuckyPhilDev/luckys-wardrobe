@@ -80,6 +80,15 @@ function LuckysWardrobe.Settings:Init(db)
             db.wowheadLinkOnAltClick = checked
         end,
     })
+    appearances:Toggle({
+        label = S.settings.raidSetGrid.label,
+        desc = S.settings.raidSetGrid.desc,
+        checked = db.raidSetGrid,
+        onToggle = function(checked)
+            db.raidSetGrid = checked
+            LuckysWardrobe.RaidSetGrid:Refresh()
+        end,
+    })
 
     local tooltips = panel:Group(S.settings.groups.tooltips)
     tooltips:Toggle({

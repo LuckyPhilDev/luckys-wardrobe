@@ -136,6 +136,10 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
             label = "Wowhead Address on Alt-Click",
             desc = "Alt-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy.",
         },
+        raidSetGrid = {
+            label = "Class Sets in the Adventure Guide",
+            desc = "Adds a button to a raid's page in the Adventure Guide that shows every class's set from that raid side by side, which pieces you have, and your alts of each class, so you know who to send a token to.",
+        },
         tooltipSetProgress = {
             label = "Show Set Information",
             desc = "Adds a line to an item's tooltip naming the set it belongs to and how much of that set you have, so a drop says what it is worth at a glance. Example: \"From set: Glyphed Garb 7/8\"",
@@ -270,6 +274,17 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     dressingRoom = {
         hideGear = "Hide My Gear",
         hideGearTooltip = "Shows only the items you have previewed, with your own gear taken off, so your helm, shoulders or tabard never cover a set that leaves those slots empty. Reset clears the preview.",
+    },
+    raidSets = {
+        title = "%s: Class Sets",
+        button = "Class Sets",
+        buttonDesc = "Every class's set from this raid, and which pieces you have.",
+        cardHint = "Click to preview this set in the dressing room.",
+        noAlts = "No alts of this class",
+        moreAlts = "+%d more",
+        collected = "Collected",
+        notCollected = "Not collected",
+        tokenSlot = "Made from a tier token",
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
