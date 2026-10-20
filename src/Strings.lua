@@ -334,6 +334,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         title = "Finish a Set Here",
         nothingHere = "Nothing here finishes a set.",
         notInInstance = "You are not in a dungeon or raid.",
+        inCombat = "Your collection cannot be opened in combat. Click the set again once the fight is over.",
         replayed = "Opened the list as if you had just walked in.",
         replayedNothing = "Nothing here finishes a set, so walking in would open nothing.",
         replayedWhileOff = "Open the List Automatically is off, so walking in would open nothing.",

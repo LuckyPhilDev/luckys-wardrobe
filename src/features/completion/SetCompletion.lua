@@ -1,4 +1,4 @@
--- luacheck: globals C_Texture ITEM_CLASSES_ALLOWED PixelUtil PLAYER_DIFFICULTY1 PLAYER_DIFFICULTY2 PLAYER_DIFFICULTY3 PLAYER_DIFFICULTY6 WARDROBE_TAB_SETS
+-- luacheck: globals C_Texture ITEM_CLASSES_ALLOWED PixelUtil PLAYER_DIFFICULTY1 PLAYER_DIFFICULTY2 PLAYER_DIFFICULTY3 PLAYER_DIFFICULTY6 WARDROBE_TAB_SETS InCombatLockdown
 
 -- Lucky's Wardrobe: Sets you are close to completing whose missing pieces drop in
 -- the instance you're standing in.
@@ -733,6 +733,12 @@ local function showRowTooltip(row, match)
 end
 
 local function showSetInJournal(match)
+    -- The Collections window holds protected frames, so the game refuses to open
+    -- it for an addon in combat.
+    if InCombatLockdown() then
+        say(LuckysWardrobe.Strings.setTracker.inCombat)
+        return
+    end
     if not CollectionsJournal or not CollectionsJournal:IsShown() then
         ToggleCollectionsJournal(APPEARANCES_TAB)
     end

@@ -6,6 +6,9 @@
 - **Class Sets in the Adventure Guide** A new button on a raid's page in the Adventure Guide opens every class's set from that raid side by side, each on a model with the pieces you have ticked off and your alts of that class named, so you can see at a glance which alt to send a tier token to. Pick a difficulty from the dropdown, click a set to try it on in the dressing room, or shift-click a piece to link it. (Thanks for the suggestion 2B, or not 2B)
 - **Who Still Needs a Tier Token** A raid tier token's tooltip lists the classes it serves that are still missing the piece it makes, at the token's own difficulty, with your alts of each class beside them. It covers every raid's tokens from Ahn'Qiraj to today, and stays out of the way when All The Things is loaded, since it shows the same.
 
+### Fixed
+- Clicking a set in the Finish a Set Here list during combat no longer causes an error. It now says the collection cannot be opened until the fight is over.
+
 ## [1.12.2] - 2026-10-13
 
 ### Improved
