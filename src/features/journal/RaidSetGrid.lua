@@ -1,4 +1,5 @@
 -- luacheck: globals EncounterJournal EJ_GetDifficulty GetDifficultyInfo DressUpTransmogSet HandleModifiedItemClick GameTooltip_Hide GameTooltip_SuppressAutomaticCompareItem
+-- luacheck: globals EJ_GetEncounterInfo UNKNOWN WARDROBE_TOOLTIP_ENCOUNTER_SOURCE
 
 -- Lucky's Wardrobe: Every class's set from a raid side by side, opened from the
 -- Adventure Guide, so a token can go to the alt that still needs its piece.
@@ -13,6 +14,7 @@ local CARD_HEADER_HEIGHT = 32
 local GAP, PADDING = 6, 12
 local ICON_SIZE, ICON_STEP, ICONS_PER_ROW, ICON_ROWS = 24, 28, 5, 2
 local MAX_ALTS = 3
+local MAX_DROP_LINES = 6
 local TOOLBAR_HEIGHT = 30
 
 local db
@@ -36,6 +38,60 @@ local function altsLine(alts)
     return line
 end
 
+local function addUnique(lines, text)
+    for _, line in ipairs(lines) do
+        if line == text then return end
+    end
+    lines[#lines + 1] = text
+end
+
+local function droppedPieceLines(piece)
+    local lines = {}
+    for _, drop in ipairs(C_TransmogCollection.GetAppearanceSourceDrops(piece.sourceID) or {}) do
+        local text = drop.encounter or UNKNOWN
+        if drop.instance and drop.instance ~= shown.raidName then
+            text = WARDROBE_TOOLTIP_ENCOUNTER_SOURCE:format(text, drop.instance)
+        end
+        if drop.difficulties and #drop.difficulties > 0 then
+            text = ("%s (%s)"):format(text, table.concat(drop.difficulties, ", "))
+        end
+        addUnique(lines, text)
+    end
+    return lines
+end
+
+-- A piece made from a token drops as the token, so the game has no boss on
+-- record for it; the boss that drops the token is the answer.
+local function tokenPieceLines(piece, class)
+    local lines = {}
+    for _, token in ipairs(LuckysWardrobe.TierTokens:Making(class.classID, shown.raidName, piece)) do
+        local tokenName = C_Item.GetItemNameByID(token.itemID)
+        if not tokenName then C_Item.RequestLoadItemDataByID(token.itemID) end
+        for _, encounterID in ipairs(token.encounters) do
+            local boss = EJ_GetEncounterInfo(encounterID) or UNKNOWN
+            addUnique(lines, tokenName and S().viaToken:format(boss, tokenName) or boss)
+        end
+    end
+    return lines
+end
+
+local function addDropLines(piece, class)
+    local lines = droppedPieceLines(piece)
+    if #lines == 0 and piece.token then lines = tokenPieceLines(piece, class) end
+    if #lines == 0 then return end
+
+    local tracker = LuckysWardrobe.Strings.setTracker
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(tracker.dropsFrom, 1, 0.82, 0)
+    for index, line in ipairs(lines) do
+        if index > MAX_DROP_LINES then
+            GameTooltip:AddLine(tracker.andMore:format(#lines - MAX_DROP_LINES), 0.54, 0.49, 0.42)
+            break
+        end
+        GameTooltip:AddLine(line, 0.91, 0.86, 0.78)
+    end
+end
+
 local function showPieceTooltip(icon)
     local piece = icon.piece
     GameTooltip:SetOwner(icon, "ANCHOR_RIGHT")
@@ -48,12 +104,28 @@ local function showPieceTooltip(icon)
     else
         GameTooltip:AddLine(S().notCollected, 0.9, 0.3, 0.3)
     end
-    if piece.token then GameTooltip:AddLine(S().tokenSlot, 0.7, 0.7, 0.7) end
+    addDropLines(piece, icon:GetParent().class)
+    if not piece.collected then
+        local tracked = LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
+        if not tracked then LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, piece.sourceID) end
+    end
     GameTooltip:Show()
 end
 
-local function clickPiece(icon)
-    local info = C_TransmogCollection.GetAppearanceSourceInfo(icon.piece.sourceID)
+-- The same clicks a piece answers on the addon's other set pages: Wowhead on
+-- alt, tracking on shift for a piece still missing, then the game's own.
+local function clickPiece(icon, buttonName)
+    local piece = icon.piece
+    if LuckysWardrobe.WowheadLink:HandlesClick(buttonName)
+        and LuckysWardrobe.WowheadLink:ShowForSource(piece.sourceID) then
+        return
+    end
+    if not piece.collected and LuckysWardrobe.SetTracking:HandlesShiftClick(buttonName) then
+        LuckysWardrobe.SetTracking:TogglePiece(piece.sourceID, icon:GetParent().setName)
+        showPieceTooltip(icon)
+        return
+    end
+    local info = C_TransmogCollection.GetAppearanceSourceInfo(piece.sourceID)
     if info and info.itemLink then HandleModifiedItemClick(info.itemLink) end
 end
 
@@ -95,6 +167,7 @@ local function styleIcon(icon, piece)
         icon.edge:SetColorTexture(0, 0, 0, 0.6)
     end
     icon.tokenPip:SetShown(piece.token)
+    LuckysWardrobe.TrackedAppearances:Mark(icon, not piece.collected and piece.sourceID or nil)
     icon:Show()
 end
 
@@ -177,6 +250,8 @@ end
 
 local function fillCard(card, class, setID)
     card.class = class
+    local setInfo = C_TransmogSets.GetSetInfo(setID)
+    card.setName = setInfo and setInfo.name
     card.pieces = LuckysWardrobe.RaidSets:Pieces(setID)
     local collected = 0
     for index, piece in ipairs(card.pieces) do

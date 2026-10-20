@@ -293,7 +293,7 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         moreAlts = "+%d more",
         collected = "Collected",
         notCollected = "Not collected",
-        tokenSlot = "Made from a tier token",
+        viaToken = "%s, as %s",
     },
     wowheadLink = {
         dialog = "Press Ctrl+C to copy this address, then paste it into your browser.",
