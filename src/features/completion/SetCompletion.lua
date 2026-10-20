@@ -628,6 +628,7 @@ local function showPieceTooltip(anchor, piece)
         or TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN,
         piece.collected and 0.41 or 1, piece.collected and 0.86 or 0.42,
         piece.collected and 0.49 or 0.42)
+    if not piece.collected then LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID) end
 
     local drops = piece.drops or {}
     if #drops > 0 then
@@ -867,6 +868,7 @@ local function updateRow(row, match)
             icon.piece = nil
             icon:Hide()
         end
+        LuckysWardrobe.TrackedAppearances:Mark(icon, piece and not piece.collected and piece.sourceID or nil)
     end
 end
 
