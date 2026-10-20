@@ -7,7 +7,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 ## At a Glance
 
 - Two new tabs in Appearances: the sets Blizzard hides, and the outfits you saved at the transmogrifier.
-- Walk into a dungeon and a list says which sets you could finish there, closest to done first.
+- Walk into a dungeon and a list says which sets you could finish there, closest to done first. Shift-click a missing piece in it to track it.
 - Filter the transmog window by colour, by expansion, and down to what your class can actually wear.
 - It adds to the collection journal instead of replacing it, so it stays light and is far less likely to break when a patch lands.
 
@@ -32,7 +32,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 
 ### Set Tracker
 
-- **Finish a set here** Enter a dungeon or raid and a list opens with the sets you are close to completing whose missing pieces drop there, closest to done first.
+- **Finish a set here** Enter a dungeon or raid and a list opens with the sets you are close to completing whose missing pieces drop there, closest to done first. Shift-click a missing piece in it to track it.
 - **Loot alerts** Loot a piece of a set you are close to finishing, anywhere in the world, and the addon says so with a sound, a chat line, or both.
 - **Catalyst marks** A missing piece is stamped when you are carrying something the catalyst would turn into it, so a set reads as closer to done than the count alone says. Requires Transmog Upgrade Master.
 - **Set how close counts** Choose how incomplete a set can be and still count. The tier you are currently raiding is left out by default, and other classes' sets can be brought in.

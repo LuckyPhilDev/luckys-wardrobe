@@ -629,7 +629,10 @@ local function showPieceTooltip(anchor, piece)
         or TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN,
         piece.collected and 0.41 or 1, piece.collected and 0.86 or 0.42,
         piece.collected and 0.49 or 0.42)
-    if not piece.collected then LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID) end
+    if not piece.collected then
+        local tracked = LuckysWardrobe.TrackedAppearances:AddTooltipLine(GameTooltip, piece.sourceID)
+        if not tracked then LuckysWardrobe.SetTracking:AddTrackHint(GameTooltip, piece.sourceID) end
+    end
 
     local drops = piece.drops or {}
     if #drops > 0 then
@@ -826,8 +829,15 @@ local function createRow(parent)
             if self.piece then showPieceTooltip(self, self.piece) end
         end)
         icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        icon:SetScript("OnMouseUp", function(self)
-            if self.match then showSetInJournal(self.match) end
+        icon:SetScript("OnMouseUp", function(self, button)
+            local piece = self.piece
+            if not piece then return end
+            if not piece.collected and LuckysWardrobe.SetTracking:HandlesShiftClick(button) then
+                LuckysWardrobe.SetTracking:TogglePiece(piece.sourceID, self.match.name)
+                showPieceTooltip(self, piece)
+                return
+            end
+            showSetInJournal(self.match)
         end)
 
         icon:Hide()
