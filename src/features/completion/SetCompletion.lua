@@ -316,16 +316,17 @@ function SetCompletion:Scan(instance, maxMissing)
         local wholeSetIsHere = isThisInstance(instance, candidate.source)
 
         -- A raid's set exists once per difficulty, and only the one matching the run
-        -- is obtainable, so the others are not sets you can finish here. They are
-        -- dropped rather than flagged: three near-identical rows for the same set,
-        -- two of them unobtainable, is noise however well labelled.
+        -- is obtainable, so the others are not sets you can finish here, even when
+        -- their pieces name a boss here. They are dropped rather than flagged: three
+        -- near-identical rows for the same set, two of them unobtainable, is noise.
+        local missingHere = candidate.missing
         if wholeSetIsHere and variantDifficultyNote(instance, candidate.variant) then
-            wholeSetIsHere = false
+            missingHere = {}
             stats.wrongDifficulty = stats.wrongDifficulty + 1
         end
 
         local here, hereBySource = {}, {}
-        for _, sourceID in ipairs(candidate.missing) do
+        for _, sourceID in ipairs(missingHere) do
             stats.lookups = stats.lookups + 1
 
             -- Drop data is preferred wherever it exists, because it names the boss.
