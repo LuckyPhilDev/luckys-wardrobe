@@ -8,6 +8,7 @@
 
 ### Fixed
 - Clicking a set in the Finish a Set Here list during combat no longer causes an error. It now says the collection cannot be opened until the fight is over.
+- The Finish a Set Here list in an older raid no longer shows the same set twice, once for this difficulty and once for another. Only the version you can earn on this run is listed.
 
 ## [1.12.2] - 2026-10-13
 

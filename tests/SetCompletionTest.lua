@@ -98,6 +98,8 @@ local DROPS = {
     [13] = { { instance = "The Vault of Old", encounter = "The Gatekeeper", difficulties = {} } },
     [16] = { { instance = "The Vault", encounter = "The Warden", difficulties = {} } },
     [17] = { { instance = "The Vault", encounter = "The Gatekeeper", difficulties = {} } },
+    -- Old raid sets name their boss too, so the wrong difficulty's copy still drops here.
+    [25] = { { instance = "The Vault", encounter = "The Warden", difficulties = {} } },
     [29] = { { instance = "Upper Blackrock Spire", encounter = "Kyrak", difficulties = {} } },
     [31] = { { instance = "The Vault", encounter = "The Warden", difficulties = {} } },
     [34] = { { instance = "The Vault", encounter = "The Warden", difficulties = {} } },
