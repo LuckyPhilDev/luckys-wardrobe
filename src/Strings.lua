@@ -136,6 +136,10 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
             label = "Wowhead Address on Alt-Click",
             desc = "Alt-click an item anywhere in your appearance collection to bring up its Wowhead address, ready to copy.",
         },
+        tooltipTokenNeeds = {
+            label = "Who Still Needs a Tier Token",
+            desc = "Lists the classes a raid tier token serves that are still missing the piece it makes, with your alts of each, so you know who to send it to. Hidden when All The Things is loaded, since it shows the same.",
+        },
         raidSetGrid = {
             label = "Class Sets in the Adventure Guide",
             desc = "Adds a button to a raid's page in the Adventure Guide that shows every class's set from that raid side by side, which pieces you have, and your alts of each class, so you know who to send a token to.",
@@ -274,6 +278,11 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
     dressingRoom = {
         hideGear = "Hide My Gear",
         hideGearTooltip = "Shows only the items you have previewed, with your own gear taken off, so your helm, shoulders or tabard never cover a set that leaves those slots empty. Reset clears the preview.",
+    },
+    tokenTooltips = {
+        neededBy = "Tier token, still needed by:",
+        allCollected = "Tier token: every class it serves has this piece",
+        nothingHovered = "Hover a tier token first, then type /lw token.",
     },
     raidSets = {
         title = "%s: Class Sets",

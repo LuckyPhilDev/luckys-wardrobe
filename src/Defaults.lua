@@ -18,6 +18,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     raidSetGridPosition = {},
     dressingRoomHideGear = false,
     tooltipSetProgress = true,
+    tooltipTokenNeeds = true,
     tooltipModel = true,
     tooltipModelWornAndBags = false,
     -- Only the slots the set previews leave off are stored, so a slot never

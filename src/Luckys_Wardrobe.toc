@@ -22,6 +22,7 @@ Data\EnsembleSets.lua
 Data\AppearanceColours.lua
 Data\AppearanceCoverage.lua
 Data\SetModels.lua
+Data\TierTokens.lua
 domain\Colours.lua
 domain\Classes.lua
 domain\SetSources.lua
@@ -30,6 +31,7 @@ domain\Catalyst.lua
 domain\ExtraSetsCatalog.lua
 domain\RecolorGroups.lua
 domain\RaidSets.lua
+domain\TierTokens.lua
 features\journal\PreviewSlots.lua
 features\journal\WardrobeKeys.lua
 features\journal\SetsBrowser.lua
@@ -41,6 +43,7 @@ features\journal\ExtraSets.lua
 features\journal\CustomSets.lua
 features\journal\RaidSetGrid.lua
 features\tooltips\ItemTooltips.lua
+features\tooltips\TokenTooltips.lua
 features\tooltips\TooltipModel.lua
 features\completion\SetCompletion.lua
 features\completion\LootAlerts.lua
