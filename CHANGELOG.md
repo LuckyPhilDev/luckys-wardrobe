@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- The character models in the Class Sets window no longer disappear while the dressing room is open.
+
 ## [1.13.0] - 2026-10-20
 
 ### Added
