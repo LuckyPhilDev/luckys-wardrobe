@@ -929,7 +929,8 @@ end
 local function buildPanel()
     local S = LuckysWardrobe.Strings.setTracker
     local frame = LuckyUI.CreatePanel("LuckysWardrobeInstanceSets", UIParent, 100, 100)
-    frame:SetFrameStrata("HIGH")
+    -- The world map takes UIParent's MEDIUM strata, so LOW keeps this list under it.
+    frame:SetFrameStrata("LOW")
     frame:Hide()
 
     local header = LuckyUI.CreateHeader(frame, S.title)
