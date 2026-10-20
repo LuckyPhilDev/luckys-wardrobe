@@ -30,6 +30,8 @@ local function initialize()
     LuckysWardrobe.ExtraSetsCatalog:Init()
     LuckysWardrobe.ExtraSets:Init()
     LuckysWardrobe.CustomSets:Init()
+    LuckysWardrobe.RaidSets:Init()
+    LuckysWardrobe.RaidSetGrid:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogSets:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogItems:Init(LuckysWardrobeDB)
     LuckysWardrobe.TransmogSetNames:Init(LuckysWardrobeDB)
@@ -40,6 +42,7 @@ local function initialize()
     LuckysWardrobe.WowheadLink:Init(LuckysWardrobeDB)
     LuckysWardrobe.DressingRoom:Init(LuckysWardrobeDB)
     LuckysWardrobe.ItemTooltips:Init(LuckysWardrobeDB)
+    LuckysWardrobe.TokenTooltips:Init(LuckysWardrobeDB)
     LuckysWardrobe.TooltipModel:Init(LuckysWardrobeDB)
     LuckysWardrobe.SetCompletion:Init(LuckysWardrobeDB)
     LuckysWardrobe.LootAlerts:Init(LuckysWardrobeDB)
@@ -117,6 +120,8 @@ local function initialize()
                 LuckysWardrobe.TooltipModel:SetFraming(
                     slot, tonumber(facing), tonumber(zoom), tonumber(height), tonumber(side))
             end
+        elseif command == "token" then
+            LuckysWardrobe.TokenTooltips:PrintLast()
         elseif command == "scan" then
             LuckysWardrobe.SetCompletion:Diagnose()
         elseif command == "items" then

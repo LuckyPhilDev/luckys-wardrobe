@@ -96,3 +96,16 @@ function Classes:Names(classes)
     end
     return table.concat(names, ", ")
 end
+
+--- Your characters of a class that any Lucky addon has seen, most recently played
+--- first, as roster keys.
+function Classes:Alts(classFile)
+    local alts = {}
+    for key, entry in pairs(LuckyRoster:GetAll()) do
+        if entry.class == classFile then
+            alts[#alts + 1] = { key = key, lastSeen = entry.lastSeen or 0 }
+        end
+    end
+    table.sort(alts, function(a, b) return a.lastSeen > b.lastSeen end)
+    return alts
+end

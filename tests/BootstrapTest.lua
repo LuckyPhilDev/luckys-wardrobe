@@ -169,6 +169,10 @@ LuckysWardrobe.CustomSets = {
     end,
 }
 
+LuckysWardrobe.RaidSets = { Init = function() end }
+LuckysWardrobe.RaidSetGrid = { Init = function() end }
+LuckysWardrobe.TokenTooltips = { Init = function() end }
+
 local transmogSetsDB
 LuckysWardrobe.TransmogSets = {
     Init = function(_, db)
