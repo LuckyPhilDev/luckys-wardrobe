@@ -47,6 +47,23 @@ local function missesPiece(token, setID)
     return false
 end
 
+--- The tokens a raid drops that make this class's piece: { itemID, encounters }.
+function TierTokens:Making(classID, raidName, piece)
+    local found = {}
+    for itemID, token in pairs(LuckysWardrobe.TierTokensData) do
+        if LuckysWardrobe.Classes:MaskHas(token.classMask, classID) and fitsSlot(token.slot, piece) then
+            for _, instanceID in ipairs(token.instances) do
+                if EJ_GetInstanceInfo(instanceID) == raidName then
+                    found[#found + 1] = { itemID = itemID, encounters = token.encounters }
+                    break
+                end
+            end
+        end
+    end
+    table.sort(found, function(a, b) return a.itemID < b.itemID end)
+    return found
+end
+
 --- What ClassesNeeding looked at for this token, line by line, for /lw token.
 function TierTokens:Explain(itemID, lineTexts)
     local token = LuckysWardrobe.TierTokensData[itemID]
