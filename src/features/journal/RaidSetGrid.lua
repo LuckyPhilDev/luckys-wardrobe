@@ -1,5 +1,5 @@
 -- luacheck: globals EncounterJournal EJ_GetDifficulty GetDifficultyInfo DressUpTransmogSet HandleModifiedItemClick GameTooltip_Hide GameTooltip_SuppressAutomaticCompareItem
--- luacheck: globals EJ_GetEncounterInfo UNKNOWN WARDROBE_TOOLTIP_ENCOUNTER_SOURCE
+-- luacheck: globals EJ_GetEncounterInfo UNKNOWN WARDROBE_TOOLTIP_ENCOUNTER_SOURCE CAMERA_TRANSITION_TYPE_IMMEDIATE CAMERA_MODIFICATION_TYPE_DISCARD
 
 -- Lucky's Wardrobe: Every class's set from a raid side by side, opened from the
 -- Adventure Guide, so a token can go to the alt that still needs its piece.
@@ -16,6 +16,8 @@ local ICON_SIZE, ICON_STEP, ICONS_PER_ROW, ICON_ROWS = 24, 28, 5, 2
 local MAX_ALTS = 3
 local MAX_DROP_LINES = 6
 local TOOLBAR_HEIGHT = 30
+-- Blizzard's dressing room scene (a local in DressUpFrames.lua), framed for a full figure.
+local DRESSING_ROOM_SCENE_ID = 596
 
 local db
 local journalButton
@@ -171,12 +173,11 @@ local function styleIcon(icon, piece)
     icon:Show()
 end
 
--- A figure still loading drops anything put on it, so the pieces go on once it
--- lands, a frame later, the same as the Extra Sets preview.
 local function dressModel(card)
-    if card.modelLoading then return end
-    card.model:Undress()
-    for _, piece in ipairs(card.pieces) do card.model:TryOn(piece.sourceID) end
+    local actor = card.model:GetPlayerActor()
+    if not actor then return end
+    actor:Undress()
+    for _, piece in ipairs(card.pieces) do actor:TryOn(piece.sourceID) end
 end
 
 local function showCardTooltip(card)
@@ -215,15 +216,12 @@ local function createCard(parent)
     card.altsText:SetJustifyH("LEFT")
     card.altsText:SetWordWrap(false)
 
-    local model = CreateFrame("DressUpModel", nil, card)
+    -- A ModelScene, not a DressUpModel: every 3D figure shares one depth buffer regardless
+    -- of strata, so the dressing room's figure hid these unless they may overlap it.
+    local model = CreateFrame("ModelScene", nil, card, "NonInteractableModelSceneMixinTemplate")
     model:SetPoint("TOPLEFT", 4, -CARD_HEADER_HEIGHT)
     model:SetPoint("BOTTOMRIGHT", -4, 10 + ICON_ROWS * ICON_STEP)
-    model:SetKeepModelOnHide(true)
-    model:SetScript("OnModelLoaded", function()
-        if not card.modelLoading then return end
-        card.modelLoading = false
-        C_Timer.After(0, function() dressModel(card) end)
-    end)
+    model:SetAllowOverlappedModels(true)
     card.model = model
 
     card:SetScript("OnClick", function(self)
@@ -267,14 +265,17 @@ local function fillCard(card, class, setID)
     card.alts = LuckysWardrobe.Classes:Alts(class.file)
     card.altsText:SetText(altsLine(card.alts))
 
-    if card.modelSet then
-        dressModel(card)
-    else
+    if not card.modelSet then
         card.modelSet = true
-        card.modelLoading = true
-        card.model:SetUnit("player")
-        card.model:SetUseTransmogSkin(true)
+        card.model:TransitionToModelSceneID(DRESSING_ROOM_SCENE_ID,
+            CAMERA_TRANSITION_TYPE_IMMEDIATE, CAMERA_MODIFICATION_TYPE_DISCARD, true)
+        local actor = card.model:GetPlayerActor()
+        if actor then
+            actor:SetModelByUnit("player", true, false, true, true)
+            actor:SetUseTransmogSkin(true)
+        end
     end
+    dressModel(card)
     card:Show()
 end
 
