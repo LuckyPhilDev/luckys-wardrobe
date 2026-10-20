@@ -33,6 +33,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 ### Set Tracker
 
 - **Finish a set here** Enter a dungeon or raid and a list opens with the sets you are close to completing whose missing pieces drop there, closest to done first. Shift-click a missing piece in it to track it.
+- **Class sets in the Adventure Guide** A button on a raid's page opens every class's set from that raid side by side, with the pieces you own ticked off and your alts of each class named, so you know which alt to send a tier token to. Shift-click a missing piece to track it.
 - **Loot alerts** Loot a piece of a set you are close to finishing, anywhere in the world, and the addon says so with a sound, a chat line, or both.
 - **Catalyst marks** A missing piece is stamped when you are carrying something the catalyst would turn into it, so a set reads as closer to done than the count alone says. Requires Transmog Upgrade Master.
 - **Set how close counts** Choose how incomplete a set can be and still count. The tier you are currently raiding is left out by default, and other classes' sets can be brought in.
@@ -59,6 +60,7 @@ Find the sets you can still finish, and hear about it the moment a piece drops.
 - **Your outfits anywhere** Left-click the minimap button, or type `/lw outfits`, to open the outfits you saved at the transmogrifier without standing at one. The parts that need an NPC are left off.
 - **Outfits as a bar** A setting opens those outfits as a grid of icons instead, movable anywhere on screen. Click one to wear it, click it again to take it off, right-click to lock it, and a button on the bar clears your transmog. The header names whichever outfit you are wearing, and the bar counts itself down and closes five seconds after your cursor leaves it.
 - **Item tooltips** Hover an item anywhere in the game and its tooltip names the set the piece belongs to and how far along you are, as in "From set: Glyphed Garb 7/8".
+- **Who still needs a tier token** A raid tier token's tooltip lists the classes still missing the piece it makes, with your alts of each class beside them.
 - **Preview models on tooltips** Hover a piece of gear and the piece itself appears beside the tooltip, close up and framed on the slot it sits in, so you can see it without the dressing room.
 - **Hide My Gear** A checkbox in the dressing room takes off your own gear and leaves only the items you have previewed, so a set that leaves slots empty is not hidden behind what you are wearing.
 - **Wowhead addresses** Alt-click any item in your appearance collection to bring up its Wowhead address in a box ready to copy.
