@@ -19,6 +19,7 @@ LuckysWardrobe.DB_DEFAULTS = {
     dressingRoomHideGear = false,
     tooltipSetProgress = true,
     tooltipTokenNeeds = true,
+    tooltipTokenNeedsWithATT = false,
     tooltipModel = true,
     tooltipModelWornAndBags = false,
     -- Only the slots the set previews leave off are stored, so a slot never

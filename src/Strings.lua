@@ -138,7 +138,11 @@ LuckysWardrobe.Strings = LuckyStrings.New("LuckysWardrobe.Strings", {
         },
         tooltipTokenNeeds = {
             label = "Who Still Needs a Tier Token",
-            desc = "Lists the classes a raid tier token serves that are still missing the piece it makes, with your alts of each, so you know who to send it to. Hidden when All The Things is loaded, since it shows the same.",
+            desc = "Lists the classes a raid tier token serves that are still missing the piece it makes, with your alts of each, so you know who to send it to. Hidden when AllTheThings is loaded, since it shows the same.",
+        },
+        tooltipTokenNeedsWithATT = {
+            label = "Show Alongside AllTheThings",
+            desc = "Keeps the list on a tier token's tooltip even when AllTheThings is loaded, so you see your alts of each class beside its own.",
         },
         raidSetGrid = {
             label = "Class Sets in the Adventure Guide",
