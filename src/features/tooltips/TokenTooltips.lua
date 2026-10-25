@@ -40,8 +40,7 @@ local function addLines(tooltip, data)
     if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
     if not db.tooltipTokenNeeds or not data or not data.id then return end
     if not LuckysWardrobe.TierTokensData[data.id] then return end
-    -- All The Things puts the same answer on the same tooltip.
-    if C_AddOns.IsAddOnLoaded("AllTheThings") then return end
+    if C_AddOns.IsAddOnLoaded("AllTheThings") and not db.tooltipTokenNeedsWithATT then return end
 
     lastToken = { itemID = data.id, lineTexts = lineTexts(data) }
     local needing = LuckysWardrobe.TierTokens:ClassesNeeding(data.id, lastToken.lineTexts)

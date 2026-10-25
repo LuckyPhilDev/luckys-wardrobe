@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Tier token needs alongside AllTheThings** A new setting under Who Still Needs a Tier Token keeps that list on a tier token's tooltip even when AllTheThings is loaded, for anyone who wants both. It is off by default. (Thanks for the suggestion 2B, or not 2B)
+
 ## [1.13.1] - 2026-10-20
 
 ### Fixed

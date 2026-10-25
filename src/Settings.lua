@@ -110,6 +110,16 @@ function LuckysWardrobe.Settings:Init(db)
         end,
     })
     tooltips:Toggle({
+        label = S.settings.tooltipTokenNeedsWithATT.label,
+        desc = S.settings.tooltipTokenNeedsWithATT.desc,
+        parent = S.settings.tooltipTokenNeeds.label,
+        since = "1.14.0",
+        checked = db.tooltipTokenNeedsWithATT,
+        onToggle = function(checked)
+            db.tooltipTokenNeedsWithATT = checked
+        end,
+    })
+    tooltips:Toggle({
         label = S.settings.tooltipModel.label,
         desc = S.settings.tooltipModel.desc,
         image = "tooltips/show-a-preview-model",
