@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.14.1] - 2026-10-26
 
 ### Added
 - **Wago Addons** Lucky's Wardrobe is now published on Wago Addons too, so you can install and update it with the Wago app.
